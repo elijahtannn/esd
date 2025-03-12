@@ -4,6 +4,9 @@ import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import ProfileView from '../views/ProfileView.vue'
 import EventView from '../views/EventView.vue'
+import CheckOutView from '../views/CheckOutView.vue'
+import AboutView from '../views/AboutView.vue'
+import ContactView from '../views/ContactView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -32,6 +35,21 @@ const router = createRouter({
       path: '/event',
       name: 'event',
       component: EventView,
+    },
+    {
+      path: '/checkout',
+      name: 'checkout',
+      component: CheckOutView,
+    },
+    {
+      path: '/about',
+      name: 'about',
+      component: AboutView,
+    },
+    {
+      path: '/contact',
+      name: 'contact',
+      component: ContactView,
     },
   ],
 })
