@@ -5,7 +5,6 @@
 </head>
 
 
-<!-- Your HTML Content Here -->
     <div class="background-container">
         <!-- Background Image -->
         <img src="../assets/images/Login_Background.png" class="background-img">
@@ -83,7 +82,6 @@ export default {
 </script>
 
 <style scoped>
-/* Your CSS styles here */
 .background-container {
     position: relative;
     width: 100vw;
@@ -171,8 +169,8 @@ export default {
 }
 
 .btn {
-    width: 100%; /* Match the login button width */
-    padding: 8px; /* Same padding */
+    width: 100%; 
+    padding: 8px; 
     font-size: 14px;
     border: 1px solid #dcdcdc; 
     font-size: 12px;
