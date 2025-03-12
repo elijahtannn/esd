@@ -1,10 +1,16 @@
 <template>
-    <!-- Your HTML content here -->
+    <NavBar/>
 </template>
 
 <script>
+
+import NavBar from "../components/nav-bar.vue";
+
 export default {
     name: 'login',
+    components: {
+        NavBar
+    },
     data() {
         return {
             // Your component data here
