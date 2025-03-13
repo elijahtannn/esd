@@ -1,5 +1,6 @@
 <template>
 
+
 <head>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
 </head>
@@ -62,11 +63,20 @@
             
         </div>
     </div>
+
+    <NavBar/>
+
 </template>
 
 <script>
+
+import NavBar from "../components/nav-bar.vue";
+
 export default {
     name: 'login',
+    components: {
+        NavBar
+    },
     data() {
         return {
             // Your component data here

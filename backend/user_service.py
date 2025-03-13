@@ -15,8 +15,8 @@ app.config["MONGO_URI"] = "mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4
 mongo = PyMongo(app)
 
 # Google OAuth Credentials
-GOOGLE_CLIENT_ID = "607054073148-6mpeml07e2asg4daka42en3l4iha33vm.apps.googleusercontent.com"
-GOOGLE_CLIENT_SECRET = "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"
+GOOGLE_CLIENT_ID = "603980424659-jiqs010nggvjmn6ve8c243nfral3q5a7.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET = "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"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 # Fetch Google's OpenID Config
