@@ -12,7 +12,7 @@
                 </div>
     
                 <button style="padding: 5px 20px; text-transform: uppercase;" class="text-center" @click="toEvent">
-                    Buy Now
+                    Learn more
                 </button>
     
                 <p style="color:red; font-size: 14px;" v-if="availableTickets < ticketThreshold">Tickets running low!</p>
