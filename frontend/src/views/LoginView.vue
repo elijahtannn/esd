@@ -27,7 +27,7 @@
             <!-- Input field - Password -->
             <div class="row">
                 <label for="password" class="input-label">
-                    <i class="fa-solid fa-user icon"></i>
+                    <i class="bi bi-lock-fill"></i>
                     Password
                 </label>
                 <div class="input-container">

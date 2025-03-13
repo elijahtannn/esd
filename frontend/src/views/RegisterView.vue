@@ -33,6 +33,7 @@
                     <input type="email" id="email" class="input-field" required  placeholder="Enter your email"/>
                 </div>
             </div>
+
             <!-- Input field - Mobile -->
             <div class="row">
                 <label for="mobile" class="input-label">
@@ -43,14 +44,26 @@
                     <input type="number" id="mobile" class="input-field" required  placeholder="Enter your mobile number"/>
                 </div>
             </div>
+
             <!-- Input field - Password -->
             <div class="row">
                 <label for="password" class="input-label">
-                    <i class="fa-solid fa-user icon"></i>
+                    <i class="bi bi-lock-fill"></i>
                     Password
                 </label>
                 <div class="input-container">
                     <input type="password" id="password" class="input-field" required  placeholder="Enter your password"/>
+                </div>
+            </div>
+
+            <!-- Input field - Confirm Password -->
+            <div class="row">
+                <label for="password" class="input-label">
+                    <i class="bi bi-lock-fill"></i>
+                    Password
+                </label>
+                <div class="input-container">
+                    <input type="password" id="password" class="input-field" required  placeholder="Confirm your password"/>
                 </div>
             </div>
 
