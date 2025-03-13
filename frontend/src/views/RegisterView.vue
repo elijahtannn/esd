@@ -1,5 +1,7 @@
 <template>
 
+    <NavBar/>
+
     <!-- CDN -->
     <head>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
@@ -9,8 +11,8 @@
         <img src="../assets/images/Login_Background.png" class="background-img">
 
         <!-- Register Block -->
-        <div class="login-box">
-            <h3 class="text-center" style="font-size: 24px;">LOGIN</h3>
+        <div class="login-box p-5">
+            <h3 class="text-center" style="font-size: 24px;">REGISTER</h3>
             <!-- Input field - Name -->
             <div class="row">
                 <label for="name" class="input-label">
@@ -18,7 +20,7 @@
                     Name
                 </label>
                 <div class="input-container">
-                    <input type="text" id="name" class="input-field" required />
+                    <input type="text" id="name" class="input-field" required  placeholder="Enter your name"/>
                 </div>
             </div>
             <!-- Input field - Email -->
@@ -28,7 +30,7 @@
                     Email
                 </label>
                 <div class="input-container">
-                    <input type="email" id="email" class="input-field" required />
+                    <input type="email" id="email" class="input-field" required  placeholder="Enter your email"/>
                 </div>
             </div>
             <!-- Input field - Mobile -->
@@ -38,7 +40,7 @@
                     Mobile
                 </label>
                 <div class="input-container">
-                    <input type="number" id="mobile" class="input-field" required />
+                    <input type="number" id="mobile" class="input-field" required  placeholder="Enter your mobile number"/>
                 </div>
             </div>
             <!-- Input field - Password -->
@@ -48,19 +50,35 @@
                     Password
                 </label>
                 <div class="input-container">
-                    <input type="password" id="password" class="input-field" required />
+                    <input type="password" id="password" class="input-field" required  placeholder="Enter your password"/>
                 </div>
             </div>
+
             <!-- Submit Button -->
             <div class='row'>
                 <button class="login-btn">REGISTER</button>
             </div>
+
+
+            <!-- Login with google -->
+            <div class='row mt-3'>
+                <button class="btn">
+                    <img src='../assets/images/google icon.png' width="15%"> Sign in with Google
+                </button>
+            </div>
+
+            <!-- insert line here -->
+            <hr>
+
+
+            <!-- Dont Have an existing account? -->
+            <div class="row">
+                <span class="small-text">Are you an existing user?</span>
+                <span class="small-text">Login <router-link to="/login">here</router-link></span>
+            </div>
             
         </div>
-    </div>
-
-    <!-- Your HTML content here -->
-    <NavBar/>
+    </div>    
 
 </template>
 
@@ -75,14 +93,14 @@ export default {
     },
     data() {
         return {
-            // Your component data here
+
         }
     },
     methods: {
-        // Your component methods here
+
     },
     mounted() {
-        // Lifecycle hook: mounted
+
     }
 }
 </script>
@@ -109,7 +127,7 @@ export default {
     top: 50%;
     right: 10%;
     transform: translateY(-50%);
-    width: 320px;
+    width: 30vw;
     padding: 20px;
     background: white;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);

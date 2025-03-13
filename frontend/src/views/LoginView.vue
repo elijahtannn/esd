@@ -1,9 +1,10 @@
 <template>
 
+    <NavBar />
 
-<head>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-</head>
+    <head>
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    </head>
 
 
     <div class="background-container">
@@ -11,7 +12,7 @@
         <img src="../assets/images/Login_Background.png" class="background-img">
 
         <!-- White Box (Login Form) -->
-        <div class="login-box">
+        <div class="login-box p-5">
             <h3 class="text-center" style="font-size: 24px;">LOGIN</h3>
             <!-- Input field - Email -->
             <div class="row">
@@ -20,7 +21,7 @@
                     Email
                 </label>
                 <div class="input-container">
-                    <input type="email" id="email" class="input-field" required />
+                    <input type="email" id="email" class="input-field" required placeholder="Enter your email"/>
                 </div>
             </div>
             <!-- Input field - Password -->
@@ -30,7 +31,7 @@
                     Password
                 </label>
                 <div class="input-container">
-                    <input type="password" id="password" class="input-field" required />
+                    <input type="password" id="password" class="input-field" required  placeholder="Enter your password"/>
                     <!-- Forget Password -->
                     <div class="forget-password-container">
                         <div class="text-end">
@@ -48,23 +49,23 @@
             <div class='row mt-3'>
                 <button class="btn">
                     <img src='../assets/images/google icon.png' width="15%"> Sign in with Google
-                </button>           
+                </button>
             </div>
 
             <!-- insert line here -->
             <hr>
-            
+
 
             <!-- Dont Have an existing account? -->
             <div class="row">
                 <span class="small-text">Don't have an existing account?</span>
-                <span class="small-text">Sign Up <a href="signup.html">here</a></span>
+                <span class="small-text">Sign Up <router-link to="/register">here</router-link></span>
             </div>
-            
+
         </div>
     </div>
 
-    <NavBar/>
+
 
 </template>
 
@@ -79,14 +80,14 @@ export default {
     },
     data() {
         return {
-            // Your component data here
+
         }
     },
     methods: {
-        // Your component methods here
+
     },
     mounted() {
-        // Lifecycle hook: mounted
+
     }
 }
 </script>
@@ -103,8 +104,8 @@ export default {
     position: absolute;
     width: 100%;
     height: 100%;
-    object-fit: cover; 
-    z-index: -1; 
+    object-fit: cover;
+    z-index: -1;
 }
 
 .login-box {
@@ -112,14 +113,14 @@ export default {
     top: 50%;
     right: 10%;
     transform: translateY(-50%);
-    width: 320px;
+    width: 30vw;
     padding: 20px;
     background: white;
     box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
 
-.login-box > h3 {
+.login-box>h3 {
     color: #2A68E1;
     font-size: 20px;
 }
@@ -128,7 +129,7 @@ export default {
     display: block;
     font-size: 12px;
     margin-bottom: 5px;
-    text-align: left; 
+    text-align: left;
 }
 
 .input-container {
@@ -164,8 +165,8 @@ export default {
 }
 
 .forgetPW {
-    color: gray; 
-    text-decoration: none; 
+    color: gray;
+    text-decoration: none;
     font-size: 12px;
 }
 
@@ -179,21 +180,21 @@ export default {
 }
 
 .btn {
-    width: 100%; 
-    padding: 8px; 
+    width: 100%;
+    padding: 8px;
     font-size: 14px;
-    border: 1px solid #dcdcdc; 
+    border: 1px solid #dcdcdc;
     font-size: 12px;
     padding: 8px;
     cursor: pointer;
-    }
+}
 
-    .btn img {
-        width:16px;
-        height: 16px;
-    }
+.btn img {
+    width: 16px;
+    height: 16px;
+}
 
-    .btn:hover {
-        background-color: #e0e0e0;
-    }
+.btn:hover {
+    background-color: #e0e0e0;
+}
 </style>
