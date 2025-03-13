@@ -75,7 +75,7 @@
 
             <!-- Login with google -->
             <div class='row mt-3'>
-                <button class="btn">
+                <button class="btn" @click="handleGoogleLogin">
                     <img src='../assets/images/google icon.png' width="15%"> Sign in with Google
                 </button>
             </div>
@@ -110,7 +110,14 @@ export default {
         }
     },
     methods: {
-
+        async handleGoogleLogin() {
+            try {
+                // Redirect to the backend login endpoint
+                window.location.href = `${import.meta.env.VITE_API_URL}/login`;
+            } catch (error) {
+                console.error('Error initiating Google login:', error);
+            }
+        }
     },
     mounted() {
 

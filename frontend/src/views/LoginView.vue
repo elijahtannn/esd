@@ -47,7 +47,7 @@
 
             <!-- Login with google -->
             <div class='row mt-3'>
-                <button class="btn">
+                <button class="btn" @click="handleGoogleLogin">
                     <img src='../assets/images/google icon.png' width="15%"> Sign in with Google
                 </button>
             </div>
@@ -84,10 +84,28 @@ export default {
         }
     },
     methods: {
-
+        async handleGoogleLogin() {
+            try {
+                window.location.href = 'http://localhost:5000/login';
+            } catch (error) {
+                console.error('Error initiating Google login:', error);
+            }
+        }
     },
     mounted() {
+        // Handle the redirect from Google login
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get('user_id');
+        const email = urlParams.get('email');
 
+        if (userId && email) {
+            // Store user info in localStorage
+            localStorage.setItem('user_id', userId);
+            localStorage.setItem('user_email', email);
+            
+            // Redirect to home page and clean up URL parameters
+            this.$router.push('/home');
+        }
     }
 }
 </script>

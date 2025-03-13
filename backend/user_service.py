@@ -4,14 +4,20 @@ import requests
 import os
 from datetime import datetime
 from bson import ObjectId  
+from flask_cors import CORS
+import certifi
+import json
+import base64
 
 app = Flask(__name__)
+CORS(app)
 
 # Secret Key for Sessions
 app.secret_key = os.getenv("SECRET_KEY", "supersecurekey")
 
-# MongoDB Configuration
-app.config["MONGO_URI"] = "mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd?retryWrites=true&w=majority"
+# MongoDB Configuration - simplified version with direct SSL cert path
+app.config["MONGO_URI"] = f"mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd?tlsCAFile={certifi.where()}"
+
 mongo = PyMongo(app)
 
 # Google OAuth Credentials
@@ -76,18 +82,17 @@ def callback():
     if "email" in user_info:
         user_email = user_info["email"]
         user_name = user_info.get("name", "")
-        google_id = user_info.get("sub", "")  # Google ID
+        google_id = user_info.get("sub", "")
 
         # Check if user already exists
         users_collection = mongo.db.users
         existing_user = users_collection.find_one({"email": user_email})
 
         if not existing_user:
-            # Create new user with an empty mobile number
             new_user = {
                 "name": user_name,
                 "email": user_email,
-                "mobile": "", 
+                "mobile": "",
                 "createdAt": datetime.now(),
                 "google_id": google_id
             }
@@ -96,7 +101,16 @@ def callback():
         else:
             user_id = str(existing_user["_id"])
 
-        return jsonify({"message": "Login successful", "user_id": user_id, "email": user_email})
+        # Create user object for frontend
+        user_data = {
+            "id": user_id,
+            "email": user_email,
+            "name": user_name
+        }
+
+        # Redirect to frontend with encoded user data
+        frontend_url = "http://localhost:5173"
+        return redirect(f"{frontend_url}/?auth={base64.b64encode(json.dumps(user_data).encode()).decode()}")
 
     return jsonify({"error": "Authentication failed"}), 401
 
@@ -113,4 +127,4 @@ def get_user_by_id(user_id):
         return jsonify({"error": "Invalid user ID"}), 400
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host='localhost', port=5000, debug=True)

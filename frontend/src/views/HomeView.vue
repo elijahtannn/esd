@@ -1,75 +1,78 @@
 <template>
-  <NavBar />
+  <div>
+    <NavBar :key="authUpdateKey"/>
 
 
-  <!-- Banner -->
-  <div class="container-fluid carousel banner mx-0 p-5">
-    <div class="row">
-      <div class="col-8">
-        <div>
-          <p class="bannerText">Your Gateway to Unforgettable Events!</p>
-          <button><a href="#browseEvents" style="color:white; text-decoration: none; text-transform: uppercase;">Start browsing</a></button>
+    <!-- Banner -->
+    <div class="container-fluid carousel banner mx-0 p-5">
+      <div class="row">
+        <div class="col-8">
+          <div>
+            <p class="bannerText">Your Gateway to Unforgettable Events!</p>
+            <button><a href="#browseEvents" style="color:white; text-decoration: none; text-transform: uppercase;">Start browsing</a></button>
+          </div>
+        </div>
+        <div class="col-4"></div>
+      </div>
+    </div>
+
+
+    <!-- Stats to showcase -->
+    <div class="container text-center p-5">
+      <div class="row">
+        <div class="col">
+          <h1 style="font-weight: 700; font-size: 56px; color:var(--main-blue)">82</h1>
+          <p style="text-transform: uppercase;  color:var(--main-blue); margin-top:-10px;">Events Completed</p>
+        </div>
+        <div class="col">
+          <h1 style="font-weight: 700; font-size: 56px; color:var(--main-blue)">5,898</h1>
+          <p style="text-transform: uppercase;  color:var(--main-blue); margin-top:-10px;">Tickets Sold</p>
+        </div>
+        <div class="col">
+          <h1 style="font-weight: 700; font-size: 56px; color:var(--main-blue)">209</h1>
+          <p style="text-transform: uppercase;  color:var(--main-blue); margin-top:-10px;">Artists Involved</p>
         </div>
       </div>
-      <div class="col-4"></div>
-    </div>
-  </div>
-
-
-  <!-- Stats to showcase -->
-  <div class="container text-center p-5">
-    <div class="row">
-      <div class="col">
-        <h1 style="font-weight: 700; font-size: 56px; color:var(--main-blue)">82</h1>
-        <p style="text-transform: uppercase;  color:var(--main-blue); margin-top:-10px;">Events Completed</p>
-      </div>
-      <div class="col">
-        <h1 style="font-weight: 700; font-size: 56px; color:var(--main-blue)">5,898</h1>
-        <p style="text-transform: uppercase;  color:var(--main-blue); margin-top:-10px;">Tickets Sold</p>
-      </div>
-      <div class="col">
-        <h1 style="font-weight: 700; font-size: 56px; color:var(--main-blue)">209</h1>
-        <p style="text-transform: uppercase;  color:var(--main-blue); margin-top:-10px;">Artists Involved</p>
-      </div>
-    </div>
-  </div>
-
-
-  <!-- List of upcoming events -->
-  <div class="container" id="browseEvents">
-    <h2 style="text-transform: uppercase;" class="text-center">upcoming Events</h2>
-    <p class="text-center px-5">Our upcoming events include conferences, workshops, and networking sessions designed to bring you closer to industry leaders and innovators. From insightful talks to hands-on training, we have something for everyone. </p>
-    
-    <div class="container text-center py-5">
-      <div class="row g-5 justify-content-center row-cols-1 row-cols-lg-3 row-cols-sm-2">
-        <eventCard v-for="event in eventList" 
-          :id="event.id" 
-          :name="event.name"
-          :startDate="event.startDate"
-          :endDate="event.endDate"
-          :startTime="event.startTime"
-          :endTime="event.endTime"
-          :venue="event.venue"
-          :capacity="event.capacity"
-          :eventType="event.eventType"
-          :availableTickets="event.availableTickets"
-          :image="event.image"
-          :description="event.description"/>
-      </div>
     </div>
 
+
+    <!-- List of upcoming events -->
+    <div class="container" id="browseEvents">
+      <h2 style="text-transform: uppercase;" class="text-center">upcoming Events</h2>
+      <p class="text-center px-5">Our upcoming events include conferences, workshops, and networking sessions designed to bring you closer to industry leaders and innovators. From insightful talks to hands-on training, we have something for everyone. </p>
+      
+      <div class="container text-center py-5">
+        <div class="row g-5 justify-content-center row-cols-1 row-cols-lg-3 row-cols-sm-2">
+          <eventCard v-for="event in eventList" 
+            :id="event.id" 
+            :name="event.name"
+            :startDate="event.startDate"
+            :endDate="event.endDate"
+            :startTime="event.startTime"
+            :endTime="event.endTime"
+            :venue="event.venue"
+            :capacity="event.capacity"
+            :eventType="event.eventType"
+            :availableTickets="event.availableTickets"
+            :image="event.image"
+            :description="event.description"/>
+        </div>
+      </div>
+
+    </div>
+
+
   </div>
-
-
 </template>
 
 <script>
-
+import { auth } from '../stores/auth'
 import NavBar from "../components/nav-bar.vue";
 import eventCard from "../components/event.vue";
+import { ref, onMounted } from 'vue'
 
 export default {
-  name: 'home',
+  name: 'HomeView',
   components: {
     NavBar, eventCard
   },
@@ -152,8 +155,34 @@ export default {
   methods: {
 
   },
-  mounted() {
+  setup() {
+    const authUpdateKey = ref(0)
 
+    onMounted(() => {
+      // Check for auth data in URL
+      const urlParams = new URLSearchParams(window.location.search)
+      const authData = urlParams.get('auth')
+      
+      if (authData) {
+        try {
+          // Decode and store user data
+          const userData = JSON.parse(atob(authData))
+          auth.setUser(userData)
+          
+          // Clean up URL
+          window.history.replaceState({}, document.title, '/')
+          
+          // Force NavBar to re-render
+          authUpdateKey.value++
+        } catch (error) {
+          console.error('Failed to process authentication data:', error)
+        }
+      }
+    })
+
+    return {
+      authUpdateKey
+    }
   }
 }
 </script>
