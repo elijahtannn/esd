@@ -22,7 +22,7 @@
 
         <!-- Arrow to go back -->
         <div class="row px-5">
-            <p style="cursor: pointer;" @click="prevStep" :disabled="currentStep === 0" v-if="currentStep != 0">
+            <p style="cursor: pointer;" @click="prevStep" :disabled="currentStep === 0" v-if="currentStep == 1 || currentStep == 2">
                 <i class="bi bi-arrow-left-short"></i> Back to {{ steps[currentStep - 1] }}
             </p>
             <p style="cursor: pointer;" @click="goBack" v-else>
@@ -74,19 +74,17 @@
             <div class="col">
 
                 <!-- date input -->
-                <label for="email" class="input-label">
-                    Date
-                </label>
+                <label for="date" class="input-label">Date</label>
                 <div class="input-container">
-                    <input type="date" id="date" class="input-field" required placeholder="Enter your email"
-                        style="width: fit-content;" />
+                    <input type="date" id="date" class="input-field" v-model="selectedDate" :min="startDate"
+                        :max="endDate" required style="width: fit-content;" />
                 </div>
 
                 <!-- Selecting ticket types and their quantity -->
                 <div class="row">
 
                     <!-- Render all ticket types dynamically -->
-                    <div v-for="(ticket, index) in tickets" :key="index" class="row">
+                    <div v-for="(ticket, index) in selectedTickets" :key="index" class="row">
                         <div class="col-7">
                             <!-- Ticket type dropdown -->
                             <label for="ticketType" class="input-label">Ticket Type</label>
@@ -104,7 +102,7 @@
                         </div>
                         <div class="col-2" style="display: flex; align-items: center;">
                             <!-- Remove ticket type button -->
-                            <div v-if="tickets.length > 1" @click="removeTicketType(index)"
+                            <div v-if="selectedTickets.length > 1" @click="removeTicketType(index)"
                                 style="margin-top: 30px; color: var(--text-grey); cursor: pointer;">
                                 <i class="bi bi-dash-circle"></i>
                             </div>
@@ -127,45 +125,133 @@
 
             </div>
             <div class="col"></div>
+
+            <div class="row ps-4 pt-5">
+                <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep"
+                    :disabled="!isStep1Valid || currentStep === steps.length - 1"
+                    :class="{ disabledButton: !isStep1Valid }">
+                    Next Step
+                </button>
+            </div>
         </div>
 
 
-        <!-- Step 1: Confirmation -->
+        <!-- Step 2: Confirmation -->
         <div class="row p-5" v-if="currentStep == 1">
+            <div class="col">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Type</th>
+                            <th scope="col">Quantity</th>
+                            <th scope="col">Price</th>
+                            <th scope="col">Sub-Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(ticket, index) in calculatedTickets" :key="index">
+                            <td>{{ ticket.selectedType }}</td>
+                            <td>{{ ticket.quantity }}</td>
+                            <td>${{ ticket.price }}</td>
+                            <td>${{ ticket.subtotal }}</td>
+                        </tr>
+                        <tr class="bold-line">
+                            <th colspan="3" class="text-end">Grand Total</th>
+                            <td>${{ grandTotal }}</td>
+                        </tr>
+                    </tbody>
+                </table>
 
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Type</th>
-                        <th scope="col">Quantity</th>
-                        <th scope="col">Price</th>
-                        <th scope="col">Sub-Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(ticket, index) in tickets">
-                        <th scope="row">{{ ticket.selectedType }}</th>
-                        <td>Mark</td>
-                        <td>Otto</td>
-                        <td>@mdo</td>
-                    </tr>
-                    <tr>
-                        <th scope="row">2</th>
-                        <td>Jacob</td>
-                        <td>Thornton</td>
-                        <td>@fat</td>
-                    </tr>
-                    <tr>
-                        <th colspan="3" class="text-end">Grand Total</th>
-                        <td>@twitter</td>
-                    </tr>
-                </tbody>
-            </table>
+                <div class="row ps-4 pt-5">
+                    <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep">
+                        Next Step
+                    </button>
+                </div>
+            </div>
+
+            <!-- Selected event details -->
+            <div class="col">
+                <div class="col">
+                    <div class="selectedEventDetails">
+                        <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
+                        <p><i class="bi bi-calendar-week-fill"
+                                style="padding-right: 10px; color:var(--main-blue);"></i>{{selectedDate }}</p>
+                        <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                            startTime
+                        }}
+                            - {{ endTime }}</p>
+                        <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                            venue
+                        }}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
 
 
         <!-- Step 3: Payment -->
         <div class="row p-5" v-if="currentStep == 2">
+
+            <div class="col">
+                <!-- Name input -->
+                <label for="cardName" class="input-label">Name on Card</label>
+                <input type="text" id="cardName" class="input-field" required v-model="cardName"
+                    style="width: fit-content;" placeholder="Enter your name" />
+
+                <!-- Card Number input -->
+                <label for="cardNumber" class="input-label mt-3">Card Number</label>
+                <input type="text" id="cardNumber" class="input-field" required v-model="cardNumber"
+                    style="width: fit-content;" placeholder="XXXX XXXX XXXX XXXX" />
+
+                <!-- Card Expiry input -->
+                <label for="cardExpiry" class="input-label mt-3">Expiry Date (MM/YY)</label>
+                <input type="text" id="cardExpiry" class="input-field" required maxlength="5" v-model="cardExpiry"
+                    style="width: fit-content;" placeholder="MM/YY" pattern="(0[1-9]|1[0-2])\/[0-9]{2}" />
+
+                <!-- Card CVV input -->
+                <label for="cardCVV" class="input-label mt-3">CVV</label>
+                <input type="text" id="cardCVV" class="input-field" required maxlength="3" v-model="cardCVV"
+                    style="width: fit-content;" placeholder="XXX" />
+
+
+                <br>
+                <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px; margin-top: 30px;"
+                    @click="nextStep" :disabled="!isPaymentValid" :class="{ disabledButton: !isPaymentValid }">
+                    Next Step
+                </button>
+            </div>
+
+            <div class="col">
+                <div class="selectedEventDetails">
+                    <!-- Selected event details -->
+                    <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
+                    <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate }}</p>
+                    <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
+                        }}
+                        - {{ endTime }}</p>
+                    <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
+                        }}
+                    </p>
+
+                    <hr>
+
+                    <!-- Ticket details -->
+                    <h5 style="color:var(--main-blue); text-transform: uppercase;">Ticket details</h5>
+                    <table class="table">
+                        <tbody>
+                            <tr v-for="(ticket, index) in calculatedTickets" :key="index">
+                                <td>{{ticket.quantity}}x {{ ticket.selectedType }}</td>
+                                <td>${{ ticket.subtotal }}</td>
+                            </tr>
+                            <tr class="bold-line">
+                                <th>Grand Total</th>
+                                <td>${{ grandTotal }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
 
         </div>
@@ -174,14 +260,53 @@
         <!-- Step 4: Complete -->
         <div class="row p-5" v-if="currentStep == 3">
 
+            <div class="col text-center">
+                <h3>We are happy that you chose</h3>
+                <img src="../assets/EVENTIVA.png" width="30%">
+                <br>
+                <img src="../assets/confirm.png" width="20%" style="margin: 20px;">
+
+                <p>Your tickets have been successfully <b>confirmed!</b></p>
+                <p style="color:var(--text-grey); width: 60%; margin: auto; margin-bottom: 30px;">A confirmation email has been sent to yadayada@gmail.com with your ticket details.</p>
+
+                <router-link to="/"><button style="text-transform: uppercase;">Browse more events</button></router-link>
+            </div>
+
+            <div class="col">
+                <div class="selectedEventDetails">
+                    <!-- Selected event details -->
+                    <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
+                    <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate }}</p>
+                    <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
+                        }}
+                        - {{ endTime }}</p>
+                    <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
+                        }}
+                    </p>
+
+                    <hr>
+
+                    <!-- Ticket details -->
+                    <h5 style="color:var(--main-blue); text-transform: uppercase;">Ticket details</h5>
+                    <table class="table">
+                        <tbody>
+                            <tr v-for="(ticket, index) in calculatedTickets" :key="index">
+                                <td>{{ticket.quantity}}x {{ ticket.selectedType }}</td>
+                                <td>${{ ticket.subtotal }}</td>
+                            </tr>
+                            <tr class="bold-line">
+                                <th>Grand Total</th>
+                                <td>${{ grandTotal }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
         </div>
 
 
-        <div class="row ps-5 ms-1">
-            <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep"
-                :disabled="currentStep === steps.length - 1">Next Step</button>
-        </div>
+
     </div>
 
 
@@ -200,8 +325,8 @@ export default {
         return {
             eventId: 0,
             eventName: "Lady Gaga in Singapore",
-            startDate: "12 May 2025",
-            endDate: "15 May 2025",
+            startDate: "2025-05-12",
+            endDate: "2025-05-15",
             startTime: "7pm",
             endTime: "9pm",
             venue: "National Stadium",
@@ -213,19 +338,51 @@ export default {
 
 
             ticketTypes: [{ name: 'Cat 1', price: 190 }, { name: 'Cat 2', price: 209 }, { name: 'Cat 3', price: 400 }],
-            tickets: [
+            selectedTickets: [
                 { selectedType: '', quantity: 1 }, // Default ticket type
             ],
+            selectedDate: '', // Store the selected date
 
-
+            cardName: '',
+            cardNumber: '',
+            cardExpiry: '',
+            cardCVV: '',
 
         }
     },
     computed: {
+        isStep1Valid() {
+            const hasValidDate =
+                this.selectedDate &&
+                new Date(this.selectedDate) >= new Date(this.startDate) &&
+                new Date(this.selectedDate) <= new Date(this.endDate); // Validate date range
+            const hasValidTickets = this.selectedTickets.every(
+                ticket => ticket.selectedType && ticket.quantity > 0
+            ); // Ensure each ticket has a type and quantity > 0
+            return hasValidDate && hasValidTickets;
+        },
         isAddDisabled() {
-            const selectedTypes = this.tickets.map(ticket => ticket.selectedType);
+            const selectedTypes = this.selectedTickets.map(ticket => ticket.selectedType);
             return selectedTypes.length >= this.ticketTypes.length;
         },
+        calculatedTickets() {
+            return this.selectedTickets.map(ticket => {
+                const selectedTicket = this.ticketTypes.find(type => type.name === ticket.selectedType);
+                const price = selectedTicket ? selectedTicket.price : 0;
+                const subtotal = price * ticket.quantity;
+                return { ...ticket, price, subtotal };
+            });
+        },
+        // Calculate grand total
+        grandTotal() {
+            return this.calculatedTickets.reduce((total, ticket) => total + ticket.subtotal, 0);
+        },
+        isPaymentValid() {
+            return this.cardName.trim() !== '' &&
+                this.cardNumber.replace(/\s/g, '').length === 16 &&
+                /^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(this.cardExpiry) &&
+                this.cardCVV.length === 3;
+        }
     },
     methods: {
         goBack() {
@@ -233,18 +390,18 @@ export default {
         },
         addTicketType() {
             if (!this.isAddDisabled) {
-                this.tickets.push({ selectedType: '', quantity: 1 });
+                this.selectedTickets.push({ selectedType: '', quantity: 1 });
             }
         },
         // Method to filter available ticket types for each dropdown
         filteredTicketTypes(index) {
-            const selectedTypes = this.tickets.map(ticket => ticket.selectedType);
-            return this.ticketTypes.filter(option => !selectedTypes.includes(option.name) || option.name === this.tickets[index].selectedType);
+            const selectedTypes = this.selectedTickets.map(ticket => ticket.selectedType);
+            return this.ticketTypes.filter(option => !selectedTypes.includes(option.name) || option.name === this.selectedTickets[index].selectedType);
         },
         // Method to remove a ticket type input
         removeTicketType(index) {
-            if (this.tickets.length > 1) {
-                this.tickets.splice(index, 1);
+            if (this.selectedTickets.length > 1) {
+                this.selectedTickets.splice(index, 1);
             }
         },
         nextStep() {
@@ -363,5 +520,20 @@ export default {
 /* Navigation Buttons */
 .navigation-buttons button {
     margin-right: 10px;
+}
+
+
+.bold-line {
+    border-top: 2px solid #b3b3b3;
+    /* Makes the line bold and black */
+}
+
+
+.selectedEventDetails {
+    border: 1px solid rgb(202, 202, 202);
+    border-radius: 5px;
+    padding: 30px;
+    width: fit-content;
+    top: 0;
 }
 </style>
