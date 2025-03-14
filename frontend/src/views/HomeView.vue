@@ -4,7 +4,7 @@
 
 
     <!-- Banner -->
-    <div class="container-fluid carousel banner mx-0 p-5">
+    <div class="container-fluid bannerImg banner mx-0 p-5">
       <div class="row">
         <div class="col-8">
           <div>
@@ -188,7 +188,7 @@ export default {
 </script>
 
 <style scoped>
-.carousel {
+.bannerImg {
   background-image: linear-gradient(to right, rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.1)),
     url("../assets/carousel/eventiva_carousel1.png");
   background-repeat: no-repeat;
