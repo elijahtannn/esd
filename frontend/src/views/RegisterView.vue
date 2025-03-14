@@ -130,8 +130,10 @@ export default {
 .background-container {
     position: relative;
     width: 100vw;
-    height: 100vh;
-    overflow: hidden;
+    height: 150vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .background-img {
@@ -144,9 +146,6 @@ export default {
 
 .login-box {
     position: absolute;
-    top: 50%;
-    right: 10%;
-    transform: translateY(-50%);
     width: 30vw;
     padding: 20px;
     background: white;
