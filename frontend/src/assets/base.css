@@ -18,6 +18,12 @@ button {
   cursor: pointer;
 }
 
+.disabledButton {
+  background-color: #e0e0e0; /* Grey background for disabled state */
+  color: #a0a0a0; /* Grey text for disabled state */
+  cursor: not-allowed; /* Change cursor to indicate disabled */
+}
+
 .addShadow {
   box-shadow: 10px 5px 15px 5px rgba(0, 0, 0, 0.118);
 }
