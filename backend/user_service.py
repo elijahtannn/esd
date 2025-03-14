@@ -15,10 +15,13 @@ CORS(app)
 # Secret Key for Sessions
 app.secret_key = os.getenv("SECRET_KEY", "supersecurekey")
 
-# MongoDB Configuration - simplified version with direct SSL cert path
-app.config["MONGO_URI"] = f"mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd?tlsCAFile={certifi.where()}"
+#Old MongoDB Configuration
+#app.config["MONGO_URI"] = f"mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd?tlsCAFile={certifi.where()}"
+#mongo = PyMongo(app)
 
-mongo = PyMongo(app)
+#New MongoDB Configuration
+app.config["MONGO_URI"] = "mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd"
+mongo = PyMongo(app, tlsCAFile=certifi.where())
 
 # Google OAuth Credentials
 GOOGLE_CLIENT_ID = "603980424659-jiqs010nggvjmn6ve8c243nfral3q5a7.apps.googleusercontent.com"
