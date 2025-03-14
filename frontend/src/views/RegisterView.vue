@@ -130,7 +130,7 @@ export default {
 .background-container {
     position: relative;
     width: 100vw;
-    height: 150vh;
+    height:130vh;
     display: flex;
     justify-content: center;
     align-items: center;
