@@ -22,7 +22,8 @@
 
         <!-- Arrow to go back -->
         <div class="row px-5">
-            <p style="cursor: pointer;" @click="prevStep" :disabled="currentStep === 0" v-if="currentStep == 1 || currentStep == 2">
+            <p style="cursor: pointer;" @click="prevStep" :disabled="currentStep === 0"
+                v-if="currentStep == 1 || currentStep == 2">
                 <i class="bi bi-arrow-left-short"></i> Back to {{ steps[currentStep - 1] }}
             </p>
             <p style="cursor: pointer;" @click="goBack" v-else>
@@ -171,22 +172,19 @@
 
             <!-- Selected event details -->
             <div class="col">
-                <div class="col">
+                <div class="col d-flex justify-content-end">
                     <div class="selectedEventDetails">
                         <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                         <p><i class="bi bi-calendar-week-fill"
-                                style="padding-right: 10px; color:var(--main-blue);"></i>{{selectedDate }}</p>
+                                style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate }}</p>
                         <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                            startTime
-                        }}
-                            - {{ endTime }}</p>
+                            startTime }} - {{ endTime }}</p>
                         <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                            venue
-                        }}
-                        </p>
+                            venue }}</p>
                     </div>
                 </div>
             </div>
+
         </div>
 
 
@@ -222,16 +220,17 @@
                 </button>
             </div>
 
-            <div class="col">
+            <div class="col d-flex justify-content-end">
                 <div class="selectedEventDetails">
                     <!-- Selected event details -->
                     <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
-                    <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate }}</p>
+                    <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                        selectedDate }}</p>
                     <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
-                        }}
+                    }}
                         - {{ endTime }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
-                        }}
+                    }}
                     </p>
 
                     <hr>
@@ -241,7 +240,7 @@
                     <table class="table">
                         <tbody>
                             <tr v-for="(ticket, index) in calculatedTickets" :key="index">
-                                <td>{{ticket.quantity}}x {{ ticket.selectedType }}</td>
+                                <td>{{ ticket.quantity }}x {{ ticket.selectedType }}</td>
                                 <td>${{ ticket.subtotal }}</td>
                             </tr>
                             <tr class="bold-line">
@@ -267,21 +266,23 @@
                 <img src="../assets/confirm.png" width="20%" style="margin: 20px;">
 
                 <p>Your tickets have been successfully <b>confirmed!</b></p>
-                <p style="color:var(--text-grey); width: 60%; margin: auto; margin-bottom: 30px;">A confirmation email has been sent to yadayada@gmail.com with your ticket details.</p>
+                <p style="color:var(--text-grey); width: 60%; margin: auto; margin-bottom: 30px;">A confirmation email
+                    has been sent to yadayada@gmail.com with your ticket details.</p>
 
                 <router-link to="/"><button style="text-transform: uppercase;">Browse more events</button></router-link>
             </div>
 
-            <div class="col">
+            <div class="col d-flex justify-content-end">
                 <div class="selectedEventDetails">
                     <!-- Selected event details -->
                     <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
-                    <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate }}</p>
+                    <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                        selectedDate }}</p>
                     <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
-                        }}
+                    }}
                         - {{ endTime }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
-                        }}
+                    }}
                     </p>
 
                     <hr>
@@ -291,7 +292,7 @@
                     <table class="table">
                         <tbody>
                             <tr v-for="(ticket, index) in calculatedTickets" :key="index">
-                                <td>{{ticket.quantity}}x {{ ticket.selectedType }}</td>
+                                <td>{{ ticket.quantity }}x {{ ticket.selectedType }}</td>
                                 <td>${{ ticket.subtotal }}</td>
                             </tr>
                             <tr class="bold-line">
