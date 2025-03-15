@@ -80,7 +80,6 @@ export default {
             document.querySelectorAll('.tablinks, .tabcontent').forEach(element => {
                 element.classList.remove('active');
             });
-
             // Add active class to clicked tab and corresponding content
             event.currentTarget.classList.add('active');
             document.getElementById(tabName).classList.add('active');
@@ -109,40 +108,40 @@ export default {
 }
 
 .content-wrapper {
-    display: flex; /* Use Flexbox for alignment */
-    justify-content: center; /* Centers the boxes horizontally */
-    gap: 20px; /* Space between the boxes */
-    position: relative; /* For overlapping */
-    margin-top: -50px; /* Adjust to overlap with the banner */
+    display: flex; 
+    justify-content: center; 
+    gap: 20px; 
+    position: relative; 
+    margin-top: -50px; 
 }
 
 .profile-box {
-    flex: 0 0 auto; /* Prevents shrinking or growing */
-    width: 20%; /* Set a fixed width for the profile box */
+    flex: 0 0 auto; 
+    width: 20%; 
     background-color: white;
     padding: 20px;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 2; /* Ensures it overlaps correctly */
+    z-index: 2; 
 }
 
 .orders-box {
-    flex: 0 0 auto; /* Prevents shrinking or growing */
-    width: 70%; /* Set a fixed width for the orders box */
+    flex: 0 0 auto; 
+    width: 70%; 
     background-color: white;
     padding: 20px;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 2; /* Ensures it overlaps correctly */
+    z-index: 2; 
 }
 .label {
-    color: #808080; /* Grey color */
+    color: #808080; 
 }
 .profile-heading {
-    color: #2A68E1; /* Blue color */
+    color: #2A68E1; 
     text-align: center;
     font-size: 24px;
 }
 .event-heading {
-    color: #2A68E1; /* Blue color */
+    color: #2A68E1; 
     text-align: center;
     font-size: 24px;
     margin-bottom:20px ;
@@ -157,32 +156,32 @@ export default {
 
 /* Tab buttons */
 .tablinks {
-    background-color: #f1f1f1; /* Light grey for inactive tabs */
+    background-color: #f1f1f1; 
     border: none;
     outline: none;
     padding: 15px 100px;
     cursor: pointer;
     font-size: 16px;
-    border-radius: 10px; /* Rounded corners */
-    margin: 0 10px; /* Space between tabs */
+    border-radius: 10px; 
+    margin: 0 10px; 
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .tablinks.active {
-    background-color: #2A68E1; /* Blue color for active tab */
-    color: white; /* White text for active tab */
+    background-color: #2A68E1; 
+    color: white; 
 }
 
 .tablinks:hover {
-    background-color: #d9d9d9; /* Slight hover effect for inactive tabs */
+    background-color: #d9d9d9;
 }
 
-/* Tab content */
+
 .tabcontent {
-    display: none; /* Hidden by default */
+    display: none; 
 }
 
 .tabcontent.active {
-    display: block; /* Show active tab content */
+    display: block;
 }
 </style>
