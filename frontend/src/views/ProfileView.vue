@@ -37,21 +37,32 @@
                     <div id="Upcoming" class="tabcontent active order-card">
                         <hr>
                         <div class="order-header" @click="isExpanded = !isExpanded">
-                        <div>
-                            <p><strong>Lady Gaga in Singapore</strong></p>
-                            <p>18 May 2025, National Stadium</p>
-                            <p><strong>Order Information:</strong> #4452</p>
-                            <p><strong>Ticket Quantity:</strong> 4</p>
-                            <p><strong>Total Cost:</strong> $300</p>
-                        </div>
-                        <button class="toggle-button">
-                            <i :class="['fa-solid', isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
-                        </button>
+                            <div>
+                                <p><strong>Lady Gaga in Singapore</strong></p>
+                                <p>18 May 2025, National Stadium</p>
+                                <p><strong>Order Information:</strong> #4452</p>
+                                <p><strong>Ticket Quantity:</strong> 4</p>
+                                <p><strong>Total Cost:</strong> $300</p>
+                            </div>
+                            <button class="toggle-button">
+                                <i :class="['fa-solid', isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
+                            </button>
                         </div>
                         <div v-if="isExpanded" class="order-details">
                             <!-- QR cards -->
                             <div class="qr-cards">
                                 <div class="qr-card">
+                                    <!-- Three-dot menu -->
+                                    <div class="menu-container">
+                                        <span class="menu-icon" @click="toggleMenu">
+                                            &#x22EE; <!-- Vertical three dots -->
+                                        </span>
+                                        <div v-if="isMenuOpen" class="menu-dropdown">
+                                            <p @click="handleOption('resale')">Resell Ticket</p>
+                                            <p @click="handleOption('transfer')">Transfer Ticket</p>
+                                        </div>
+                                    </div>
+
                                     <img src="../assets/images/dummy QR code.png" class="qr-image">
                                     <p>#101</p>
                                     <p>Type: Category 1</p>
@@ -60,6 +71,10 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Resale Confirmation -->
+                        
+
                     </div>
 
                     <div id="History" class="tabcontent">
@@ -86,6 +101,7 @@ export default {
         return {
             user: null,
             isExpanded: false,
+            isMenuOpen: false,
         }
     },
     mounted() {
@@ -104,6 +120,19 @@ export default {
             event.currentTarget.classList.add('active');
             document.getElementById(tabName).classList.add('active');
         },
+        toggleMenu() {
+            this.isMenuOpen = !this.isMenuOpen;
+        },
+        handleOption(action) {
+            if (action === 'resale') {
+                console.log("Resale Ticket clicked");
+                // Add logic for resale functionality
+            } else if (action === 'transfer') {
+                console.log("Transfer Ticket clicked");
+                // Add logic for transfer functionality
+            }
+            this.isMenuOpen = false; // Close menu after selection
+        }
     }
 }
 </script>
@@ -247,14 +276,6 @@ button {
     width: 50%;
 }
 
-.qr-card {
-    background-color: #f9f9f9;
-    border-radius: 10px;
-    box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
-    text-align: center;
-    padding: 5px;
-}
-
 .qr-image {
   display: block; /* Makes the image a block element */
   margin-left: auto; /* Centers image horizontally */
@@ -266,5 +287,51 @@ button {
 
 .qr-card p {
     margin: 5px;
+}
+/* 3 dot related */
+.qr-card {
+    position: relative;
+    padding: 16px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 300px;
+}
+
+.menu-container {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+}
+
+.menu-icon {
+    font-size: 20px;
+    cursor: pointer;
+    margin-right:10px;
+}
+
+.menu-dropdown {
+    position: absolute;
+    top: 25px;
+    right: 0;
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+    padding: 5px;
+    z-index: 10;
+}
+
+.menu-dropdown p {
+    margin: 0;
+    padding: 8px 12px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.menu-dropdown p:hover {
+    background: #f0f0f0;
 }
 </style>
