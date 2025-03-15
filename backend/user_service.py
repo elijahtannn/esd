@@ -129,5 +129,16 @@ def get_user_by_id(user_id):
     except Exception:
         return jsonify({"error": "Invalid user ID"}), 400
 
+@app.route("/user/email/<string:user_email>", methods=["GET"])
+def get_user_by_email(user_email):
+    try:
+        user = mongo.db.users.find_one({"email": user_email})
+        if user:
+            user["_id"] = str(user["_id"])  # Convert ObjectId to string
+            return jsonify(user)
+        return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"error": f"Invalid request: {str(e)}"}), 400
+
 if __name__ == "__main__":
     app.run(host='localhost', port=5000, debug=True)
