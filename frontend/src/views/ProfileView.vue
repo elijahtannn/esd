@@ -23,7 +23,17 @@
                     <p><span class="label">Id:</span> <br> {{ user.id }}</p>
                     <p><span class="label">Name:</span> <br> {{ user.name }}</p>
                     <p><span class="label">Email:</span> <br> {{ user.email }}</p>
-                    <p><span class="label">Mobile Number:</span> <br> {{ user.mobile }}</p>
+                    <!-- EDITABLE MOBILE NUMBER -->
+                    <p>
+                        <span class="label">Mobile Number:</span> <br>
+                        <span v-if="!isEditing">{{ user.mobile }}</span>
+                        <input v-else type="text" v-model="user.mobile" class="mobile-input" />
+                        
+                        <!-- Font Awesome Pencil Icon -->
+                        <button @click="toggleEdit" class="icon-button">
+                            <i :class="isEditing ? 'fas fa-check' : 'fas fa-pencil-alt'"></i>
+                        </button>
+                    </p>
                 </div>
                 <!-- order box -->
                 <div class="orders-box">
@@ -165,6 +175,7 @@ export default {
             recipientName: '',
             eventivaAccount: '',
             phoneNumber: '',
+            isEditing: false,
         }
     },
     mounted() {
@@ -174,6 +185,9 @@ export default {
         }
     },
     methods: {
+        toggleEdit() {
+            this.isEditing = !this.isEditing;
+        },
         openTab(event, tabName) {
             // Remove active class from all tabs and content
             document.querySelectorAll('.tablinks, .tabcontent').forEach(element => {
@@ -485,12 +499,12 @@ button {
 
 /* X BUTTON ON MODAL */
 .close-button {
-    position: absolute; /* Position the button absolutely */
-    top: 10px; /* Distance from the top */
-    right: 10px; /* Distance from the right */
-    font-size: 24px; /* Font size of the X */
-    cursor: pointer; /* Pointer cursor to indicate it's clickable */
-    color: #333; /* Color of the X */
+    position: absolute; 
+    top: 10px; 
+    right: 10px; 
+    font-size: 24px; 
+    cursor: pointer; 
+    color: #333; 
 }
 
 .close-button:hover {
@@ -516,6 +530,25 @@ button {
     border-radius: 5px;
     border: 1px solid #ccc;
     font-size: 12px;
+}
+/* EDITABLE MOBILE PHONE */
+.mobile-input {
+    border: 1px solid #ccc;
+    padding: 5px;
+    width: 150px;
+}
+
+.icon-button {
+    margin-right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    color: black;
+}
+
+.icon-button:hover {
+    color: dark grey;
 }
 
 </style>
