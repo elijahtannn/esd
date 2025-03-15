@@ -73,8 +73,14 @@
                                             <p @click="handleOption('transfer')">Transfer Ticket</p>
                                         </div>
                                     </div>
-
-                                    <img src="../assets/images/dummy QR code.png" class="qr-image">
+                                    <!--QR code image -->
+                                    <div v-if="isQrVisible">
+                                        <img src="../assets/images/dummy QR code.png" class="qr-image">
+                                    </div>
+                                    <!-- TICKET ON HOLD TEXT -->
+                                    <div v-else class="ticket-status">
+                                        <p style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;"><strong>ON HOLD:</strong> {{ ticketStatus }}</p>
+                                    </div>                                    
                                     <p>#101</p>
                                     <p>Type: Category 1</p>
                                     <p>Price: $80</p>
@@ -176,6 +182,8 @@ export default {
             eventivaAccount: '',
             phoneNumber: '',
             isEditing: false,
+            isQrVisible: true, 
+            ticketStatus: "",
         }
     },
     mounted() {
@@ -214,7 +222,8 @@ export default {
             if (this.isAgreed) {
                 // Proceed with resale
                 console.log('Resale confirmed');
-                
+                this.isQrVisible = false;
+                this.ticketStatus = "TICKET IS BEING RESOLD";
                 // Close the modal after confirmation
                 this.closePopup();
             } else {
@@ -233,8 +242,8 @@ export default {
                 // Proceed with ticket transfer
                 console.log('Ticket transfer confirmed');
                 console.log(`Recipient: ${this.recipientName}, Account ID: ${this.eventivaAccount}, Phone: ${this.phoneNumber}`);
-                // You can add your logic for transfer confirmation here
-
+                this.ticketStatus = "TICKET IS BEING TRANSFERRED"; // Update status message
+                this.isQrVisible = false; // Hide QR code
                 // Close the modal after confirmation
                 this.closePopup();
             } else {
@@ -357,6 +366,7 @@ button {
     border-radius: 10px; 
     margin: 0 10px; 
     transition: background-color 0.3s ease, color 0.3s ease;
+    color: black;
 }
 
 .tablinks.active {
