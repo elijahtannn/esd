@@ -49,8 +49,16 @@
                         </button>
                         </div>
                         <div v-if="isExpanded" class="order-details">
-                        <p><strong>QR Code:</strong></p>
-                        <br> QR CODE IMAGE
+                            <!-- QR cards -->
+                            <div class="qr-cards">
+                                <div class="qr-card">
+                                    <img src="../assets/images/dummy QR code.png" class="qr-image">
+                                    <p>#101</p>
+                                    <p>Type: Category 1</p>
+                                    <p>Price: $80</p>
+                                    <p>Seat: #88</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -101,6 +109,7 @@ export default {
 </script>
 
 <style scoped>
+/* ARROW CHEVRON RELATED */
 .toggle-button {
     background: none;
     border: none;
@@ -112,26 +121,28 @@ export default {
     margin-left: 8px;
     color: black; /* Adjust color if needed */
 }
+
+/* ORDER CARD RELATED */
 .order-card {
-  border-bottom: 1px solid #ddd;
-  padding: 10px;
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
 }
 
 .order-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
 }
 
 button {
-  background: none;
-  border: none;
-  font-size: 16px;
+    background: none;
+    border: none;
+    font-size: 16px;
 }
 
 .rotate {
-  transform: rotate(180deg);
+    transform: rotate(180deg);
 }
 .container {
     padding: 20px;
@@ -227,5 +238,33 @@ button {
 
 .tabcontent.active {
     display: block;
+}
+
+/* QR CODE RELATED */
+.qr-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    width: 50%;
+}
+
+.qr-card {
+    background-color: #f9f9f9;
+    border-radius: 10px;
+    box-shadow: 0px 4px 6px rgba(0,0,0,0.1);
+    text-align: center;
+    padding: 5px;
+}
+
+.qr-image {
+  display: block; /* Makes the image a block element */
+  margin-left: auto; /* Centers image horizontally */
+  margin-right: auto; /* Centers image horizontally */
+  width: 250px; /* Adjust size for better fit */
+  height: auto; /* Maintain aspect ratio */
+}
+
+
+.qr-card p {
+    margin: 5px;
 }
 </style>
