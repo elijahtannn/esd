@@ -71,9 +71,29 @@
                                 </div>
                             </div>
                         </div>
+                        <!-- Resale Confirmation Modal -->
+                        <div v-if="showResalePopup" class="modal-overlay">
+                            <div class="modal-content">
+                                <!-- Close (X) Button -->
+                                <span class="close-button" @click="closePopup">&times;</span>
 
-                        <!-- Resale Confirmation -->
-                        
+                                <h3>Are you sure you want to resell your ticket?</h3>
+                                <p><strong>Ticket ID:</strong> #101</p>
+                                <p><strong>Type:</strong> Category 1</p>
+                                <p><strong>Price:</strong> $80</p>
+                                <p><strong>Seat:</strong> #88</p>
+                                <hr>
+                                <!-- Mandatory Checkbox for Agreement -->
+                                <div class="checkbox-container">
+                                    <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                    <label for="agreeCheckbox" class="warning-text">
+                                        I agree that a refund will only be issued once the resale process is complete and the transaction is finalized.
+                                    </label>
+                                </div>
+
+                                <button @click="confirmResale" class="confirm-button">CONFIRM</button>
+                            </div>
+                        </div>
 
                     </div>
 
@@ -102,6 +122,8 @@ export default {
             user: null,
             isExpanded: false,
             isMenuOpen: false,
+            showResalePopup: false,
+            isAgreed: false,
         }
     },
     mounted() {
@@ -125,13 +147,28 @@ export default {
         },
         handleOption(action) {
             if (action === 'resale') {
-                console.log("Resale Ticket clicked");
-                // Add logic for resale functionality
+                this.showResalePopup = true; // Show the resale confirmation modal
             } else if (action === 'transfer') {
                 console.log("Transfer Ticket clicked");
-                // Add logic for transfer functionality
             }
             this.isMenuOpen = false; // Close menu after selection
+        },
+        confirmResale() {
+            if (this.isAgreed) {
+                // Proceed with resale
+                console.log('Resale confirmed');
+                
+                // Close the modal after confirmation
+                this.closePopup();
+            } else {
+                console.log('Agreement not checked');
+            }
+        },
+        closePopup() {
+            this.showResalePopup = false;
+        },
+        closeMenu() {
+            this.isMenuOpen = false;
         }
     }
 }
@@ -333,5 +370,73 @@ button {
 
 .menu-dropdown p:hover {
     background: #f0f0f0;
+}
+
+/* RESALE MODAL RELATED */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    text-align: center;
+    width: 500px;
+    position: relative; /* Keep the close button (X) positioned */
+}
+
+.modal-content > h3 {
+    margin-top: 10px;
+}
+
+.confirm-button {
+    background: #2A68E1; /* Blue for confirm button */
+    color: white;
+    border: none;
+    padding: 10px;
+    margin-top: 10px;
+    cursor: pointer;
+    width: 100%;
+    border-radius: 5px;
+}
+
+/* STYLING CHECKBOX */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.checkbox-container input {
+    margin-right: 10px;
+}
+.confirm-button:disabled {
+    background: #d6d6d6; /* Disabled button color */
+    cursor: not-allowed;
+}
+
+/* X BUTTON ON MODAL */
+.close-button {
+    position: absolute; /* Position the button absolutely */
+    top: 10px; /* Distance from the top */
+    right: 10px; /* Distance from the right */
+    font-size: 24px; /* Font size of the X */
+    cursor: pointer; /* Pointer cursor to indicate it's clickable */
+    color: #333; /* Color of the X */
+}
+
+.close-button:hover {
+    color: #ff0000; /* Change color on hover */
 }
 </style>
