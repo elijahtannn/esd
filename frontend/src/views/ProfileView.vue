@@ -13,6 +13,26 @@
                 <div class="col-4"></div>
             </div>
         </div>
+
+        <!-- White boxes for profile and orders -->
+        <div class="content-wrapper">
+            <!-- profile box -->
+            <div class="profile-box">
+                <h3 class="profile-heading">PROFILE</h3>
+                <p><span class="label">Id:</span> <br> #{{ user.id }}</p>
+                <p><span class="label">Name:</span> <br> {{ user.name }}</p>
+                <p><span class="label">Email:</span> <br> {{ user.email }}</p>
+                <p><span class="label">Mobile Number:</span> <br> {{ user.mobile }}</p>
+            </div>
+            <!-- order box -->
+            <div class="orders-box">
+                <h3>Event Orders</h3>
+                <p>Lady Gaga in Singapore</p>
+                <p>Date: 18 May 2025, National Stadium</p>
+                <p>Ticket Quantity: 4</p>
+                <p>Total Cost: $300</p>
+            </div>
+        </div>
         
         <div class="container mt-4" v-if="user">
             <h2>Profile</h2>
@@ -67,5 +87,39 @@ export default {
     background-size: cover;
     height: 60vh;
     width: 100%;
+}
+
+.content-wrapper {
+    display: flex; /* Use Flexbox for alignment */
+    justify-content: center; /* Centers the boxes horizontally */
+    gap: 20px; /* Space between the boxes */
+    position: relative; /* For overlapping */
+    margin-top: -50px; /* Adjust to overlap with the banner */
+}
+
+.profile-box {
+    flex: 0 0 auto; /* Prevents shrinking or growing */
+    width: 20%; /* Set a fixed width for the profile box */
+    background-color: white;
+    padding: 20px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 2; /* Ensures it overlaps correctly */
+}
+
+.orders-box {
+    flex: 0 0 auto; /* Prevents shrinking or growing */
+    width: 70%; /* Set a fixed width for the orders box */
+    background-color: white;
+    padding: 20px;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 2; /* Ensures it overlaps correctly */
+}
+.label {
+    color: #808080; /* Grey color */
+}
+.profile-heading {
+    color: #2A68E1; /* Blue color */
+    text-align: center;
+    font-size: 24px;
 }
 </style>
