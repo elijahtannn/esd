@@ -1,4 +1,5 @@
 <template>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <div>
         <NavBar/>
         <div v-if="user">
@@ -19,7 +20,6 @@
                 <!-- profile box -->
                 <div class="profile-box">
                     <h3 class="profile-heading">PROFILE</h3>
-                    <p><span class="label">Id:</span> <br> #{{ user.id }}</p>
                     <p><span class="label">Name:</span> <br> {{ user.name }}</p>
                     <p><span class="label">Email:</span> <br> {{ user.email }}</p>
                     <p><span class="label">Mobile Number:</span> <br> {{ user.mobile }}</p>
@@ -34,13 +34,24 @@
                     </div>
 
                     <!-- Tab Content -->
-                    <div id="Upcoming" class="tabcontent active">
+                    <div id="Upcoming" class="tabcontent active order-card">
                         <hr>
-                        <p><strong>Lady Gaga in Singapore</strong></p>
-                        <p>18 May 2025, National Stadium</p>
-                        <p>Order Information: #4452</p>
-                        <p>Ticket Quantity: 4</p>
-                        <p>Total Cost: $300</p>
+                        <div class="order-header" @click="isExpanded = !isExpanded">
+                        <div>
+                            <p><strong>Lady Gaga in Singapore</strong></p>
+                            <p>18 May 2025, National Stadium</p>
+                            <p><strong>Order Information:</strong> #4452</p>
+                            <p><strong>Ticket Quantity:</strong> 4</p>
+                            <p><strong>Total Cost:</strong> $300</p>
+                        </div>
+                        <button class="toggle-button">
+                            <i :class="['fa-solid', isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
+                        </button>
+                        </div>
+                        <div v-if="isExpanded" class="order-details">
+                        <p><strong>QR Code:</strong></p>
+                        <br> QR CODE IMAGE
+                        </div>
                     </div>
 
                     <div id="History" class="tabcontent">
@@ -65,7 +76,8 @@ export default {
     },
     data() {
         return {
-            user: null
+            user: null,
+            isExpanded: false,
         }
     },
     mounted() {
@@ -89,6 +101,38 @@ export default {
 </script>
 
 <style scoped>
+.toggle-button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.icon {
+    margin-left: 8px;
+    color: black; /* Adjust color if needed */
+}
+.order-card {
+  border-bottom: 1px solid #ddd;
+  padding: 10px;
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+button {
+  background: none;
+  border: none;
+  font-size: 16px;
+}
+
+.rotate {
+  transform: rotate(180deg);
+}
 .container {
     padding: 20px;
 }
