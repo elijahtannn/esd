@@ -5,13 +5,13 @@ import os
 import certifi
 from dotenv import load_dotenv
 from datetime import datetime
-
+from flask_cors import CORS
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
-
+CORS(app)
 # ✅ MongoDB Configuration
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://your_mongo_user:your_password@cluster.mongodb.net/payments")
 mongo = PyMongo(app, tlsCAFile=certifi.where())
