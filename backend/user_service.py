@@ -38,7 +38,7 @@ def login():
     google_provider_cfg = get_google_provider_cfg()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
 
-    # Redirect user to Google's OAuth 2.0 authentication
+    
     request_uri = (
         f"{authorization_endpoint}?client_id={GOOGLE_CLIENT_ID}"
         f"&redirect_uri={url_for('callback', _external=True)}"
@@ -46,16 +46,16 @@ def login():
     )
     return redirect(request_uri)
 
-# OAuth Callback Route (Handles Google's Response)
+
 @app.route("/login/callback")
 def callback():
     google_provider_cfg = get_google_provider_cfg()
     token_endpoint = google_provider_cfg["token_endpoint"]
 
-    # Get authorization code from Google redirect
+    
     auth_code = request.args.get("code")
 
-    # Exchange authorization code for access token
+    
     token_response = requests.post(
         token_endpoint,
         data={
@@ -117,7 +117,7 @@ def callback():
 
     return jsonify({"error": "Authentication failed"}), 401
 
-# ✅ GET: Fetch User by MongoDB `_id`
+#GET: Fetch User by MongoDB `_id`
 @app.route("/user/<string:user_id>", methods=["GET"])
 def get_user_by_id(user_id):
     try:
@@ -128,6 +128,27 @@ def get_user_by_id(user_id):
         return jsonify({"error": "User not found"}), 404
     except Exception:
         return jsonify({"error": "Invalid user ID"}), 400
+
+#GET: Check if email exists in database
+@app.route("/user/email/<email>", methods=["GET"])
+def check_email(email):
+    try:
+        user = mongo.db.users.find_one({"email": email})
+        if user:
+            return jsonify({
+                "exists": True,
+                "user_id": str(user["_id"]),
+                "email": user["email"]
+            }), 200
+        return jsonify({
+            "exists": False,
+            "message": "Email not found"
+        }), 404
+    except Exception as e:
+        return jsonify({
+            "error": "Database error",
+            "message": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(host='localhost', port=5000, debug=True)
