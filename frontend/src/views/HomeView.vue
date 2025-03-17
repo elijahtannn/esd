@@ -1,6 +1,6 @@
 <template>
   <div>
-    <NavBar :key="authUpdateKey"/>
+    <NavBar :key="authUpdateKey" />
 
 
     <!-- Banner -->
@@ -9,7 +9,8 @@
         <div class="col-8">
           <div>
             <p class="bannerText">Your Gateway to Unforgettable Events!</p>
-            <button><a href="#browseEvents" style="color:white; text-decoration: none; text-transform: uppercase;">Start browsing</a></button>
+            <button><a href="#browseEvents" style="color:white; text-decoration: none; text-transform: uppercase;">Start
+                browsing</a></button>
           </div>
         </div>
         <div class="col-4"></div>
@@ -39,23 +40,23 @@
     <!-- List of upcoming events -->
     <div class="container" id="browseEvents">
       <h2 style="text-transform: uppercase;" class="text-center">upcoming Events</h2>
-      <p class="text-center px-5">Our upcoming events include conferences, workshops, and networking sessions designed to bring you closer to industry leaders and innovators. From insightful talks to hands-on training, we have something for everyone. </p>
-      
+      <p class="text-center px-5">Our upcoming events include conferences, workshops, and networking sessions designed
+        to bring you closer to industry leaders and innovators. From insightful talks to hands-on training, we have
+        something for everyone. </p>
+
       <div class="container text-center py-5">
         <div class="row g-5 justify-content-center row-cols-1 row-cols-lg-3 row-cols-sm-2">
           <eventCard v-for="event in eventList" 
-            :id="event.id" 
-            :name="event.name"
-            :startDate="event.startDate"
-            :endDate="event.endDate"
-            :startTime="event.startTime"
-            :endTime="event.endTime"
-            :venue="event.venue"
-            :capacity="event.capacity"
-            :eventType="event.eventType"
-            :availableTickets="event.availableTickets"
-            :image="event.image"
-            :description="event.description"/>
+            :id="event.Id" 
+            :name="event.Name" 
+            :dates="event.Dates"
+            :startTime="event.StartTime" 
+            :endTime="event.EndTime" 
+            :venue="event.Venue"
+            :capacity="event.Capacity" 
+            :category="event.Category" 
+            :image="event.Image" 
+            :description="event.Description" />
         </div>
       </div>
 
@@ -71,6 +72,10 @@ import NavBar from "../components/nav-bar.vue";
 import eventCard from "../components/event.vue";
 import { ref, onMounted } from 'vue'
 
+
+import axios from 'axios';
+
+
 export default {
   name: 'HomeView',
   components: {
@@ -78,106 +83,87 @@ export default {
   },
   data() {
     return {
-      eventList: [
-        {
-          id: 1,
-          name: "Tech Conference 2025",
-          startDate: "12 May 2025",
-          endDate: "15 May 2025",
-          startTime: "7pm",
-          endTime: "9pm",
-          venue: "National Stadium",
-          description: "A conference showcasing the latest in technology and innovation.",
-          capacity: 899,
-          eventType: "Concert",
-          availableTickets: 200,
-          image: "../assets/carousel/eventiva_carousel1.png",
-        },
-        {
-          id: 2,
-          name: "Art Expo",
-          startDate: "15 Apr 2025",
-          endDate: "15 Apr 2025",
-          startTime: "7pm",
-          endTime: "9pm",
-          venue: "National Stadium",
-          description: "An exhibition of modern and contemporary art from around the world.",
-          capacity: 899,
-          eventType: "Expo",
-          availableTickets: 754,
-          image: "../assets/carousel/eventiva_carousel1.png",
-        },
-        {
-          id: 3,
-          name: "Music Festival",
-          startDate: "17 Jun 2025",
-          endDate: "17 Jun 2025",
-          startTime: "7pm",
-          endTime: "9pm",
-          venue: "National Stadium",
-          description: "A weekend of live music performances from top artists.",
-          capacity: 899,
-          eventType: "Festival",
-          availableTickets: 294,
-          image: "../assets/carousel/eventiva_carousel1.png",
-        },
-        {
-          id: 4,
-          name: "Startup Pitch Night",
-          startDate: "8 Aug 2025",
-          endDate: "10 Aug 2025",
-          startTime: "7pm",
-          endTime: "9pm",
-          venue: "National Stadium",
-          description: "An evening where startups pitch their ideas to investors.",
-          capacity: 899,
-          eventType: "Formal",
-          availableTickets: 27,
-          image: "../assets/carousel/eventiva_carousel1.png",
-        },
-        {
-          id: 5,
-          name: "Health and Wellness Fair",
-          startDate: "12 Dec 2025",
-          endDate: "12 Dec 2025",
-          startTime: "7pm",
-          endTime: "9pm",
-          venue: "National Stadium",
-          description: "A fair promoting health and wellness with workshops and activities.",
-          capacity: 899,
-          eventType: "Expo",
-          availableTickets: 11,
-          image: "../assets/carousel/eventiva_carousel1.png",
-        }
-      ],
+      eventList: [],
     }
   },
   methods: {
+    async fetchEvents() {
+      console.log("test");
+      try {
+        const response = await axios.get('https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events');
+        // this.eventList = response.data; // Assign the fetched data to the events array
+        
+        var rawData = response.data.Events
+        this.processEvents(rawData);
+        
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+    },
+    processEvents(rawData) {
+      const processedEvents = [];
 
+      rawData.forEach((event) => {
+        // Check if the event already exists in processedEvents
+        const existingEvent = processedEvents.find((e) => e.Id === event.Id);
+
+        if (existingEvent) {
+          // Add the date to the existing event's Dates array if not already present
+          if (!existingEvent.Dates.includes(event.Date)) {
+            existingEvent.Dates.push(event.Date);
+          }
+        } else {
+          // Create a new entry for unique events
+          processedEvents.push({
+            Id: event.Id,
+            Name: event.Name,
+            Description: event.Description,
+            Venue: event.Venue,
+            Category: event.Category,
+            Capacity: event.Capacity,
+            CreatedAt: event.CreatedAt,
+            Image: event.Image,
+            StartTime: event.StartTime, // Add StartTime (same for all entries of the same event)
+            EndTime: event.EndTime,     // Add EndTime (same for all entries of the same event)
+            Dates: [event.Date],        // Initialize Dates as an array of dates
+          });
+        }
+      });
+
+      // Update the component's data property
+      this.eventList = processedEvents;
+      console.log(this.eventList)
+    },
+  },
+  mounted() {
+    this.fetchEvents();
   },
   setup() {
     const authUpdateKey = ref(0)
 
     onMounted(() => {
+
       // Check for auth data in URL
       const urlParams = new URLSearchParams(window.location.search)
       const authData = urlParams.get('auth')
-      
+
       if (authData) {
         try {
           // Decode and store user data
           const userData = JSON.parse(atob(authData))
           auth.setUser(userData)
-          
+
           // Clean up URL
           window.history.replaceState({}, document.title, '/')
-          
+
           // Force NavBar to re-render
           authUpdateKey.value++
         } catch (error) {
           console.error('Failed to process authentication data:', error)
         }
       }
+
+
     })
 
     return {
@@ -196,5 +182,4 @@ export default {
   height: 60vh;
   width: 100%;
 }
-
 </style>
