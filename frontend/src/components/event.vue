@@ -84,11 +84,18 @@ export default {
         formatRange(startDate, endDate) {
             const options = { day: "numeric", month: "short" };
 
+            // Check if startDate and endDate are the same
+            if (startDate.getTime() === endDate.getTime()) {
+                return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`; // Single date in "11 May" format
+            }
+
+            // If they are in the same month, display as a range within the same month
             if (startDate.getMonth() === endDate.getMonth()) {
                 return `${startDate.getDate()}-${endDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`;
-            } else {
-                return `${startDate.toLocaleString("en-US", options)} - ${endDate.toLocaleString("en-US", options)}`;
             }
+
+            // If they span different months, display full range
+            return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })} - ${endDate.getDate()} ${endDate.toLocaleString("en-US", { month: "short" })}`;
         },
         formatTimeRange(startTime, endTime) {
             const options = { hour: "numeric", minute: "numeric", hour12: true };
