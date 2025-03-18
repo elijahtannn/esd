@@ -31,7 +31,7 @@ const mailGenerator = new Mailgen({
     theme: 'default',
     product: {
         name: 'EVENTIVA',
-        link: 'https://eventiva.com/',
+        link: 'http://localhost:5173',
         copyright: 'Copyright © 2025 EVENTIVA. All rights reserved.',
         // Add custom styles for the header
         styles: {
@@ -40,16 +40,19 @@ const mailGenerator = new Mailgen({
                 link: '#2563EB',  // Change link color
                 head: {
                     backgroundColor: 'white',
-                    color: '#2563EB',  // Change header text color
-                    fontSize: '48px',   // Make header text bigger
-                    fontWeight: 'bold', // Make header text bold
-                    padding: '30px',    // Add more padding
-                    letterSpacing: '4px' // Add letter spacing
+                    color: '#2563EB',  
+                    fontSize: '48px',   
+                    fontWeight: 'bold', 
+                    padding: '30px',    
+                    letterSpacing: '4px' 
                 }
             }
         }
     }
 });
+
+// Add frontend URL constant at the top with other constants
+const FRONTEND_URL = 'http://localhost:5173';
 
 /**
  * Function to send an email.
@@ -114,7 +117,7 @@ async function consumeMessages() {
                 const eventData = JSON.parse(msg.content.toString());
                 console.log('📨 Received Message:', eventData);
 
-                const { email, eventName, ticketNumber, eventType } = eventData;
+                const { email, eventName, ticketNumber, eventType, sender_email } = eventData;
 
                 if (eventType === 'ticket.purchase') {
                     const subject = `🎟 Your Ticket for ${eventName}`;
@@ -132,12 +135,42 @@ async function consumeMessages() {
                             action: {
                                 instructions: 'You can view your ticket details by clicking the button below:',
                                 button: {
-                                    color: '#2563EB',  // Match the blue color
+                                    color: '#2563EB',
                                     text: 'View Ticket',
-                                    link: `https://eventiva.com/tickets/${ticketNumber}`
+                                    link: `${FRONTEND_URL}/profile`
                                 }
                             },
                             outro: 'We look forward to seeing you at the event!'
+                        }
+                    };
+
+                    // Generate HTML email
+                    const message = mailGenerator.generate(emailBody);
+
+                    // Send email
+                    await sendEmail(email, subject, message);
+                } else if (eventType === 'ticket.transfer.pending') {
+                    const subject = `🎟 Pending Ticket Transfer for ${eventName}`;
+                    
+                    // Generate email body using Mailgen
+                    const emailBody = {
+                        body: {
+                            name: email.split('@')[0],
+                            intro: `You have a pending ticket transfer from ${sender_email} for ${eventName}!`,
+                            dictionary: {
+                                'Ticket Number': ticketNumber,
+                                'Event Name': eventName,
+                                'From': sender_email
+                            },
+                            action: {
+                                instructions: 'You can view and accept the transfer by clicking the button below:',
+                                button: {
+                                    color: '#2563EB',
+                                    text: 'View Transfer',
+                                    link: `${FRONTEND_URL}/profile`
+                                }
+                            },
+                            outro: 'This transfer will expire in 24 hours if not accepted.'
                         }
                     };
 

@@ -4,6 +4,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 from flask_cors import CORS
+import pika
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -14,6 +16,49 @@ load_dotenv()
 TICKET_SERVICE_URL = "http://127.0.0.1:5001"  
 EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
 USER_SERVICE_URL = "http://localhost:5000"    
+
+#RabbitMQ configuration
+RABBITMQ_URL = "amqp://localhost"
+EXCHANGE_NAME = "ticketing.exchange"
+ROUTING_KEY = "ticket.transfer.pending"
+
+def send_transfer_notification(sender_email, recipient_email, ticket_id, event_name):
+    try:
+        # Establish connection
+        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        channel = connection.channel()
+
+        # Declare exchange
+        channel.exchange_declare(
+            exchange=EXCHANGE_NAME,
+            exchange_type='topic',
+            durable=True
+        )
+
+        # Prepare message
+        message = {
+            "email": recipient_email,
+            "eventType": "ticket.transfer.pending",
+            "sender_email": sender_email,
+            "ticket_id": ticket_id,
+            "eventName": event_name
+        }
+
+        # Publish message
+        channel.basic_publish(
+            exchange=EXCHANGE_NAME,
+            routing_key=ROUTING_KEY,
+            body=json.dumps(message),
+            properties=pika.BasicProperties(
+                delivery_mode=2  # make message persistent
+            )
+        )
+
+        connection.close()
+        return True
+    except Exception as e:
+        print(f"Error sending notification: {str(e)}")
+        return False
 
 @app.route("/validateTransfer/<ticket_id>", methods=["POST"])
 def validate_transfer(ticket_id):
@@ -26,11 +71,12 @@ def validate_transfer(ticket_id):
     try:
         data = request.json
         recipient_email = data.get("recipientEmail")
+        sender_email = data.get("senderEmail")  # Add sender email to request
 
-        if not recipient_email:
+        if not recipient_email or not sender_email:
             return jsonify({
-                "error": "Missing recipient email",
-                "message": "Recipient email is required for transfer validation"
+                "error": "Missing required fields",
+                "message": "Both recipient and sender email are required"
             }), 400
 
         # Step 1: Check ticket transferability
@@ -57,12 +103,24 @@ def validate_transfer(ticket_id):
                 "message": recipient_validation["messages"][0]
             }), 400
 
+        # Extract event name from validation message
+        event_name = event_validation["messages"][0].split("'")[1]  # Extract event name from message
+
+        # Step 4: Send notification
+        notification_sent = send_transfer_notification(
+            sender_email=sender_email,
+            recipient_email=recipient_email,
+            ticket_id=ticket_id,
+            event_name=event_name
+        )
+
         # All validations passed
         return jsonify({
             "can_transfer": True,
             "message": "Ticket is eligible for transfer",
             "ticket_id": ticket_id,
-            "recipient_email": recipient_email
+            "recipient_email": recipient_email,
+            "notification_sent": notification_sent
         })
 
     except Exception as e:
