@@ -80,13 +80,13 @@ export default {
     },
     data() {
         return {
-
+            apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL
         }
     },
     methods: {
         async handleGoogleLogin() {
             try {
-                window.location.href = 'http://localhost:5000/login';
+                window.location.href = `${this.apiGatewayUrl}/login`;
             } catch (error) {
                 console.error('Error initiating Google login:', error);
             }

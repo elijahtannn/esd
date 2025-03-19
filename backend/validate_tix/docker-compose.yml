@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  validate-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: validate-service
+    environment:
+      - FLASK_APP=validate_ticket.py
+      - FLASK_ENV=development
+      - TICKET_SERVICE_URL=http://ticket-service:5001
+      - USER_SERVICE_URL=http://user-service:5000
+      - RABBITMQ_URL=amqp://rabbitmq
+    ports:
+      - "8004:8004"
+    volumes:
+      - .:/app
+    networks:
+      user_service_network:
+        aliases:
+          - validate-service
+    depends_on:
+      - rabbitmq
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"  # AMQP protocol port
+      - "15672:15672"  # Management UI port
+    networks:
+      user_service_network:
+        aliases:
+          - rabbitmq
+
+networks:
+  user_service_network:
+    external: true 

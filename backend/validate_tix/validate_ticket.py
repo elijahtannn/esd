@@ -12,13 +12,13 @@ CORS(app)
 
 load_dotenv()
 
-# Service URLs
-TICKET_SERVICE_URL = "http://127.0.0.1:5001"  
+# Service URLs - Updated for Docker networking
+TICKET_SERVICE_URL = "http://ticket-service:5001"  
 EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
-USER_SERVICE_URL = "http://localhost:5000"    
+USER_SERVICE_URL = "http://user-service:5000"  
 
 #RabbitMQ configuration
-RABBITMQ_URL = "amqp://localhost"
+RABBITMQ_URL = "amqp://rabbitmq"  # Changed from localhost to service name
 EXCHANGE_NAME = "ticketing.exchange"
 ROUTING_KEY = "ticket.transfer.pending"
 
@@ -233,4 +233,4 @@ def validate_recipient(email):
         }
 
 if __name__ == "__main__":
-    app.run(host="localhost", port=8004, debug=True)
+    app.run(host="0.0.0.0", port=8004, debug=True)

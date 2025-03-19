@@ -1,0 +1,88 @@
+_format_version: "2.1"
+_transform: true
+
+services:
+  # User Service
+  - name: user-service
+    url: http://user-service:5000
+    routes:
+      - name: user-route
+        paths:
+          - /login
+          - /user/email/(.*)
+          - /user/(.*)
+        strip_path: false
+
+  # Ticket Service
+  - name: ticket-service
+    url: http://host.docker.internal:5001
+    routes:
+      - name: ticket-route
+        paths:
+          - /tickets
+          - /tickets/(.*)
+          - /tickets/reserve
+          - /tickets/confirm
+          - /tickets/check_transfer_eligibility
+        strip_path: false
+
+  # Order Service
+  - name: order-service
+    url: http://host.docker.internal:8000
+    routes:
+      - name: order-route
+        paths:
+          - /orders
+          - /orders/(.*)
+          - /orders/transfer
+          - /health
+        strip_path: false
+
+  # Payment Service
+  - name: payment-service
+    url: http://host.docker.internal:8002
+    routes:
+      - name: payment-route
+        paths:
+          - /payments/process
+          - /payments/refund
+          - /health
+        strip_path: false
+
+  # Transfer Service
+  - name: transfer-service
+    url: http://host.docker.internal:8005
+    routes:
+      - name: transfer-route
+        paths:
+          - /transfer/(.*)
+        strip_path: false
+
+  # Validate Service
+  - name: validate-service
+    url: http://host.docker.internal:8004
+    routes:
+      - name: validate-route
+        paths:
+          - /validateTransfer/(.*)
+        strip_path: false
+
+  # Event Service (External)
+  - name: event-service
+    url: https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
+    routes:
+      - name: event-route
+        paths:
+          - /createEventWithDates
+          - /events
+          - /events/(.*)
+          - /events/(.*)/
+          - /events/dates/(.*)
+          - /events/dates/(.*)/categories
+          - /events/dates/(.*)/inventory
+          - /events/dates/(.*)/inventory/purchase
+          - /events/dates/(.*)/inventory/resale
+          - /events/dates/categories
+          - /events/dates/categories/(.*)/inventory/purchase
+          - /events/dates/categories/(.*)/inventory/resale
+        strip_path: false

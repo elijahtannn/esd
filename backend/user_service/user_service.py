@@ -28,6 +28,9 @@ GOOGLE_CLIENT_ID = "603980424659-jiqs010nggvjmn6ve8c243nfral3q5a7.apps.googleuse
 GOOGLE_CLIENT_SECRET = "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"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
+# Add this near the top of your file with other constants
+KONG_URL = "http://localhost:8000"  # The public-facing Kong URL
+
 # Fetch Google's OpenID Config
 def get_google_provider_cfg():
     return requests.get(GOOGLE_DISCOVERY_URL).json()
@@ -37,16 +40,18 @@ def get_google_provider_cfg():
 def login():
     google_provider_cfg = get_google_provider_cfg()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
-
+    
+    # Use Kong's URL for the redirect_uri
+    kong_callback_url = f"{KONG_URL}/login/callback"
     
     request_uri = (
         f"{authorization_endpoint}?client_id={GOOGLE_CLIENT_ID}"
-        f"&redirect_uri={url_for('callback', _external=True)}"
+        f"&redirect_uri={kong_callback_url}"
         f"&response_type=code&scope=openid%20email%20profile"
     )
     return redirect(request_uri)
 
-
+    
 @app.route("/login/callback")
 def callback():
     google_provider_cfg = get_google_provider_cfg()
@@ -62,7 +67,7 @@ def callback():
             "code": auth_code,
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
-            "redirect_uri": url_for("callback", _external=True),
+            "redirect_uri": f"{KONG_URL}/login/callback",  # Use Kong URL here too
             "grant_type": "authorization_code",
         },
         headers={"Content-Type": "application/x-www-form-urlencoded"},
@@ -151,4 +156,4 @@ def check_email(email):
         }), 500
 
 if __name__ == "__main__":
-    app.run(host='localhost', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
