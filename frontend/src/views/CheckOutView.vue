@@ -4,17 +4,16 @@
     <!-- Banner -->
     <div class="container-fluid bannerImg banner mx-0 p-5">
         <div class="row">
-            <div class="col-10">
+            <div class="col-12">
                 <div>
-                    <p class="bannerText p-5">{{ eventName }}</p>
+                    <p class="bannerText p-5">{{ eventDetails.Name }}</p>
                     <p class="ms-5"
                         style="background-color: var(--main-blue); padding: 10px 20px; color:white; text-transform: uppercase; font-weight: 600; width: fit-content; margin-top: -30px;">
-                        {{ startDate }} - {{ endDate }}, {{ startTime }} - {{ endTime }}
+                        {{ formattedDate }}<br>{{ formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}
                     </p>
-                    <p class="ms-5" style="color: white;">{{ venue }}</p>
+                    <p class="ms-5" style="color: white;">{{ eventDetails.Venue }}</p>
                 </div>
             </div>
-            <div class="col-4"></div>
         </div>
     </div>
 
@@ -85,27 +84,28 @@
                 <div class="row">
 
                     <!-- Render all ticket types dynamically -->
-                    <div v-for="(ticket, index) in selectedTickets" :key="index" class="row">
-                        <div class="col-7">
-                            <!-- Ticket type dropdown -->
-                            <label for="ticketType" class="input-label">Ticket Type</label>
-                            <select v-model="ticket.selectedType" class="input-field">
-                                <option v-for="(option, idx) in filteredTicketTypes(index)" :key="idx"
-                                    :value="option.name">
-                                    {{ option.name }} - ${{ option.price }}
-                                </option>
-                            </select>
-                        </div>
-                        <div class="col-3">
-                            <!-- Quantity input -->
-                            <label for="quantity" class="input-label">Quantity</label>
-                            <input type="number" v-model.number="ticket.quantity" class="input-field" min="1" />
-                        </div>
-                        <div class="col-2" style="display: flex; align-items: center;">
-                            <!-- Remove ticket type button -->
-                            <div v-if="selectedTickets.length > 1" @click="removeTicketType(index)"
-                                style="margin-top: 30px; color: var(--text-grey); cursor: pointer;">
-                                <i class="bi bi-dash-circle"></i>
+                    <div>
+                        <div v-for="(ticket, index) in selectedTickets" :key="index" class="row">
+                            <div class="col-7">
+                                <!-- Ticket type dropdown -->
+                                <label for="ticketType" class="input-label">Ticket Type</label>
+                                <select v-model="ticket.selectedType" class="input-field">
+                                    <option v-for="(category, idx) in filteredeventCategories(index)" :key="idx"
+                                        :value="category.Cat">
+                                        {{ category.Cat }} - ${{ category.Price }}
+                                    </option>
+                                </select>
+                            </div>
+                            <div class="col-3">
+                                <!-- Quantity input -->
+                                <label for="quantity" class="input-label">Quantity</label>
+                                <input type="number" v-model.number="ticket.quantity" class="input-field" min="1" />
+                            </div>
+                            <div class="col-2" style="display: flex; align-items: center;">
+                                <!-- Remove ticket type button -->
+                                <div v-if="selectedTickets.length > 1" @click="removeTicketType(index)" style=" margin-top: 30px; color: var(--text-grey); cursor: pointer;">
+                                    <i class="bi bi-dash-circle"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -227,10 +227,10 @@
                     <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                         selectedDate }}</p>
                     <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
-                    }}
+                        }}
                         - {{ endTime }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
-                    }}
+                        }}
                     </p>
 
                     <hr>
@@ -279,10 +279,10 @@
                     <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                         selectedDate }}</p>
                     <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
-                    }}
+                        }}
                         - {{ endTime }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
-                    }}
+                        }}
                     </p>
 
                     <hr>
@@ -316,6 +316,7 @@
 <script>
 
 import NavBar from "../components/nav-bar.vue";
+import axios, { formToJSON } from 'axios';
 
 export default {
     name: 'checkout',
@@ -325,20 +326,13 @@ export default {
     data() {
         return {
             eventId: 0,
-            eventName: "Lady Gaga in Singapore",
-            startDate: "2025-05-12",
-            endDate: "2025-05-15",
-            startTime: "7pm",
-            endTime: "9pm",
-            venue: "National Stadium",
+
             eventImage: "../assets/carousel/eventiva_carousel1.png",
 
             previousStep: "browsing event",
             steps: ["Ticket selection", "Confirmation", "Payment", "Complete"], // Timeline steps
             currentStep: 0, // Tracks the current step
 
-
-            ticketTypes: [{ name: 'Cat 1', price: 190 }, { name: 'Cat 2', price: 209 }, { name: 'Cat 3', price: 400 }],
             selectedTickets: [
                 { selectedType: '', quantity: 1 }, // Default ticket type
             ],
@@ -348,6 +342,10 @@ export default {
             cardNumber: '',
             cardExpiry: '',
             cardCVV: '',
+
+            formattedDate: "",
+            eventDetails: [],
+            eventCategories: [],
 
         }
     },
@@ -363,12 +361,11 @@ export default {
             return hasValidDate && hasValidTickets;
         },
         isAddDisabled() {
-            const selectedTypes = this.selectedTickets.map(ticket => ticket.selectedType);
-            return selectedTypes.length >= this.ticketTypes.length;
+            return this.selectedTickets.length >= this.eventCategories.length;
         },
         calculatedTickets() {
             return this.selectedTickets.map(ticket => {
-                const selectedTicket = this.ticketTypes.find(type => type.name === ticket.selectedType);
+                const selectedTicket = this.eventCategories.find(type => type.name === ticket.selectedType);
                 const price = selectedTicket ? selectedTicket.price : 0;
                 const subtotal = price * ticket.quantity;
                 return { ...ticket, price, subtotal };
@@ -389,21 +386,30 @@ export default {
         goBack() {
             this.$router.back()
         },
+        filteredeventCategories(index) {
+            // Get all currently selected types except for the current row
+            const selectedTypes = this.selectedTickets.map((ticket, idx) =>
+                idx !== index ? ticket.selectedType : null
+            );
+
+            // Filter out already selected categories, but include the current row's selection
+            return this.eventCategories.filter(
+                (category) =>
+                    !selectedTypes.includes(category.Cat) ||
+                    category.Cat === this.selectedTickets[index].selectedType
+            );
+        },
         addTicketType() {
-            if (!this.isAddDisabled) {
-                this.selectedTickets.push({ selectedType: '', quantity: 1 });
+            // Add a new ticket row with default values
+            if (this.selectedTickets.length < this.eventCategories.length) {
+                this.selectedTickets.push({ selectedType: "", quantity: 1 });
+            } else {
+                alert("All categories have been selected.");
             }
         },
-        // Method to filter available ticket types for each dropdown
-        filteredTicketTypes(index) {
-            const selectedTypes = this.selectedTickets.map(ticket => ticket.selectedType);
-            return this.ticketTypes.filter(option => !selectedTypes.includes(option.name) || option.name === this.selectedTickets[index].selectedType);
-        },
-        // Method to remove a ticket type input
         removeTicketType(index) {
-            if (this.selectedTickets.length > 1) {
-                this.selectedTickets.splice(index, 1);
-            }
+            // Remove the selected ticket row at the given index
+            this.selectedTickets.splice(index, 1);
         },
         nextStep() {
             if (this.currentStep < this.steps.length - 1) {
@@ -415,9 +421,76 @@ export default {
                 this.currentStep--;
             }
         },
+        formatDates(dates) {
+            // Convert ISO strings to Date objects and sort them
+            const sortedDates = dates.map(date => new Date(date)).sort((a, b) => a - b);
+
+            let formattedDates = [];
+            let currentRangeStart = sortedDates[0];
+            let currentRangeEnd = sortedDates[0];
+
+            for (let i = 1; i < sortedDates.length; i++) {
+                const currentDate = sortedDates[i];
+                const previousDate = sortedDates[i - 1];
+
+                // Check if currentDate is consecutive to previousDate
+                if ((currentDate - previousDate) / (1000 * 60 * 60 * 24) === 1) {
+                    currentRangeEnd = currentDate;
+                } else {
+                    // Push the formatted range or single date to formattedDates
+                    formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
+                    currentRangeStart = currentDate;
+                    currentRangeEnd = currentDate;
+                }
+            }
+
+            // Push the last range or single date
+            formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
+
+            this.formattedDate = formattedDates.join(", ");
+        },
+        formatRange(startDate, endDate) {
+            const options = { day: "numeric", month: "short" };
+
+            // Check if startDate and endDate are the same
+            if (startDate.getTime() === endDate.getTime()) {
+                return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`; // Single date in "11 May" format
+            }
+
+            // If they are in the same month, display as a range within the same month
+            if (startDate.getMonth() === endDate.getMonth()) {
+                return `${startDate.getDate()}-${endDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`;
+            }
+
+            // If they span different months, display full range
+            return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })} - ${endDate.getDate()} ${endDate.toLocaleString("en-US", { month: "short" })}`;
+        },
+        formatTimeRange(startTime, endTime) {
+            const options = { hour: "numeric", minute: "numeric", hour12: true };
+
+            // Convert the time strings into Date objects
+            const start = new Date(`1970-01-01T${startTime}Z`).toLocaleTimeString(
+                "en-US",
+                options
+            );
+            const end = new Date(`1970-01-01T${endTime}Z`).toLocaleTimeString(
+                "en-US",
+                options
+            );
+
+            return `${start} - ${end}`;
+        },
+    },
+    created() {
+        this.eventId = this.$route.query.eventId;
+        this.eventDetails = JSON.parse(this.$route.query.eventDetails);
+        this.eventCategories = JSON.parse(this.$route.query.eventCategories);
+
+        this.formatDates(this.eventDetails.dates);
+
+
     },
     mounted() {
-        this.eventId = this.$route.query.eventId;
     }
 }
 </script>

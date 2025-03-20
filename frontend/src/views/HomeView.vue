@@ -86,9 +86,7 @@ export default {
   },
   methods: {
     async fetchEvents() {
-      console.log("Fetching events through Kong API Gateway");
       try {
-        // Updated to use Kong API Gateway
         const response = await axios.get(`${this.apiGatewayUrl}/events`);
         
         var rawData = response.data.Events
