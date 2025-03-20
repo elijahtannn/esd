@@ -8,7 +8,7 @@
                 <div class="text-start">
                     <p style="color:var(--main-blue)">{{ category }}</p>
                     <h4 class="card-title">{{ name }}</h4>
-                    <p style="text-transform: uppercase; font-size: 14px;">{{ formatDates(dates) }}
+                    <p style="text-transform: uppercase; font-size: 14px;">{{ formattedDate }}
                     <br>{{ formatTimeRange(startTime, endTime) }}</p>
                     <p style="font-size: 14px; color:var(--text-grey);">{{ venue }} (capacity: {{ capacity }})</p>
                 </div>
@@ -35,6 +35,7 @@ export default {
         return {
             ticketThreshold: 30,
             finalDateRange: "",
+            formattedDate: "",
         }
     },
     props: {
@@ -79,7 +80,7 @@ export default {
             // Push the last range or single date
             formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
 
-            return formattedDates.join(", ");
+            this.formattedDate = formattedDates.join(", ");
         },
         formatRange(startDate, endDate) {
             const options = { day: "numeric", month: "short" };
