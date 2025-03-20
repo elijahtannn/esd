@@ -12,20 +12,25 @@ CORS(app)
 
 load_dotenv()
 
-# Service URLs - Updated for Docker networking
-TICKET_SERVICE_URL = "http://ticket-service:5001"  
+# Service URLs
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://host.docker.internal:5001")  # Use host.docker.internal to access host machine
 EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
-USER_SERVICE_URL = "http://user-service:5000"  
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5000")
 
 #RabbitMQ configuration
-RABBITMQ_URL = "amqp://rabbitmq"  # Changed from localhost to service name
 EXCHANGE_NAME = "ticketing.exchange"
 ROUTING_KEY = "ticket.transfer.pending"
 
 def send_transfer_notification(sender_email, recipient_email, ticket_id, event_name):
     try:
-        # Establish connection
-        connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+        # For local RabbitMQ, use host.docker.internal since service is in container
+        credentials = pika.PlainCredentials('guest', 'guest')
+        parameters = pika.ConnectionParameters(
+            host='host.docker.internal',  # This allows container to access local RabbitMQ
+            port=5672,  # Default RabbitMQ port
+            credentials=credentials
+        )
+        connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
 
         # Declare exchange

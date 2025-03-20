@@ -8,10 +8,10 @@ const EXCHANGE_NAME = 'ticketing.exchange';
 const EXCHANGE_TYPE = 'topic';
 const QUEUE_NAME = 'notification.queue';
 const BINDING_KEYS = [
-    'ticket.purchase',       // Order Service
-    'ticket.transfer.*',     // Future Ticket Transfer Service
-    'ticket.resale.*',       // Future Resale Service
-    'ticket.refund.*'        // Refund Service
+    'ticket.purchase',       
+    'ticket.transfer.*',     
+    'ticket.resale.*',       
+    'ticket.refund.*'        
 ];
 
 // OAuth2 credentials for Gmail API
@@ -20,7 +20,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const EMAIL_USER = process.env.EMAIL_USER;
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
+const RABBITMQ_URL = 'amqp://guest:guest@localhost:5672';
 
 // Setup OAuth2 client for Gmail
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
