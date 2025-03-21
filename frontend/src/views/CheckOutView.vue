@@ -76,8 +76,12 @@
                 <!-- date input -->
                 <label for="date" class="input-label">Date</label>
                 <div class="input-container">
-                    <input type="date" id="date" class="input-field" v-model="selectedDate" :min="startDate"
-                        :max="endDate" required style="width: fit-content;" />
+                    <select v-model="selectedDate" id="eventDate" class="input-field" style="width: fit-content;">
+                        <option disabled value="">Select a date</option>
+                        <option v-for="date in listDates" :key="date.value" :value="date.value">
+                            {{ date.label }}
+                        </option>
+                    </select>
                 </div>
 
                 <!-- Selecting ticket types and their quantity -->
@@ -89,7 +93,8 @@
                             <div class="col-7">
                                 <!-- Ticket type dropdown -->
                                 <label for="ticketType" class="input-label">Ticket Type</label>
-                                <select v-model="ticket.selectedType" class="input-field">
+                                <select v-model="ticket.selectedType" class="input-field"
+                                    @change="updateTicketPrice(index)">
                                     <option v-for="(category, idx) in filteredeventCategories(index)" :key="idx"
                                         :value="category.Cat">
                                         {{ category.Cat }} - ${{ category.Price }}
@@ -103,7 +108,8 @@
                             </div>
                             <div class="col-2" style="display: flex; align-items: center;">
                                 <!-- Remove ticket type button -->
-                                <div v-if="selectedTickets.length > 1" @click="removeTicketType(index)" style=" margin-top: 30px; color: var(--text-grey); cursor: pointer;">
+                                <div v-if="selectedTickets.length > 1" @click="removeTicketType(index)"
+                                    style=" margin-top: 30px; color: var(--text-grey); cursor: pointer;">
                                     <i class="bi bi-dash-circle"></i>
                                 </div>
                             </div>
@@ -176,11 +182,12 @@
                     <div class="selectedEventDetails">
                         <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                         <p><i class="bi bi-calendar-week-fill"
-                                style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate }}</p>
+                                style="padding-right: 10px; color:var(--main-blue);"></i>{{ formatDate(selectedDate) }}
+                        </p>
                         <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                            startTime }} - {{ endTime }}</p>
+                            formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
                         <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                            venue }}</p>
+                            eventDetails.Venue }}</p>
                     </div>
                 </div>
             </div>
@@ -216,8 +223,12 @@
                 <br>
                 <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px; margin-top: 30px;"
                     @click="nextStep" :disabled="!isPaymentValid" :class="{ disabledButton: !isPaymentValid }">
-                    Next Step
+                    Confirm Payment
                 </button>
+                <!-- <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px; margin-top: 30px;"
+                    @click="nextStep" :disabled="!isPaymentValid" :class="{ disabledButton: !isPaymentValid }">
+                    Confirm Payment
+                </button> -->
             </div>
 
             <div class="col d-flex justify-content-end">
@@ -225,12 +236,11 @@
                     <!-- Selected event details -->
                     <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                     <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                        selectedDate }}</p>
-                    <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
-                        }}
-                        - {{ endTime }}</p>
-                    <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
-                        }}
+                        formatDate(selectedDate) }}</p>
+                    <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                        formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
+                    <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                        eventDetails.Venue }}
                     </p>
 
                     <hr>
@@ -277,11 +287,11 @@
                     <!-- Selected event details -->
                     <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                     <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                        selectedDate }}</p>
-                    <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime
-                        }}
-                        - {{ endTime }}</p>
-                    <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue
+                        formatDate(selectedDate) }}</p>
+                    <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                        formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
+                    <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                        eventDetails.Venue
                         }}
                     </p>
 
@@ -317,6 +327,7 @@
 
 import NavBar from "../components/nav-bar.vue";
 import axios, { formToJSON } from 'axios';
+import { auth } from '../stores/auth';
 
 export default {
     name: 'checkout',
@@ -325,6 +336,7 @@ export default {
     },
     data() {
         return {
+            apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             eventId: 0,
 
             eventImage: "../assets/carousel/eventiva_carousel1.png",
@@ -333,28 +345,28 @@ export default {
             steps: ["Ticket selection", "Confirmation", "Payment", "Complete"], // Timeline steps
             currentStep: 0, // Tracks the current step
 
-            selectedTickets: [
-                { selectedType: '', quantity: 1 }, // Default ticket type
-            ],
+            selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }], // Default ticket structure
             selectedDate: '', // Store the selected date
 
             cardName: '',
             cardNumber: '',
             cardExpiry: '',
             cardCVV: '',
+            paymentToken: 'tok_visa',
 
             formattedDate: "",
             eventDetails: [],
             eventCategories: [],
+
+
+            user:null,
 
         }
     },
     computed: {
         isStep1Valid() {
             const hasValidDate =
-                this.selectedDate &&
-                new Date(this.selectedDate) >= new Date(this.startDate) &&
-                new Date(this.selectedDate) <= new Date(this.endDate); // Validate date range
+                this.selectedDate
             const hasValidTickets = this.selectedTickets.every(
                 ticket => ticket.selectedType && ticket.quantity > 0
             ); // Ensure each ticket has a type and quantity > 0
@@ -365,9 +377,18 @@ export default {
         },
         calculatedTickets() {
             return this.selectedTickets.map(ticket => {
-                const selectedTicket = this.eventCategories.find(type => type.name === ticket.selectedType);
-                const price = selectedTicket ? selectedTicket.price : 0;
+                // Find the selected ticket type in eventCategories
+                const selectedTicket = this.eventCategories.find(
+                    catDetails => catDetails.Cat === ticket.selectedType
+                );
+
+                // Use the correct property name 'Price' instead of 'price'
+                const price = selectedTicket ? selectedTicket.Price : 0;
+
+                // Calculate subtotal based on quantity and price
                 const subtotal = price * ticket.quantity;
+
+                // Return a new object with updated price and subtotal
                 return { ...ticket, price, subtotal };
             });
         },
@@ -380,7 +401,19 @@ export default {
                 this.cardNumber.replace(/\s/g, '').length === 16 &&
                 /^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(this.cardExpiry) &&
                 this.cardCVV.length === 3;
-        }
+        },
+        listDates() {
+            // Format each date into "13 May 2024" format
+            return this.eventDetails.dates.map((dateString) => {
+                const date = new Date(dateString);
+                const formatted = new Intl.DateTimeFormat("en-GB", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric",
+                }).format(date);
+                return { value: dateString, label: formatted };
+            });
+        },
     },
     methods: {
         goBack() {
@@ -402,9 +435,20 @@ export default {
         addTicketType() {
             // Add a new ticket row with default values
             if (this.selectedTickets.length < this.eventCategories.length) {
-                this.selectedTickets.push({ selectedType: "", quantity: 1 });
+                this.selectedTickets.push({ selectedType: "", quantity: 1, price: 0 });
             } else {
                 alert("All categories have been selected.");
+            }
+        },
+        updateTicketPrice(index) {
+            // Find the selected category and update its price
+            const selectedCategory = this.eventCategories.find(
+                (category) => category.Cat === this.selectedTickets[index].selectedType
+            );
+
+            if (selectedCategory) {
+                // Update the price based on the selected type and quantity
+                this.selectedTickets[index].price = selectedCategory.Price;
             }
         },
         removeTicketType(index) {
@@ -412,7 +456,9 @@ export default {
             this.selectedTickets.splice(index, 1);
         },
         nextStep() {
-            if (this.currentStep < this.steps.length - 1) {
+            if (this.currentStep == this.steps.length - 1) {
+                this.processPayment();
+            }else if (this.currentStep < this.steps.length - 1) {
                 this.currentStep++;
             }
         },
@@ -480,6 +526,48 @@ export default {
 
             return `${start} - ${end}`;
         },
+        formatDate(dateString) {
+            // Convert the ISO date string to a Date object
+            const date = new Date(dateString);
+
+            // Use Intl.DateTimeFormat to format the date
+            const formattedDate = new Intl.DateTimeFormat("en-GB", {
+                day: "2-digit",
+                month: "long",
+                year: "numeric",
+            }).format(date);
+
+            return formattedDate;
+        },
+        async processPayment() {
+            console.log(this.user.id);
+            try {
+                // Prepare the data payload
+                const paymentData = {
+                    user_id: this.user.id, // Replace with the actual user ID
+                    amount: this.grandTotal, // Use grand total as the payment amount
+                    payment_token: this.paymentToken, // Replace with your payment token
+                };
+
+                // Send POST request to the Flask API
+                const response = await axios.post(`${this.apiGatewayUrl}/payments/process`, paymentData, {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+
+                // Handle successful response
+                console.log("Payment Response:", response.data);
+                alert("Payment successful! Transaction ID: " + response.data.transaction_id);
+                this.currentStep++;
+                // cue trigger to process new order composite
+            } catch (error) {
+                // Handle error response
+                console.error("Payment Error:", error.response?.data || error.message);
+                alert("Payment failed! " + (error.response?.data.error || error.message));
+            }
+        },
+
     },
     created() {
         this.eventId = this.$route.query.eventId;
@@ -487,10 +575,13 @@ export default {
         this.eventCategories = JSON.parse(this.$route.query.eventCategories);
 
         this.formatDates(this.eventDetails.dates);
-
-
     },
     mounted() {
+
+        const userData = auth.getUser();
+        if (userData) {
+            this.user = userData;
+        }
     }
 }
 </script>
