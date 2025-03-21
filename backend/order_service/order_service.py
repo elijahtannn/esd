@@ -6,7 +6,6 @@ import certifi
 from datetime import datetime
 from flask_cors import CORS
 from dotenv import load_dotenv
-import requests
 
 # Load environment variables
 load_dotenv()
@@ -16,11 +15,8 @@ app = Flask(__name__)
 CORS(app)
 
 # MongoDB Configuration
-app.config["MONGO_URI"] = "mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd"
+app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 mongo = PyMongo(app, tlsCAFile=certifi.where())
-
-# Service URL
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5000")
 
 # Collection References
 orders_collection = mongo.db.orders
@@ -44,25 +40,25 @@ def get_orders_by_user(user_id):
         order["_id"] = str(order["_id"])
     return jsonify(orders)
 
-###  Create a New Order (For Purchase) for User ID
-@app.route("/orders/user/<string:user_id>", methods=["POST"])
-def create_order_for_user(user_id):
+### Create a New Order (Atomic Microservice)
+@app.route("/orders", methods=["POST"])
+def create_order():
     data = request.json
 
-    # Validate Request Data
-    required_fields = ["ticketIds", "eventId", "orderType", "totalAmount", "paymentId"]
+    required_fields = ["userId", "ticketIds", "eventId", "eventName", "eventDate", "venue", "orderType", "totalAmount", "paymentId"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    # Generate Auto-Incrementing Order ID
     order_id = get_next_order_id()
 
-    # Insert Order into Database
     new_order = {
         "orderId": order_id,
-        "userId": user_id,
+        "userId": data["userId"],
         "ticketIds": data["ticketIds"],
         "eventId": data["eventId"],
+        "eventName": data["eventName"],
+        "eventDate": data["eventDate"],
+        "venue": data["venue"],
         "orderType": data["orderType"],
         "totalAmount": data["totalAmount"],
         "paymentId": data["paymentId"],
@@ -74,9 +70,12 @@ def create_order_for_user(user_id):
     return jsonify({
         "message": "Order created successfully",
         "orderId": order_id,
-        "userId": user_id,
+        "userId": data["userId"],
         "ticketIds": data["ticketIds"],
         "eventId": data["eventId"],
+        "eventName": data["eventName"],
+        "eventDate": data["eventDate"],
+        "venue": data["venue"],
         "orderType": data["orderType"],
         "totalAmount": data["totalAmount"],
         "paymentId": data["paymentId"],
@@ -91,33 +90,24 @@ def update_order(order_id):
     if not order:
         return jsonify({"error": "Order not found"}), 404
 
-    # Get update fields
     data = request.json
     update_fields = {}
 
-    # Update Order Status / Amount
-    if "status" in data:
-        update_fields["status"] = data["status"]
-    if "totalAmount" in data:
-        update_fields["totalAmount"] = data["totalAmount"]
+    for field in ["status", "totalAmount"]:
+        if field in data:
+            update_fields[field] = data[field]
 
-    # Handle Refund Processing
-    seller_id = data.get("sellerId")
-    ticket_id = data.get("ticketId")
-    refund_amount = data.get("refundAmount")
-    payment_id = data.get("paymentId")
-
-    if all([seller_id, ticket_id, refund_amount, payment_id]):
+    # Refund/resale info
+    if all(k in data for k in ["sellerId", "ticketId", "refundAmount", "paymentId"]):
         update_fields["refundDetails"] = {
-            "sellerId": seller_id,
-            "ticketId": ticket_id,
-            "refundAmount": refund_amount,
-            "paymentId": payment_id,
+            "sellerId": data["sellerId"],
+            "ticketId": data["ticketId"],
+            "refundAmount": data["refundAmount"],
+            "paymentId": data["paymentId"],
             "refundProcessedAt": datetime.utcnow()
         }
         update_fields["status"] = "RESOLD"
 
-    # Apply Updates
     orders_collection.update_one({"orderId": order_id}, {"$set": update_fields})
 
     return jsonify({
@@ -130,50 +120,33 @@ def update_order(order_id):
 @app.route("/orders/transfer", methods=["POST"])
 def transfer_ticket():
     data = request.json
-
-    required_fields = ["ticketId", "fromEmail", "toEmail"]
+    required_fields = ["ticketId", "fromUserId", "toUserId", "eventId", "eventName", "eventDate", "venue"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    from_email = data["fromEmail"]
-    to_email = data["toEmail"]
+    from_user_id = data["fromUserId"]
+    to_user_id = data["toUserId"]
+    ticket_id = data["ticketId"]
 
-    from_user_resp = requests.get(f"{USER_SERVICE_URL}/user/email/{from_email}")
-    to_user_resp = requests.get(f"{USER_SERVICE_URL}/user/email/{to_email}")
-
-    print(from_user_resp.json())
-    print(to_user_resp.json())
-    if from_user_resp.status_code != 200 or to_user_resp.status_code != 200:
-        return jsonify({"error": "One or both users not found"}), 404
-
-    from_user_id = from_user_resp.json().get("user_id")
-    to_user_id = to_user_resp.json().get("user_id")
-    print("FROM_USER_ID", from_user_id)
-    print("TO_USER_ID", to_user_id)
-    
-
-    order = orders_collection.find_one({"userId": from_user_id, "ticketIds": {"$in": [data["ticketId"]]}})
+    order = orders_collection.find_one({"userId": from_user_id, "ticketIds": {"$in": [ticket_id]}})
     if not order:
         return jsonify({"error": "Original order not found for ticket transfer"}), 404
 
-    # Remove the ticket from the ticketIds array
-    orders_collection.update_one(
-        {"_id": order["_id"]},
-        {"$pull": {"ticketIds": data["ticketId"]}}
-    )
+    orders_collection.update_one({"_id": order["_id"]}, {"$pull": {"ticketIds": ticket_id}})
 
-    # If the original order has no tickets left, delete it
     updated_order = orders_collection.find_one({"_id": order["_id"]})
     if not updated_order["ticketIds"]:
         orders_collection.delete_one({"_id": order["_id"]})
 
-    # Create new order for the recipient
     order_id = get_next_order_id()
     transfer_order = {
         "orderId": order_id,
         "userId": to_user_id,
-        "ticketIds": [data["ticketId"]],
-        "eventId": order.get("eventId"),
+        "ticketIds": [ticket_id],
+        "eventId": data["eventId"],
+        "eventName": data["eventName"],
+        "eventDate": data["eventDate"],
+        "venue": data["venue"],
         "orderType": "TRANSFER",
         "totalAmount": 0.0,
         "paymentId": None,
@@ -185,9 +158,9 @@ def transfer_ticket():
     return jsonify({
         "message": "Ticket transferred successfully",
         "orderId": order_id,
-        "fromEmail": from_email,
-        "toEmail": to_email,
-        "ticketId": data["ticketId"],
+        "ticketId": ticket_id,
+        "fromUserId": from_user_id,
+        "toUserId": to_user_id,
         "orderType": "TRANSFER",
         "status": "COMPLETED",
         "createdAt": transfer_order["createdAt"].isoformat()
