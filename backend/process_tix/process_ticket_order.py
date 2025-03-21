@@ -82,7 +82,7 @@ def check_event_inventory(event_id, event_date_id, ticket_quantity):
         if response.status_code != 200:
             return False, f"Failed to retrieve event data, status code: {response.status_code}"
 
-        event_data = response.json()
+        event_data = json.loads(response.content.decode("utf-8-sig"))
 
         # Find the specific event occurrence by EventId and EventDateId
         for event in event_data.get("Events", []):
@@ -116,8 +116,8 @@ def process_ticket_order():
     try:
         data = request.json
         user_id = data.get("user_id")
-        event_id = data.get("event_id")
-        event_date_id = data.get("event_date_id")  # Added event_date_id
+        event_id = data.get("EventId")
+        event_date_id = data.get("EventDateId")  # Added event_date_id
         ticket_quantity = data.get("ticket_quantity")
 
         if not all([user_id, event_id, event_date_id, ticket_quantity]):
@@ -158,7 +158,7 @@ def process_ticket_order():
         payment_id = payment_resp.json().get("payment_id")
 
         # Step 5: Confirm Ticket
-        confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/confirm", json={"order_id": payment_id, "user_id": user_id})
+        confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json={"order_id": payment_id, "user_id": user_id})
         if confirm_resp.status_code != 200:
             logging.error(f"Ticket confirmation failed. Response: {confirm_resp.text}")
             return jsonify({"error": "Ticket confirmation failed"}), 400
@@ -174,7 +174,7 @@ def process_ticket_order():
 
         # Step 7: Update Ticket Inventory
         update_data = {"event_id": event_id, "event_date_id": event_date_id, "ticket_quantity": -ticket_quantity}
-        update_resp = requests.put(f"{EVENT_SERVICE_URL}/update_inventory", json=update_data)
+        update_resp = requests.put(f"{EVENT_SERVICE_URL}/{event_date_id}/inventory", json=update_data)
         if update_resp.status_code != 200:
             logging.error(f"Failed to update event inventory. Response: {update_resp.text}")
             return jsonify({"error": "Failed to update event inventory"}), 400
