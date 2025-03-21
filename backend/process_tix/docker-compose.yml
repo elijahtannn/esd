@@ -1,0 +1,37 @@
+
+services:
+  process-ticket-order:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: process-ticket-order
+    environment:
+      - FLASK_APP=process_ticket_order.py
+      - FLASK_ENV=development
+      - USER_SERVICE_URL=http://user-service:5000
+      - EVENT_SERVICE_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
+      - TICKET_SERVICE_URL=http://host.docker.internal:5001
+      - ORDER_SERVICE_URL=http://host.docker.internal:8000
+      - PAYMENT_SERVICE_URL=http://host.docker.internal:8002
+      - RABBITMQ_URL=amqp://host.docker.internal:5672
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      user_service_network:
+        aliases:
+          - process-ticket-order
+
+  rabbitmq:
+    image: "rabbitmq:3-management"
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+networks:
+  user_service_network:
+    external: true
