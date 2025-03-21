@@ -45,20 +45,28 @@
                     </div>
 
                     <!-- Tab Content -->
+                    <!-- UPCOMING TAB -->
                     <div id="Upcoming" class="tabcontent active order-card">
                         <hr>
-                        <div class="order-header" @click="isExpanded = !isExpanded">
-                            <div>
-                                <span><strong>Lady Gaga in Singapore</strong></span><br>
-                                <span>18 May 2025, National Stadium</span><br><br>
-                                <span style="font-size: 15px; color: grey;">Order Information: #4452</span><br>
-                                <span style="font-size: 15px; color: grey;">Ticket Quantity: 4</span><br>
-                                <span style="font-size: 15px; color: grey;">Total Cost: $300</span>
-                            </div>
+                        <div v-if="orderList.length === 0">No orders available</div>
+                        <div v-else>
+                            <div class="order-header" @click="isExpanded = !isExpanded">
+                                <div  v-for="order in upcomingOrders" 
+                                :key="order.OrderId">
+                                    <!-- EVENT DETAILS -->
+                                    <template v-if="order.EventDetails">
+                                        <span><strong>{{ order.EventDetails.Name }}</strong></span><br>
+                                        <span>{{ formatDates(order.EventDetails.Dates) }}, {{ order.EventDetails.Venue }}</span><br><br>
+                                    </template>
+                                    <!-- ORDER DETAILS -->
+                                    <span style="font-size: 15px; color: grey;">Order Information: #{{ order.OrderId }}</span><br>
+                                    <span style="font-size: 15px; color: grey;">Ticket Quantity: {{ order.TicketQuantity }}</span><br>
+                                    <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2) }}</span>
+                                </div>
                             <button class="toggle-button">
                                 <i :class="['fa-solid', isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
                             </button>
-                        </div>
+                            </div>
                         <div v-if="isExpanded" class="order-details">
                             <!-- QR cards -->
                             <div class="qr-cards">
@@ -147,13 +155,26 @@
                                 <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
                             </div>
                         </div>
-
+                        </div>
                     </div>
 
+                    <!-- History Tab -->
                     <div id="History" class="tabcontent">
                         <hr>
-                        <h3>Event History</h3>
-                        <p>No past events available.</p>
+                        <div v-if="pastOrders.length === 0">No past events available.</div>
+                        <div v-else>
+                        <div class="order-header" 
+                            v-for="order in pastOrders" 
+                            :key="order.OrderId">
+                            <template v-if="order.EventDetails">
+                            <span><strong>{{ order.EventDetails.Name }}</strong></span><br>
+                            <span>{{ formatDates(order.EventDetails.Dates) }}, {{ order.EventDetails.Venue }}</span><br><br>
+                            </template>
+                            <span style="font-size: 15px; color: grey;">Order Information: #{{ order.OrderId }}</span><br>
+                            <span style="font-size: 15px; color: grey;">Ticket Quantity: {{ order.TicketQuantity }}</span><br>
+                            <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2) }}</span>
+                        </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -164,6 +185,7 @@
 <script>
 import NavBar from "../components/nav-bar.vue";
 import { auth } from '../stores/auth';
+import axios from 'axios';
 
 export default {
     name: 'profile',
@@ -184,15 +206,103 @@ export default {
             isEditing: false,
             isQrVisible: true, 
             ticketStatus: "",
+            orderList:[],
+            eventList:[],
+            apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL
         }
     },
     mounted() {
         const userData = auth.getUser();
         if (userData) {
             this.user = userData;
+            this.fetchOrdersAndEvents();
         }
     },
     methods: {
+
+        // BACKEND METHODS
+        async fetchOrdersAndEvents() {
+            try {
+            await this.fetchEvents(); 
+            const userId = "67d44330971f398f904f8c34"; 
+            const response = await axios.get(`http://127.0.0.1:8000/orders/user/${userId}`);
+            const rawOrders = response.data;
+            console.log("Raw API response:", response.data);
+            this.processOrders(rawOrders);
+            } catch (error) {
+            console.error('Error fetching orders or events:', error);
+            }
+        },
+        async fetchEvents() {
+            try {
+            const response = await axios.get(`${this.apiGatewayUrl}/events`);
+            const rawData = response.data.Events; // Adjust based on your API response structure
+            this.processEvents(rawData);
+            } catch (error) {
+            console.error('Error fetching events:', error);
+            }
+        },
+        processOrders(rawOrders) {
+        this.orderList = rawOrders.map(order => {
+            const matchingEvent = this.eventList.find(event => 
+            event.Id.toString() === order.eventId.toString()
+            );
+
+            return {
+            OrderId: order.orderId, 
+            TicketQuantity: order.ticketIds?.length || 0,
+            TotalCost: order.totalAmount,
+            Status: order.status,
+            EventDetails: matchingEvent ? {
+                Name: matchingEvent.Name,
+                Venue: matchingEvent.Venue,
+                Dates: matchingEvent.Dates,
+                StartTime: matchingEvent.StartTime,
+                EndTime: matchingEvent.EndTime
+            } : null
+            };
+        });
+        console.log('Final Orders:', this.orderList);
+        console.log(rawOrders);
+        },
+        processEvents(rawData) {
+            const processedEvents = [];
+
+        rawData.forEach((event) => {
+            const existingEvent = processedEvents.find((e) => e.Id === event.Id);
+
+            if (existingEvent) {
+            // Safeguard against undefined Dates
+            existingEvent.Dates = existingEvent.Dates || [];
+            if (!existingEvent.Dates.includes(event.Date)) {
+                existingEvent.Dates.push(event.Date);
+            }
+            } else {
+            processedEvents.push({
+                Id: event.Id,
+                Name: event.Name,
+                Venue: event.Venue,
+                StartTime: event.StartTime,
+                EndTime: event.EndTime,
+                Dates: event.Date ? [event.Date] : [] // Handle missing dates
+            });
+            }
+        });
+
+        this.eventList = processedEvents;
+        console.log('Processed Events:', this.eventList);
+        },
+        formatDates(datesArray) {
+            return datesArray.map(dateString => {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+                });
+            }).join(' - ');
+        },
+        // FRONTEND METHODS
         toggleEdit() {
             this.isEditing = !this.isEditing;
         },
@@ -250,6 +360,26 @@ export default {
                 console.log('Please fill in all the details');
             }
         },
+    },
+    computed: {
+        // Categorize orders into upcoming events
+        upcomingOrders() {
+            const now = new Date();
+            return this.orderList.filter(order => 
+                order.EventDetails?.Dates?.some(dateStr => 
+                new Date(dateStr) > now
+                )
+            );
+        },
+        // Categorize orders into past events
+        pastOrders() {
+            const now = new Date();
+            return this.orderList.filter(order => 
+                order.EventDetails?.Dates?.every(dateStr => 
+                new Date(dateStr) < now
+                )
+            );
+        }
     }
 }
 </script>
