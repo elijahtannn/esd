@@ -49,11 +49,11 @@
                         <hr>
                         <div class="order-header" @click="isExpanded = !isExpanded">
                             <div>
-                                <p><strong>Lady Gaga in Singapore</strong></p>
-                                <p>18 May 2025, National Stadium</p>
-                                <p><strong>Order Information:</strong> #4452</p>
-                                <p><strong>Ticket Quantity:</strong> 4</p>
-                                <p><strong>Total Cost:</strong> $300</p>
+                                <span><strong>Lady Gaga in Singapore</strong></span><br>
+                                <span>18 May 2025, National Stadium</span><br><br>
+                                <span style="font-size: 15px; color: grey;">Order Information: #4452</span><br>
+                                <span style="font-size: 15px; color: grey;">Ticket Quantity: 4</span><br>
+                                <span style="font-size: 15px; color: grey;">Total Cost: $300</span>
                             </div>
                             <button class="toggle-button">
                                 <i :class="['fa-solid', isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
@@ -469,7 +469,7 @@ button {
 
 .modal-content {
     background: white;
-    padding: 20px;
+    padding: 40px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     text-align: center;
