@@ -17,9 +17,11 @@
     <div class="container-fluid p-5">
         <div class="row px-5">
             <div class="col">
-                <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ formattedDate }}</p>
-                <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
-                <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ eventDetails.Venue }}
+                <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                    formattedDate }}</p>
+                <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{formattedTime }}</p>
+                <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                    eventDetails.Venue }}
                 </p>
             </div>
             <div class="col">
@@ -57,8 +59,8 @@
             <div class="col">
                 <ul style="list-style: none;">
                     <li v-for="cat in eventCategories">
-                        <b>{{cat.Cat}}:</b> 
-                        ${{ cat.Price }}                         
+                        <b>{{ cat.Cat }}:</b>
+                        ${{ cat.Price }}
                     </li>
                 </ul>
             </div>
@@ -169,6 +171,7 @@ export default {
             eventDetails: [],
             eventCategories: [],
             formattedDate: "",
+            formattedTime: "",
         }
     },
     methods: {
@@ -217,12 +220,13 @@ export default {
                 existingEvent.dates.push(event.Date);
                 existingEvent.eventDateIds.push(event.EventDateId);
             });
-            
-            
+
+
             // If there's only one event, store it directly instead of as an array
             this.eventDetails = Array.from(eventMap.values())[0]; // Extract first (and only) element
             console.log(this.eventDetails);
             this.formatDates(this.eventDetails.dates)
+            this.formatTimeRange(this.eventDetails.StartTime, this.eventDetails.EndTime)
 
             // Now you can directly access properties like this:
             this.fetchEventCats(this.eventDetails.eventDateIds);
@@ -254,10 +258,10 @@ export default {
                                 Cat: category.Cat,
                                 Price: category.Price,
                             });
-                            if(category.Price < this.minPrice){
+                            if (category.Price < this.minPrice) {
                                 this.minPrice = category.Price;
                             }
-                            if(category.Price > this.maxPrice){
+                            if (category.Price > this.maxPrice) {
                                 this.maxPrice = category.Price;
                             }
 
@@ -315,25 +319,26 @@ export default {
             return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })} - ${endDate.getDate()} ${endDate.toLocaleString("en-US", { month: "short" })}`;
         },
         formatTimeRange(startTime, endTime) {
+            
             const options = { hour: "numeric", minute: "numeric", hour12: true };
 
-            // Convert the time strings into Date objects
-            const start = new Date(`1970-01-01T${startTime}Z`).toLocaleTimeString(
-                "en-US",
-                options
-            );
-            const end = new Date(`1970-01-01T${endTime}Z`).toLocaleTimeString(
-                "en-US",
-                options
+            // Parse and format start time
+            const start = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${startTime}`)
             );
 
-            return `${start} - ${end}`;
-        },
+            // Parse and format end time
+            const end = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${endTime}`)
+            );
+
+            this.formattedTime = `${start} - ${end}`;
+        }
     },
     mounted() {
         this.eventId = this.$route.query.eventId;
         this.fetchEventDetail();
-    }
+    },
 }
 </script>
 

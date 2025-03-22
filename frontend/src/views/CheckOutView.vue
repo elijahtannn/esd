@@ -78,7 +78,8 @@
                 <!-- date input -->
                 <label for="date" class="input-label">Date</label>
                 <div class="input-container">
-                    <select v-model="selectedDateId" id="eventDate" class="input-field" style="width: fit-content;" @change="showCategories()">
+                    <select v-model="selectedDateId" id="eventDate" class="input-field" style="width: fit-content;"
+                        @change="showCategories()">
                         <option disabled value="">Select a date</option>
                         <option v-for="date in eventDates" :key="date.dateId" :value="date.dateId">
                             {{ date.date }}
@@ -201,10 +202,10 @@
             <div class="col">
 
                 <div>
-                    
+
                     <div v-if="isStripeLoaded">
                         <label>Name on Card</label>
-                        <input type="text" id="cardName" class="input-field"/>
+                        <input type="text" id="cardName" class="input-field" />
 
                         <label>Card Number</label>
                         <div id="cardNumber" class="input-field"></div>
@@ -287,7 +288,7 @@
                         formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                         eventDetails.Venue
-                        }}
+                    }}
                     </p>
 
                     <hr>
@@ -334,16 +335,17 @@ export default {
     data() {
         return {
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
+            stripePublishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
             eventId: 0,
             eventImage: "../assets/carousel/eventiva_carousel1.png",
 
             previousStep: "browsing event",
-            steps: ["Ticket selection", "Confirmation", "Payment", "Complete"], 
-            currentStep: 0, 
+            steps: ["Ticket selection", "Confirmation", "Payment", "Complete"],
+            currentStep: 0,
 
-            selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }], 
-            selectedDate: '', 
-            selectedDateId: '', 
+            selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }],
+            selectedDate: '',
+            selectedDateId: '',
 
             cardName: '',
             cardNumber: '',
@@ -355,7 +357,7 @@ export default {
             cardNumberElement: null,
             cardExpiryElement: null,
             cardCvcElement: null,
-            isStripeLoaded: false, 
+            isStripeLoaded: false,
 
             formattedDate: "",
             eventDetails: [],
@@ -368,7 +370,7 @@ export default {
         }
     },
     computed: {
-        selectedDate(){
+        selectedDate() {
             return this.eventDates.find(dateObj => dateObj.dateId === this.selectedDateId);
         },
         isAddDisabled() {
@@ -443,10 +445,10 @@ export default {
         nextStep() {
             if (this.currentStep < this.steps.length - 1) {
                 this.currentStep++;
-                
-                if (this.currentStep == 2){
+
+                if (this.currentStep == 2) {
                     this.elements = this.stripe.elements();
-                    this.isStripeLoaded = true; 
+                    this.isStripeLoaded = true;
 
                     // Wait until the DOM updates
                     this.$nextTick(() => {
@@ -512,13 +514,14 @@ export default {
         formatTimeRange(startTime, endTime) {
             const options = { hour: "numeric", minute: "numeric", hour12: true };
 
-            const start = new Date(`1970-01-01T${startTime}Z`).toLocaleTimeString(
-                "en-US",
-                options
+            // Parse and format start time
+            const start = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${startTime}`)
             );
-            const end = new Date(`1970-01-01T${endTime}Z`).toLocaleTimeString(
-                "en-US",
-                options
+
+            // Parse and format end time
+            const end = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${endTime}`)
             );
 
             return `${start} - ${end}`;
@@ -535,12 +538,12 @@ export default {
             return formattedDate;
         },
         async processPayment() {
-            
-            console.log(this.selectedTickets);
-            
+
+            // console.log(this.selectedTickets);
+
             try {
                 const paymentData = {
-                    user_id: this.user.id, 
+                    user_id: this.user.id,
                     EventId: this.eventId,
                     EventDateId: 33,
                     ticket_quantity: 1,
@@ -577,27 +580,27 @@ export default {
                 this.processPayment();
             }
         },
-        async getDates(){
+        async getDates() {
             try {
                 const response = await axios.get(`${this.apiGatewayUrl}/events/${this.eventId}`);
                 console.log(response.data.Event);
 
-                for(let info of response.data.Event){
+                for (let info of response.data.Event) {
                     var formattedDate = this.formatDate(info.Date);
-                    this.eventDates.push({'dateId':info.EventDateId, 'date':formattedDate})
+                    this.eventDates.push({ 'dateId': info.EventDateId, 'date': formattedDate })
                 }
 
             } catch (error) {
                 console.error('Error fetching events:', error);
             }
         },
-        async showCategories(){
+        async showCategories() {
             try {
                 const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${this.selectedDateId}/categories`);
                 console.log(response.data.Cats);
 
-                for(let info of response.data.Cats){
-                    this.eventCategories.push({'Cat':info.Cat, 'CatId':info.Id, 'Price': info.Price, 'AvailableTickets': info.AvailableTickets})
+                for (let info of response.data.Cats) {
+                    this.eventCategories.push({ 'Cat': info.Cat, 'CatId': info.Id, 'Price': info.Price, 'AvailableTickets': info.AvailableTickets })
                 }
 
             } catch (error) {
@@ -620,7 +623,7 @@ export default {
             this.user = userData;
         }
 
-        this.stripe = await loadStripe('pk_test_51R3Dww05deM4tavvz7Q7gDDNooW50nHdhee9edRGd3r94J7TAXdpvipC8YDl7sXKBThyh7Y4pYiMvGkPWKGd6h6L00go3sXQ8V');
+        this.stripe = await loadStripe(this.stripePublishableKey);
         if (!this.stripe) {
             console.error("Stripe failed to load.");
             return;
