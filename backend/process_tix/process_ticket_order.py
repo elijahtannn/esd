@@ -78,6 +78,20 @@ def check_event_inventory(event_id, event_date_id, ticket_quantity):
     except Exception as e:
         return False, f"Error checking inventory: {str(e)}", None, None
 
+def fetch_category_price(event_date_id, cat_id):
+    try:
+        url = f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/categories"
+        response = requests.get(url, timeout=10)
+        if response.status_code != 200:
+            raise Exception(f"Failed to fetch category data, status code: {response.status_code}")
+        data = response.json()
+        for cat in data.get("Cats", []):
+            if cat.get("Id") == cat_id:
+                return cat.get("Price")
+        raise Exception("Category not found")
+    except Exception as e:
+        raise Exception(f"Failed to fetch price: {str(e)}")
+
 logging.basicConfig(level=logging.INFO)
 
 @app.route("/process_ticket_order", methods=["POST"])
@@ -88,11 +102,10 @@ def process_ticket_order():
         event_id = data.get("EventId")
         event_date_id = data.get("EventDateId")
         ticket_quantity = data.get("ticket_quantity")
-        ticket_price = data.get("ticket_price")
         seat_info = data.get("seat_info", "General Admission")
         cat_id = data.get("cat_id", 1)
 
-        if not all([user_id, event_id, event_date_id, ticket_quantity, ticket_price]):
+        if not all([user_id, event_id, event_date_id, ticket_quantity, cat_id]):
             return jsonify({"error": "Missing required fields"}), 400
 
         user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
@@ -103,6 +116,8 @@ def process_ticket_order():
         inventory_available, event_name, event_date, venue = check_event_inventory(event_id, event_date_id, ticket_quantity)
         if not inventory_available:
             return jsonify({"error": event_name}), 400
+
+        ticket_price = fetch_category_price(event_date_id, cat_id)
 
         reserve_data = {
             "event_date_id": event_date_id,
