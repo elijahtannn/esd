@@ -109,10 +109,14 @@ def generate_qr_code_url(ticket_id):
     qr_url = f"{base_url}?data={requests.utils.quote(qr_content)}&size=200x200"
     return qr_url
 
-def generate_random_seat_info():
-    row = random.choice(string.ascii_uppercase)
-    seat = random.randint(1, 50)
-    return f"Row {row}, Seat {seat}"
+def generate_unique_seat(existing_seats):
+    while True:
+        row = random.choice(string.ascii_uppercase)
+        seat = random.randint(1, 50)
+        seat_info = f"Row {row}, Seat {seat}"
+        if seat_info not in existing_seats:
+            existing_seats.add(seat_info)
+            return seat_info
 
 logging.basicConfig(level=logging.INFO)
 
@@ -136,6 +140,7 @@ def process_ticket_order():
         total_amount = 0
         all_reserved_ticket_ids = []
         all_qr_codes = []
+        assigned_seats = set()
 
         for item in ticket_arr:
             cat_id = item.get("catId")
@@ -151,26 +156,23 @@ def process_ticket_order():
 
             update_available_tickets(event_date_id, -quantity)
 
-            seat_info = generate_random_seat_info()
-
-            reserve_data = {
-                "event_date_id": event_date_id,
-                "cat_id": cat_id,
-                "owner_id": user_id,
-                "seat_info": seat_info,
-                "num_tickets": quantity
-            }
-            reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
-
-            try:
+            reserved_ticket_ids = []
+            for _ in range(quantity):
+                seat_info = generate_unique_seat(assigned_seats)
+                reserve_data = {
+                    "event_date_id": event_date_id,
+                    "cat_id": cat_id,
+                    "owner_id": user_id,
+                    "seat_info": seat_info,
+                    "num_tickets": 1
+                }
+                reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
                 reserve_result = reserve_resp.json()
-                reserved_ticket_ids = reserve_result.get("ticket_ids", [])
-                if not reserved_ticket_ids:
-                    update_available_tickets(event_date_id, quantity)
-                    return jsonify({"error": "No ticket IDs returned", "details": reserve_result}), 400
-            except Exception as e:
-                update_available_tickets(event_date_id, quantity)
-                return jsonify({"error": "Failed to parse ticket reservation response", "details": str(e)}), 400
+                ids = reserve_result.get("ticket_ids", [])
+                if not ids:
+                    update_available_tickets(event_date_id, 1)
+                    return jsonify({"error": "Reservation failed for one ticket", "details": reserve_result}), 400
+                reserved_ticket_ids.extend(ids)
 
             for ticket_id in reserved_ticket_ids:
                 qr_url = generate_qr_code_url(ticket_id)
