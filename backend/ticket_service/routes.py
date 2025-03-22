@@ -1,49 +1,93 @@
 from flask import Blueprint, request, jsonify
 from models import get_ticket_collection, Ticket
 from bson.objectid import ObjectId
-from datetime import datetime
+from datetime import datetime, timedelta
+import threading
+
 
 ticket_bp = Blueprint('ticket_bp', __name__)
 
+# Helper: Release reserved ticket and delete if unconfirmed
+
+def release_ticket_after_delay(ticket_ids, delay_seconds=180):
+    def release():
+        ticket_collection = get_ticket_collection()
+        now = datetime.utcnow()
+        expired_time = now - timedelta(seconds=delay_seconds)
+        result = ticket_collection.delete_many({
+            "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
+            "status": "reserved",
+            "created_at": {"$lt": expired_time}
+        })
+        print(f"[Timer] Released and deleted {result.deleted_count} unconfirmed reserved ticket(s)")
+
+    timer = threading.Timer(delay_seconds, release)
+    timer.start()
+
+@ticket_bp.route('/tickets/release', methods=['POST'])
+def release_tickets():
+    data = request.json
+    ticket_ids = data.get("ticket_ids")
+    owner_id = data.get("owner_id")
+
+    if not ticket_ids or not owner_id:
+        return jsonify({"error": "Missing ticket_ids or owner_id"}), 400
+
+    result = get_ticket_collection().delete_many({
+        "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
+        "owner_id": owner_id,
+        "status": "reserved"
+    })
+
+    return jsonify({
+        "message": f"Released and deleted {result.deleted_count} reserved ticket(s)",
+        "ticket_ids": ticket_ids
+    }), 200
+
+# Trigger the timer automatically in your reserve route
 @ticket_bp.route('/tickets/reserve', methods=['POST'])
 def create_tickets():
-    """ Create one or more tickets in a single request """
     data = request.json
     required_fields = ["event_date_id", "cat_id", "owner_id", "seat_info"]
-    
-    # Ensure all required fields are present
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
     try:
-        # Default to 1 if num_tickets is not provided
-        num_tickets = int(data.get("num_tickets", 1))  
+        num_tickets = int(data.get("num_tickets", 1))
         if num_tickets <= 0:
             return jsonify({"error": "Number of tickets must be at least 1"}), 400
 
         tickets = []
+        now = datetime.utcnow()
         for _ in range(num_tickets):
-            new_ticket = Ticket(
-                event_date_id=int(data["event_date_id"]),  # Ensure integer
-                cat_id=int(data["cat_id"]),  # Ensure integer
-                owner_id=data["owner_id"],  # MongoDB ObjectId for user
-                seat_info=data["seat_info"],  # Same seat info for all (can be modified later)
-                status="reserved",  # Initial status
+            ticket_dict = Ticket(
+                event_date_id=int(data["event_date_id"]),
+                cat_id=int(data["cat_id"]),
+                owner_id=data["owner_id"],
+                seat_info=data["seat_info"],
+                status="reserved",
                 is_transferable=data.get("is_transferable", True),
                 qr_code=data.get("qr_code", "")
-            )
-            tickets.append(new_ticket.to_dict())
+            ).to_dict()
+            ticket_dict["created_at"] = now
+            ticket_dict["updated_at"] = now
+            tickets.append(ticket_dict)
 
-        # Insert all tickets in one operation for efficiency
         result = get_ticket_collection().insert_many(tickets)
+        inserted_ids = [str(ticket_id) for ticket_id in result.inserted_ids]
+
+        # Set timer to release if not confirmed in 3 minutes
+        release_ticket_after_delay(inserted_ids)
 
         return jsonify({
             "message": f"{num_tickets} ticket(s) reserved successfully",
-            "ticket_ids": [str(ticket_id) for ticket_id in result.inserted_ids]
+            "ticket_ids": inserted_ids
         }), 201
 
     except ValueError:
         return jsonify({"error": "Invalid data format"}), 400
+
+
 
 @ticket_bp.route('/tickets/confirm', methods=['PUT'])
 def confirm_ticket_purchase():
@@ -166,3 +210,21 @@ def check_ticket_transfer_eligibility():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+    
+@ticket_bp.route('/tickets/<string:ticket_id>/update_qr', methods=['PUT'])
+def update_ticket_qr(ticket_id):
+    data = request.json
+    qr_code = data.get("qr_code")
+
+    if not qr_code:
+        return jsonify({"error": "Missing qr_code"}), 400
+
+    result = get_ticket_collection().update_one(
+        {"_id": ObjectId(ticket_id)},
+        {"$set": {"qr_code": qr_code, "updated_at": datetime.utcnow()}}
+    )
+
+    if result.matched_count == 0:
+        return jsonify({"error": "Ticket not found"}), 404
+
+    return jsonify({"message": "QR code updated successfully"}), 200
