@@ -27,25 +27,35 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Make sure your .env file cont
 def process_payment():
     data = request.json
     try:
-        # Validate Input
         required_fields = ["user_id", "amount", "payment_token"]
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
 
-        # Stripe Payment Processing
+        # ✅ Use the token to create a charge
         charge = stripe.Charge.create(
-            amount=int(data["amount"] * 100),  # Convert to cents
+            amount=int(data["amount"] * 100),  # cents
             currency="usd",
-            source=data["payment_token"],  # Stripe Payment Token from frontend
+            source=data["payment_token"],
             description=f"Payment for user {data['user_id']}"
         )
 
-        # Store Payment Record in MongoDB
+        # ✅ Extract card details from the charge object
+        card = charge["payment_method_details"]["card"]
+        card_info = {
+            "brand": card.get("brand"),
+            "last4": card.get("last4"),
+            "exp_month": card.get("exp_month"),
+            "exp_year": card.get("exp_year"),
+            "fingerprint": card.get("fingerprint")
+        }
+
+        # ✅ Store in MongoDB
         payment_record = {
             "user_id": data["user_id"],
             "amount": data["amount"],
             "payment_id": charge["id"],
             "status": "SUCCESS" if charge["paid"] else "FAILED",
+            "card_info": card_info,
             "createdAt": datetime.utcnow()
         }
         payments_collection.insert_one(payment_record)
@@ -54,11 +64,18 @@ def process_payment():
             "message": "Payment successful",
             "transaction_id": charge["id"],
             "amount": data["amount"],
-            "status": "SUCCESS"
+            "status": "SUCCESS",
+            "card": {
+                "brand": card["brand"],
+                "last4": card["last4"],
+                "exp_month": card["exp_month"],
+                "exp_year": card["exp_year"]
+            }
         }), 201
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
+
 
 
 # 🔹 **Process Refund**
@@ -97,13 +114,6 @@ def process_refund():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
-
-# ✅ Health Check API
-@app.route("/health", methods=["GET"])
-def health_check():
-    return jsonify({"status": "OK", "message": "Payment Service is running"}), 200
-
 
 # ✅ Run Flask App
 if __name__ == "__main__":
