@@ -73,19 +73,21 @@
             <!-- selections -->
             <div class="col">
 
+
+
                 <!-- date input -->
                 <label for="date" class="input-label">Date</label>
                 <div class="input-container">
-                    <select v-model="selectedDate" id="eventDate" class="input-field" style="width: fit-content;">
+                    <select v-model="selectedDateId" id="eventDate" class="input-field" style="width: fit-content;" @change="showCategories()">
                         <option disabled value="">Select a date</option>
-                        <option v-for="date in listDates" :key="date.value" :value="date.value">
-                            {{ date.label }}
+                        <option v-for="date in eventDates" :key="date.dateId" :value="date.dateId">
+                            {{ date.date }}
                         </option>
                     </select>
                 </div>
 
                 <!-- Selecting ticket types and their quantity -->
-                <div class="row">
+                <div class="row" v-if="selectedDateId != ''">
 
                     <!-- Render all ticket types dynamically -->
                     <div>
@@ -134,9 +136,7 @@
             <div class="col"></div>
 
             <div class="row ps-4 pt-5">
-                <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep"
-                    :disabled="!isStep1Valid || currentStep === steps.length - 1"
-                    :class="{ disabledButton: !isStep1Valid }">
+                <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep">
                     Next Step
                 </button>
             </div>
@@ -182,7 +182,7 @@
                     <div class="selectedEventDetails">
                         <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                         <p><i class="bi bi-calendar-week-fill"
-                                style="padding-right: 10px; color:var(--main-blue);"></i>{{ formatDate(selectedDate) }}
+                                style="padding-right: 10px; color:var(--main-blue);"></i>{{ selectedDate.date }}
                         </p>
                         <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                             formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
@@ -199,36 +199,31 @@
         <div class="row p-5" v-if="currentStep == 2">
 
             <div class="col">
-                <!-- Name input -->
-                <label for="cardName" class="input-label">Name on Card</label>
-                <input type="text" id="cardName" class="input-field" required v-model="cardName"
-                    style="width: fit-content;" placeholder="Enter your name" />
 
-                <!-- Card Number input -->
-                <label for="cardNumber" class="input-label mt-3">Card Number</label>
-                <input type="text" id="cardNumber" class="input-field" required v-model="cardNumber"
-                    style="width: fit-content;" placeholder="XXXX XXXX XXXX XXXX" />
+                <div>
+                    
+                    <div v-if="isStripeLoaded">
+                        <label>Name on Card</label>
+                        <input type="text" id="cardName" class="input-field"/>
 
-                <!-- Card Expiry input -->
-                <label for="cardExpiry" class="input-label mt-3">Expiry Date (MM/YY)</label>
-                <input type="text" id="cardExpiry" class="input-field" required maxlength="5" v-model="cardExpiry"
-                    style="width: fit-content;" placeholder="MM/YY" pattern="(0[1-9]|1[0-2])\/[0-9]{2}" />
+                        <label>Card Number</label>
+                        <div id="cardNumber" class="input-field"></div>
 
-                <!-- Card CVV input -->
-                <label for="cardCVV" class="input-label mt-3">CVV</label>
-                <input type="text" id="cardCVV" class="input-field" required maxlength="3" v-model="cardCVV"
-                    style="width: fit-content;" placeholder="XXX" />
+                        <label>Expiry Date</label>
+                        <div id="cardExpiry" class="input-field"></div>
 
+                        <label>CVC</label>
+                        <div id="cardCvc" class="input-field"></div>
+                    </div>
+
+                    <p v-else>Loading payment form...</p>
+                </div>
 
                 <br>
                 <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px; margin-top: 30px;"
-                    @click="nextStep" :disabled="!isPaymentValid" :class="{ disabledButton: !isPaymentValid }">
+                    @click="getToken">
                     Confirm Payment
                 </button>
-                <!-- <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px; margin-top: 30px;"
-                    @click="nextStep" :disabled="!isPaymentValid" :class="{ disabledButton: !isPaymentValid }">
-                    Confirm Payment
-                </button> -->
             </div>
 
             <div class="col d-flex justify-content-end">
@@ -236,7 +231,7 @@
                     <!-- Selected event details -->
                     <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                     <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                        formatDate(selectedDate) }}</p>
+                        selectedDate.date }}</p>
                     <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                         formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
@@ -287,7 +282,7 @@
                     <!-- Selected event details -->
                     <h5 style="color:var(--main-blue); text-transform: uppercase;">Selected event details</h5>
                     <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                        formatDate(selectedDate) }}</p>
+                        selectedDate.date }}</p>
                     <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                         formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
@@ -329,6 +324,8 @@ import NavBar from "../components/nav-bar.vue";
 import axios, { formToJSON } from 'axios';
 import { auth } from '../stores/auth';
 
+import { loadStripe } from '@stripe/stripe-js';
+
 export default {
     name: 'checkout',
     components: {
@@ -338,72 +335,62 @@ export default {
         return {
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             eventId: 0,
-
             eventImage: "../assets/carousel/eventiva_carousel1.png",
 
             previousStep: "browsing event",
-            steps: ["Ticket selection", "Confirmation", "Payment", "Complete"], // Timeline steps
-            currentStep: 0, // Tracks the current step
+            steps: ["Ticket selection", "Confirmation", "Payment", "Complete"], 
+            currentStep: 0, 
 
-            selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }], // Default ticket structure
-            selectedDate: '', // Store the selected date
+            selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }], 
+            selectedDate: '', 
+            selectedDateId: '', 
 
             cardName: '',
             cardNumber: '',
             cardExpiry: '',
             cardCVV: '',
-            paymentToken: 'tok_visa',
+            paymentToken: '',
+            stripe: null,
+            elements: null,
+            cardNumberElement: null,
+            cardExpiryElement: null,
+            cardCvcElement: null,
+            isStripeLoaded: false, 
 
             formattedDate: "",
             eventDetails: [],
+            eventDates: [],
             eventCategories: [],
 
+            user: null,
 
-            user:null,
 
         }
     },
     computed: {
-        isStep1Valid() {
-            const hasValidDate =
-                this.selectedDate
-            const hasValidTickets = this.selectedTickets.every(
-                ticket => ticket.selectedType && ticket.quantity > 0
-            ); // Ensure each ticket has a type and quantity > 0
-            return hasValidDate && hasValidTickets;
+        selectedDate(){
+            return this.eventDates.find(dateObj => dateObj.dateId === this.selectedDateId);
         },
         isAddDisabled() {
             return this.selectedTickets.length >= this.eventCategories.length;
         },
         calculatedTickets() {
             return this.selectedTickets.map(ticket => {
-                // Find the selected ticket type in eventCategories
                 const selectedTicket = this.eventCategories.find(
                     catDetails => catDetails.Cat === ticket.selectedType
                 );
 
-                // Use the correct property name 'Price' instead of 'price'
                 const price = selectedTicket ? selectedTicket.Price : 0;
 
-                // Calculate subtotal based on quantity and price
                 const subtotal = price * ticket.quantity;
 
-                // Return a new object with updated price and subtotal
                 return { ...ticket, price, subtotal };
             });
         },
-        // Calculate grand total
         grandTotal() {
             return this.calculatedTickets.reduce((total, ticket) => total + ticket.subtotal, 0);
         },
-        isPaymentValid() {
-            return this.cardName.trim() !== '' &&
-                this.cardNumber.replace(/\s/g, '').length === 16 &&
-                /^(0[1-9]|1[0-2])\/[0-9]{2}$/.test(this.cardExpiry) &&
-                this.cardCVV.length === 3;
-        },
         listDates() {
-            // Format each date into "13 May 2024" format
             return this.eventDetails.dates.map((dateString) => {
                 const date = new Date(dateString);
                 const formatted = new Intl.DateTimeFormat("en-GB", {
@@ -441,25 +428,41 @@ export default {
             }
         },
         updateTicketPrice(index) {
-            // Find the selected category and update its price
             const selectedCategory = this.eventCategories.find(
                 (category) => category.Cat === this.selectedTickets[index].selectedType
             );
 
             if (selectedCategory) {
-                // Update the price based on the selected type and quantity
                 this.selectedTickets[index].price = selectedCategory.Price;
+                this.selectedTickets[index].catId = selectedCategory.CatId;
             }
         },
         removeTicketType(index) {
-            // Remove the selected ticket row at the given index
             this.selectedTickets.splice(index, 1);
         },
         nextStep() {
-            if (this.currentStep == this.steps.length - 1) {
-                this.processPayment();
-            }else if (this.currentStep < this.steps.length - 1) {
+            if (this.currentStep < this.steps.length - 1) {
                 this.currentStep++;
+                
+                if (this.currentStep == 2){
+                    this.elements = this.stripe.elements();
+                    this.isStripeLoaded = true; 
+
+                    // Wait until the DOM updates
+                    this.$nextTick(() => {
+                        if (document.getElementById('cardNumber')) {
+                            this.cardNumberElement = this.elements.create('cardNumber');
+                            this.cardExpiryElement = this.elements.create('cardExpiry');
+                            this.cardCvcElement = this.elements.create('cardCvc');
+
+                            this.cardNumberElement.mount('#cardNumber');
+                            this.cardExpiryElement.mount('#cardExpiry');
+                            this.cardCvcElement.mount('#cardCvc');
+                        } else {
+                            console.error("Card input fields are not found in the DOM.");
+                        }
+                    });
+                }
             }
         },
         prevStep() {
@@ -468,7 +471,6 @@ export default {
             }
         },
         formatDates(dates) {
-            // Convert ISO strings to Date objects and sort them
             const sortedDates = dates.map(date => new Date(date)).sort((a, b) => a - b);
 
             let formattedDates = [];
@@ -479,18 +481,15 @@ export default {
                 const currentDate = sortedDates[i];
                 const previousDate = sortedDates[i - 1];
 
-                // Check if currentDate is consecutive to previousDate
                 if ((currentDate - previousDate) / (1000 * 60 * 60 * 24) === 1) {
                     currentRangeEnd = currentDate;
                 } else {
-                    // Push the formatted range or single date to formattedDates
                     formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
                     currentRangeStart = currentDate;
                     currentRangeEnd = currentDate;
                 }
             }
 
-            // Push the last range or single date
             formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
 
             this.formattedDate = formattedDates.join(", ");
@@ -508,13 +507,11 @@ export default {
                 return `${startDate.getDate()}-${endDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`;
             }
 
-            // If they span different months, display full range
             return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })} - ${endDate.getDate()} ${endDate.toLocaleString("en-US", { month: "short" })}`;
         },
         formatTimeRange(startTime, endTime) {
             const options = { hour: "numeric", minute: "numeric", hour12: true };
 
-            // Convert the time strings into Date objects
             const start = new Date(`1970-01-01T${startTime}Z`).toLocaleTimeString(
                 "en-US",
                 options
@@ -527,10 +524,8 @@ export default {
             return `${start} - ${end}`;
         },
         formatDate(dateString) {
-            // Convert the ISO date string to a Date object
             const date = new Date(dateString);
 
-            // Use Intl.DateTimeFormat to format the date
             const formattedDate = new Intl.DateTimeFormat("en-GB", {
                 day: "2-digit",
                 month: "long",
@@ -540,48 +535,97 @@ export default {
             return formattedDate;
         },
         async processPayment() {
-            console.log(this.user.id);
+            
+            console.log(this.selectedTickets);
+            
             try {
-                // Prepare the data payload
                 const paymentData = {
-                    user_id: this.user.id, // Replace with the actual user ID
-                    amount: this.grandTotal, // Use grand total as the payment amount
-                    payment_token: this.paymentToken, // Replace with your payment token
+                    user_id: this.user.id, 
+                    EventId: this.eventId,
+                    EventDateId: 33,
+                    ticket_quantity: 1,
+                    cat_id: 12,
+                    payment_token: this.paymentToken,
+                    seat_info: "Section A, Row 3",
                 };
 
-                // Send POST request to the Flask API
-                const response = await axios.post(`${this.apiGatewayUrl}/payments/process`, paymentData, {
+                const response = await axios.post(`http://localhost:8080/process_ticket_order`, paymentData, {
                     headers: {
                         "Content-Type": "application/json",
                     },
                 });
 
-                // Handle successful response
                 console.log("Payment Response:", response.data);
-                alert("Payment successful! Transaction ID: " + response.data.transaction_id);
                 this.currentStep++;
-                // cue trigger to process new order composite
             } catch (error) {
-                // Handle error response
                 console.error("Payment Error:", error.response?.data || error.message);
-                alert("Payment failed! " + (error.response?.data.error || error.message));
+            }
+        },
+        async getToken() {
+            if (!this.cardNumberElement) {
+                console.error("Card element not initialized.");
+                return;
+            }
+
+            const { token, error } = await this.stripe.createToken(this.cardNumberElement);
+
+            if (error) {
+                console.error(error.message);
+            } else {
+                console.log('Token:', token.id);
+                this.paymentToken = token.id;
+                this.processPayment();
+            }
+        },
+        async getDates(){
+            try {
+                const response = await axios.get(`${this.apiGatewayUrl}/events/${this.eventId}`);
+                console.log(response.data.Event);
+
+                for(let info of response.data.Event){
+                    var formattedDate = this.formatDate(info.Date);
+                    this.eventDates.push({'dateId':info.EventDateId, 'date':formattedDate})
+                }
+
+            } catch (error) {
+                console.error('Error fetching events:', error);
+            }
+        },
+        async showCategories(){
+            try {
+                const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${this.selectedDateId}/categories`);
+                console.log(response.data.Cats);
+
+                for(let info of response.data.Cats){
+                    this.eventCategories.push({'Cat':info.Cat, 'CatId':info.Id, 'Price': info.Price, 'AvailableTickets': info.AvailableTickets})
+                }
+
+            } catch (error) {
+                console.error('Error fetching events:', error);
             }
         },
 
     },
     created() {
-        this.eventId = this.$route.query.eventId;
+        this.eventId = Number(this.$route.query.eventId);
         this.eventDetails = JSON.parse(this.$route.query.eventDetails);
-        this.eventCategories = JSON.parse(this.$route.query.eventCategories);
 
+        this.getDates();
         this.formatDates(this.eventDetails.dates);
     },
-    mounted() {
+    async mounted() {
 
         const userData = auth.getUser();
         if (userData) {
             this.user = userData;
         }
+
+        this.stripe = await loadStripe('pk_test_51R3Dww05deM4tavvz7Q7gDDNooW50nHdhee9edRGd3r94J7TAXdpvipC8YDl7sXKBThyh7Y4pYiMvGkPWKGd6h6L00go3sXQ8V');
+        if (!this.stripe) {
+            console.error("Stripe failed to load.");
+            return;
+        }
+
     }
 }
 </script>
@@ -700,5 +744,14 @@ export default {
     padding: 30px;
     width: fit-content;
     top: 0;
+}
+
+
+.paymentInputs {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    /* font-size: 14px; */
 }
 </style>
