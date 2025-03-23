@@ -28,14 +28,14 @@ services:
 
   # Order Service
   - name: order-service
-    url: http://host.docker.internal:8000
+    url: http://order-service:8003
     routes:
       - name: order-route
         paths:
           - /orders
-          - /orders/(.*)
+          - /orders/user/(.*)
           - /orders/transfer
-          - /health
+          - /orders/(\d+)
         strip_path: false
 
   # Payment Service

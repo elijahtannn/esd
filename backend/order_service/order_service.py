@@ -35,10 +35,20 @@ def get_next_order_id():
 ### Get Orders by User ID
 @app.route("/orders/user/<string:user_id>", methods=["GET"])
 def get_orders_by_user(user_id):
-    orders = list(orders_collection.find({"userId": user_id}))
-    for order in orders:
-        order["_id"] = str(order["_id"])
-    return jsonify(orders)
+    try:
+        # Add print statements for debugging
+        print(f"Attempting to fetch orders for user: {user_id}")
+        
+        orders = list(orders_collection.find({"userId": user_id}))
+        print(f"Found {len(orders)} orders")
+        
+        for order in orders:
+            order["_id"] = str(order["_id"])
+        
+        return jsonify(orders)
+    except Exception as e:
+        print(f"Error fetching orders: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 ### Create a New Order (Atomic Microservice)
 @app.route("/orders", methods=["POST"])
@@ -166,6 +176,17 @@ def transfer_ticket():
         "createdAt": transfer_order["createdAt"].isoformat()
     }), 201
 
+# Add a simple health check endpoint
+@app.route("/health", methods=["GET"])
+def health_check():
+    try:
+        # Test MongoDB connection
+        mongo.db.command('ping')
+        return jsonify({"status": "healthy", "message": "Service is running and connected to MongoDB"}), 200
+    except Exception as e:
+        return jsonify({"status": "unhealthy", "message": str(e)}), 500
+
+
 # Run Flask App
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug=True)
+    app.run(host="0.0.0.0", port=8003, debug=True)
