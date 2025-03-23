@@ -76,7 +76,8 @@
                                     <!-- QR cards -->
                                     <br>
                                     <div class="qr-cards">
-                                        <div class="qr-card">
+                                        <!-- DEBUGGING -->
+                                        <div class="qr-card"v-for="ticket in order.ticketIds" :key="ticket._id">
                                             <!-- Three-dot menu -->
                                             <div class="menu-container">
                                                 <span class="menu-icon" @click="toggleMenu">
@@ -94,11 +95,10 @@
                                             <!-- TICKET ON HOLD TEXT -->
                                             <div v-else class="ticket-status">
                                                 <p style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;"><strong>ON HOLD:</strong> {{ ticketStatus }}</p>
-                                            </div>                                    
-                                            <p>#101</p>
-                                            <p>Type: Category 1</p>
-                                            <p>Price: $80</p>
-                                            <p>Seat: #88</p>
+                                            </div>                                   
+                                            <p>#{{ ticket }}</p>
+                                            <p>Type: Category{{ ticket.cat_id}}</p>
+                                            <p>Seat: #{{ ticket.seat_info }}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -217,6 +217,7 @@ export default {
             ticketStatus: "",
             orderList:[],
             eventList:[],
+            ticketList:[],
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL
         }
     },
@@ -224,7 +225,10 @@ export default {
         const userData = auth.getUser();
         if (userData) {
             this.user = userData;
-            this.fetchOrders();
+            this.fetchOrders().then(() => {
+            console.log("Order List After Fetching Orders:", this.orderList); // Debugging
+            this.fetchTickets();
+        });
         }
     },
     methods: {
@@ -235,15 +239,17 @@ export default {
         async fetchOrders() {
             try {
                 const userId = "67d44330971f398f904f8c34";
-                const response = await axios.get(`http://127.0.0.1:8000/orders/user/${userId}`);
+                const response = await axios.get(`${this.apiGatewayUrl}/orders/user/${userId}`);
                 const rawOrders = response.data;
-                console.log("Raw API response:", rawOrders);
+                console.log("Raw Order response:", rawOrders);
                 this.processOrders(rawOrders);
             } catch (error) {
                 console.error('Error fetching orders:', error);
             }
         },
+
         processOrders(rawOrders) {
+            console.log("Processing Order", rawOrders)
             this.orderList = rawOrders.map(order => ({
                 OrderId: order.orderId,
                 TicketQuantity: order.ticketIds?.length || 0,
@@ -252,9 +258,36 @@ export default {
                 EventName: order.eventName,
                 Venue: order.venue,
                 EventDate: order.eventDate,
-                isExpanded: false
+                isExpanded: false,
+                ticketIds: order.ticketIds,
+                tickets:[],
             }));
+            console.log("Processed Order List:", this.orderList); 
         },
+        
+        async fetchTickets() {
+            try {
+                const response = await axios.get(`http://127.0.0.1:5001/tickets`);
+                const rawTickets = response.data;
+                console.log("Raw Ticket Data:", rawTickets);
+                // Debugging
+                this.processTickets(rawTickets); // Ensure this line exists
+            } catch (error) {
+                console.error('Error fetching tickets:', error);
+            }
+        },
+
+        processTickets(rawTickets) {
+            console.log("PROCESSTICKETS FUNCTION:", rawTickets); // Debugging
+            console.log("Order List Before Processing Tickets:", this.orderList); // Debugging
+            this.orderList.forEach(order => {
+                order.tickets = rawTickets.filter(ticket => order.ticketIds.includes(ticket._id));
+                console.log(`Order ${order.OrderId} tickets:`, order.tickets); // Debugging
+            });
+        },
+
+
+
         formatDates(dates) {
             if (!dates) return '';
             return new Date(dates).toLocaleDateString('en-US', {
@@ -471,15 +504,18 @@ button {
 /* QR CODE RELATED */
 .qr-cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    width: 50%;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Match card width */
+    gap: 16px; /* Add spacing between cards */
+    width: 100%; /* Use full width for better responsiveness */
+    margin: auto; /* Center the grid */
+    justify-items: start; /* Align items to the left */
 }
 
 .qr-image {
   display: block; /* Makes the image a block element */
   margin-left: auto; /* Centers image horizontally */
   margin-right: auto; /* Centers image horizontally */
-  width: 250px; /* Adjust size for better fit */
+  max-width: 100%; /* Adjust size for better fit */
   height: auto; /* Maintain aspect ratio */
 }
 
@@ -496,7 +532,8 @@ button {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 300px;
+    width: 100%; /* Make card width responsive */
+    max-width: 300px; /* Set maximum width */
 }
 
 .menu-container {
