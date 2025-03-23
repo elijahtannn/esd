@@ -19,7 +19,7 @@ services:
     volumes:
       - .:/app
     networks:
-      transfer_service_network:
+      esd_network:
         aliases:
           - transfer-service
     healthcheck:
@@ -29,5 +29,5 @@ services:
       retries: 3
 
 networks:
-  transfer_service_network:
+  esd_network:
     external: true

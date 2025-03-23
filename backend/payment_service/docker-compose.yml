@@ -20,7 +20,7 @@ services:
     volumes:
       - .:/app
     networks:
-      user_service_network:
+      esd_network:
         aliases:
           - payment-service
     healthcheck:
@@ -30,5 +30,5 @@ services:
       retries: 3
 
 networks:
-  user_service_network:
+  esd_network:
     external: true

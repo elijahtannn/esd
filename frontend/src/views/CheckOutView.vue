@@ -464,6 +464,9 @@ export default {
                             console.error("Card input fields are not found in the DOM.");
                         }
                     });
+                }else if(this.currentStep == 1){
+                    // create ticket and change ticket status to reserved 
+                    this.reserveTicket();
                 }
             }
         },
@@ -545,11 +548,9 @@ export default {
                 const paymentData = {
                     user_id: this.user.id,
                     EventId: this.eventId,
-                    EventDateId: 33,
-                    ticket_quantity: 1,
-                    cat_id: 12,
+                    EventDateId: this.selectedDateId,
                     payment_token: this.paymentToken,
-                    seat_info: "Section A, Row 3",
+                    ticketArr: this.selectedTickets,
                 };
 
                 const response = await axios.post(`http://localhost:8080/process_ticket_order`, paymentData, {
@@ -598,16 +599,37 @@ export default {
             try {
                 const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${this.selectedDateId}/categories`);
                 console.log(response.data.Cats);
-
+                
                 for (let info of response.data.Cats) {
                     this.eventCategories.push({ 'Cat': info.Cat, 'CatId': info.Id, 'Price': info.Price, 'AvailableTickets': info.AvailableTickets })
                 }
+                
+            } catch (error) {
+                console.error('Error fetching events:', error);
+            }
+        },
+        async reserveTicket() {
+            console.log("test");
+            try {
+                const ticketsData = {
+                    selectedTickets: this.selectedTickets,
+                    selectedDateId: this.selectedDateId,
+                    selectedEventId: this.eventId,
+                    userId: this.user.id,
+                };
+                const response = await axios.post(`http://localhost:8006/reserve_ticket`, ticketsData, {
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                });
+                console.log(response.data);
 
             } catch (error) {
                 console.error('Error fetching events:', error);
             }
         },
 
+        
     },
     created() {
         this.eventId = Number(this.$route.query.eventId);
