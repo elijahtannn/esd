@@ -15,19 +15,19 @@ services:
       - FLASK_APP=transfer.py
       - FLASK_ENV=development
     ports:
-      - "5003:5003"
+      - "8005:8005"
     volumes:
       - .:/app
     networks:
-      user_service_network:
+      transfer_service_network:
         aliases:
           - transfer-service
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5001/user/email/test@example.com"]
+      test: ["CMD", "curl", "-f", "http://localhost:8005/user/email/test@example.com"]
       interval: 30s
       timeout: 10s
       retries: 3
 
 networks:
-  user_service_network:
+  transfer_service_network:
     external: true

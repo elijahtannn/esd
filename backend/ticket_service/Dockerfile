@@ -10,4 +10,6 @@ COPY . .
 ENV FLASK_APP=ticket_service.py
 ENV FLASK_ENV=development
 
+EXPOSE 5001
+
 CMD ["flask", "run", "--host=0.0.0.0"] 

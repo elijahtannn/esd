@@ -15,19 +15,19 @@ services:
       - FLASK_APP=ticket_service.py
       - FLASK_ENV=development
     ports:
-      - "5002:5002"
+      - "5001:5001"
     volumes:
       - .:/app
     networks:
-      user_service_network:
+      ticket_service_network:
         aliases:
           - ticket-service
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5002/user/email/test@example.com"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/user/email/test@example.com"]
       interval: 30s
       timeout: 10s
       retries: 3
 
 networks:
-  user_service_network:
+  ticket_service_network:
     external: true

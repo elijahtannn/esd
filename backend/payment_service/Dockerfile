@@ -10,4 +10,6 @@ COPY . .
 ENV FLASK_APP=payment_service.py
 ENV FLASK_ENV=development
 
+EXPOSE 8002
+
 CMD ["flask", "run", "--host=0.0.0.0"] 
