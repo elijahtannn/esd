@@ -10,4 +10,6 @@ COPY . .
 ENV FLASK_APP=transfer.py
 ENV FLASK_ENV=development
 
+EXPOSE 8005
+
 CMD ["flask", "run", "--host=0.0.0.0"] 

@@ -15,8 +15,8 @@ CORS(app)
 
 load_dotenv()
 # Service URLs
-PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://user-service:8002")
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://host.docker.internal:5001")
+PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8002")
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket_service:5001")
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5000")
 ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://user-service:8000")
