@@ -10,6 +10,7 @@ import logging
 import random
 import string
 import time
+from bson.objectid import ObjectId
 
 
 app = Flask(__name__)
@@ -80,8 +81,8 @@ def createTicket(user_id, event_date_id, cat_id, quantity):
 
     return ticketIds
 
-# Update event total available tickets
-def update_event_available_tickets(event_date_id, total_quantity):
+# decrease event total available tickets
+def decrease_event_available_tickets(event_date_id, total_quantity):
     try:
         response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/inventory/purchase", json={"Count": total_quantity})
         return response.status_code == 200
@@ -89,8 +90,8 @@ def update_event_available_tickets(event_date_id, total_quantity):
         print("Error updating available tickets:", str(e))
         return False
     
-# Update event cat available tickets 
-def update_cat_available_tickets(cat_id, total_quantity):
+# decrease event cat available tickets 
+def decrease_cat_available_tickets(cat_id, total_quantity):
     try:
         response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/categories/{cat_id}/inventory/purchase", json={"Count": total_quantity})
         return response.status_code == 200
@@ -123,13 +124,18 @@ def checkTicketStatus(all_reserved_ticket_ids):
     for ticketId in all_reserved_ticket_ids:
 
         try:
-            response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
-            ticketStatus = response.content['status']
+            ticket_id_object = ObjectId(ticketId)
+            response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id_object}")
+            # print("hereeeeeeeeeee", response.text)
+            responseData = json.loads(response.content.decode("utf-8-sig"))
+
+            print("returnignngg" , responseData)
+            ticketStatus = responseData['status']
 
             if ticketStatus != 'sold':
                 # Delete ticket if user did not buy the ticket within the time. Leave it untouched if user bought the ticket
                 response = requests.delete(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
-                print(response)
+                print(response.content)
             else:
                 # If one ticket has the sold status, all ticket will have the same status as it is in the same order
                 purchaseStatus = True
@@ -142,7 +148,23 @@ def checkTicketStatus(all_reserved_ticket_ids):
 # If user did not complete purchase within time frame: Revert back the event available ticket and cat available ticket
 def revertTicketQuantity(event_date_id, selected_tickets):
 
+    total_quantity = 0
+
+    for ticket in selected_tickets:
+        total_quantity+=ticket['quantity']
+
+        try:
+            response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/categories/{ticket['catId']}/inventory/resale", json={"Count": ticket['quantity']})
+        except Exception as e:
+            print("Error updating available tickets:", str(e))
+    try:
+        response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/inventory/resale", json={"Count": total_quantity})
+    except Exception as e:
+        print("Error updating available tickets:", str(e))   
+
+    
     return True
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -150,18 +172,18 @@ logging.basicConfig(level=logging.INFO)
 def process_ticket_reserve():
     try:
         data = request.json
-        user_id = data.get("userId")
-        selected_tickets = data.get("selectedTickets")
-        event_date_id = data.get("selectedDateId")
-        event_id = data.get("selectedEventId")
+        user_id = data["userId"]
+        selected_tickets = data["selectedTickets"]
+        event_date_id = data["selectedDateId"]
+        event_id = data["selectedEventId"]
         
         all_reserved_ticket_ids = []
         total_quantity = 0
 
         # Create tickets
         for item in selected_tickets:
-            cat_id = item.get("catId")
-            quantity = item.get("quantity")
+            cat_id = item["catId"]
+            quantity = item["quantity"]
 
             total_quantity += quantity
 
@@ -178,15 +200,15 @@ def process_ticket_reserve():
                 all_reserved_ticket_ids.extend(createdTickets)
 
                 # Update event cat available tickets
-                update_cat_available_tickets(cat_id, quantity)
+                decrease_cat_available_tickets(cat_id, quantity)
 
         # Update event total available tickets
-        update_event_available_tickets(event_date_id, total_quantity)
+        decrease_event_available_tickets(event_date_id, total_quantity)
 
         print("Reserved ticket while waiting for user to complete order purchase")
 
         # Wait for 3 minutes for user to complete order purchase
-        time.sleep(10) #will update this to 3 minutes: 180
+        time.sleep(5) #will update this to 3 minutes: 180
 
         purchaseStatus = checkTicketStatus(all_reserved_ticket_ids)
 

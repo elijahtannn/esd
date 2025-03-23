@@ -609,7 +609,12 @@ export default {
             }
         },
         async reserveTicket() {
-            console.log("test");
+
+            // for (let i = 0; i < this.selectedTickets.length; i++) {
+            //     const element = array[i];
+                
+            // }
+
             try {
                 const ticketsData = {
                     selectedTickets: this.selectedTickets,
