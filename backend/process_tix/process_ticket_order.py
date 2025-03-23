@@ -7,6 +7,8 @@ from flask_cors import CORS
 import pika
 import json
 import logging
+import random
+import string
 
 app = Flask(__name__)
 CORS(app)
@@ -92,6 +94,30 @@ def fetch_category_price(event_date_id, cat_id):
     except Exception as e:
         raise Exception(f"Failed to fetch price: {str(e)}")
 
+def update_available_tickets(event_date_id, quantity_delta):
+    try:
+        payload = {"event_date_id": event_date_id, "quantity_delta": quantity_delta}
+        response = requests.post(f"{EVENT_SERVICE_URL}/events/update_available_tickets", json=payload)
+        return response.status_code == 200
+    except Exception as e:
+        print("Error updating available tickets:", str(e))
+        return False
+
+def generate_qr_code_url(ticket_id):
+    base_url = "http://api.qrserver.com/v1/create-qr-code/"
+    qr_content = f"ticket:{ticket_id}"
+    qr_url = f"{base_url}?data={requests.utils.quote(qr_content)}&size=200x200"
+    return qr_url
+
+def generate_unique_seat(existing_seats):
+    while True:
+        row = random.choice(string.ascii_uppercase)
+        seat = random.randint(1, 50)
+        seat_info = f"Row {row}, Seat {seat}"
+        if seat_info not in existing_seats:
+            existing_seats.add(seat_info)
+            return seat_info
+
 logging.basicConfig(level=logging.INFO)
 
 @app.route("/process_ticket_order", methods=["POST"])
@@ -101,49 +127,74 @@ def process_ticket_order():
         user_id = data.get("user_id")
         event_id = data.get("EventId")
         event_date_id = data.get("EventDateId")
-        ticket_quantity = data.get("ticket_quantity")
-        seat_info = data.get("seat_info", "General Admission")
-        cat_id = data.get("cat_id", 1)
+        ticket_arr = data.get("ticketArr")
 
-        if not all([user_id, event_id, event_date_id, ticket_quantity, cat_id]):
-            return jsonify({"error": "Missing required fields"}), 400
+        if not all([user_id, event_id, event_date_id, ticket_arr]) or not isinstance(ticket_arr, list):
+            return jsonify({"error": "Missing or invalid fields"}), 400
 
         user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
         if user_resp.status_code != 200 or not user_resp.content:
             return jsonify({"error": "User not found", "details": user_resp.text}), 404
         user_email = user_resp.json().get("email")
 
-        inventory_available, event_name, event_date, venue = check_event_inventory(event_id, event_date_id, ticket_quantity)
-        if not inventory_available:
-            return jsonify({"error": event_name}), 400
+        total_amount = 0
+        all_reserved_ticket_ids = []
+        all_qr_codes = []
+        assigned_seats = set()
 
-        ticket_price = fetch_category_price(event_date_id, cat_id)
+        for item in ticket_arr:
+            cat_id = item.get("catId")
+            quantity = item.get("quantity")
+            price = item.get("price")
 
-        reserve_data = {
-            "event_date_id": event_date_id,
-            "cat_id": cat_id,
-            "owner_id": user_id,
-            "seat_info": seat_info,
-            "num_tickets": ticket_quantity
-        }
-        reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
+            if not all([cat_id, quantity, price]):
+                continue
 
-        try:
-            reserve_result = reserve_resp.json()
-            reserved_ticket_ids = reserve_result.get("ticket_ids", [])
-            if not reserved_ticket_ids:
-                return jsonify({"error": "No ticket IDs returned", "details": reserve_result}), 400
-        except Exception as e:
-            return jsonify({"error": "Failed to parse ticket reservation response", "details": str(e)}), 400
+            inventory_available, event_name, event_date, venue = check_event_inventory(event_id, event_date_id, quantity)
+            if not inventory_available:
+                return jsonify({"error": event_name}), 400
+
+            update_available_tickets(event_date_id, -quantity)
+
+            reserved_ticket_ids = []
+            for _ in range(quantity):
+                seat_info = generate_unique_seat(assigned_seats)
+                reserve_data = {
+                    "event_date_id": event_date_id,
+                    "cat_id": cat_id,
+                    "owner_id": user_id,
+                    "seat_info": seat_info,
+                    "num_tickets": 1
+                }
+                reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
+                reserve_result = reserve_resp.json()
+                ids = reserve_result.get("ticket_ids", [])
+                if not ids:
+                    update_available_tickets(event_date_id, 1)
+                    return jsonify({"error": "Reservation failed for one ticket", "details": reserve_result}), 400
+                reserved_ticket_ids.extend(ids)
+
+            for ticket_id in reserved_ticket_ids:
+                qr_url = generate_qr_code_url(ticket_id)
+                requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}/update_qr", json={"qr_code": qr_url})
+                all_reserved_ticket_ids.append(ticket_id)
+                all_qr_codes.append((ticket_id, qr_url))
+
+            total_amount += quantity * price
 
         payment_data = {
             "user_id": user_id,
-            "amount": ticket_quantity * ticket_price,
+            "amount": total_amount,
             "payment_token": data.get("payment_token")
         }
         payment_resp = requests.post(f"{PAYMENT_SERVICE_URL}/payments/process", json=payment_data)
         if payment_resp.status_code != 201 or not payment_resp.content:
-            requests.post(f"{TICKET_SERVICE_URL}/tickets/release", json=reserve_data)
+            release_data = {
+                "owner_id": user_id,
+                "ticket_ids": all_reserved_ticket_ids
+            }
+            requests.post(f"{TICKET_SERVICE_URL}/tickets/release", json=release_data)
+            update_available_tickets(event_date_id, len(all_reserved_ticket_ids))
             return jsonify({"error": "Payment failed", "details": payment_resp.text}), 400
 
         payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
@@ -151,7 +202,7 @@ def process_ticket_order():
         confirm_data = {
             "user_id": user_id,
             "order_id": payment_id,
-            "ticket_ids": reserved_ticket_ids
+            "ticket_ids": all_reserved_ticket_ids
         }
         confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json=confirm_data)
         if confirm_resp.status_code != 200:
@@ -159,13 +210,13 @@ def process_ticket_order():
 
         order_data = {
             "userId": user_id,
-            "ticketIds": reserved_ticket_ids,
+            "ticketIds": all_reserved_ticket_ids,
             "eventId": event_id,
             "eventName": event_name,
             "eventDate": event_date,
             "venue": venue,
             "orderType": "PURCHASE",
-            "totalAmount": ticket_quantity * ticket_price,
+            "totalAmount": total_amount,
             "paymentId": payment_id
         }
         order_resp = requests.post(f"{ORDER_SERVICE_URL}/orders", json=order_data)
@@ -179,6 +230,7 @@ def process_ticket_order():
         return jsonify({
             "status": "success",
             "order_id": order_id,
+            "ticket_qr_codes": all_qr_codes,
             "notification_sent": notification_sent
         }), 200
 
