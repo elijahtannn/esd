@@ -19,7 +19,7 @@ services:
     volumes:
       - .:/app
     networks:
-      ticket_service_network:
+      user_service_network:
         aliases:
           - ticket-service
     healthcheck:
@@ -29,5 +29,5 @@ services:
       retries: 3
 
 networks:
-  ticket_service_network:
+  user_service_network:
     external: true
