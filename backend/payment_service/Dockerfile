@@ -12,4 +12,5 @@ ENV FLASK_ENV=development
 
 EXPOSE 8002
 
-CMD ["flask", "run", "--host=0.0.0.0"] 
+# CMD ["flask", "run", "--host=0.0.0.0"] 
+CMD ["python", "payment_service.py"]

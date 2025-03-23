@@ -3,6 +3,6 @@ Flask-PyMongo==2.3.0
 Flask-CORS==4.0.0
 python-dotenv==1.0.0
 certifi==2024.2.2 
-# bson==0.5.11
+bson==0.5.10
 SQLAlchemy==2.0.15
 Flask-SQLAlchemy==3.0.3
