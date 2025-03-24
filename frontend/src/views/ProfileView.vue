@@ -85,12 +85,12 @@
                                                 <div class="qr-card" v-for="ticket in order.tickets" :key="ticket.ticketId">
                                                     <!-- Three-dot menu -->
                                                     <div class="menu-container">
-                                                        <span class="menu-icon" @click="toggleMenu">
+                                                        <span class="menu-icon" @click="toggleMenu(ticket.ticketId)">
                                                             &#x22EE; <!-- Vertical three dots -->
                                                         </span>
-                                                        <div v-if="isMenuOpen" class="menu-dropdown">
-                                                            <p @click="handleOption('resale')">Resell Ticket</p>
-                                                            <p @click="handleOption('transfer')">Transfer Ticket</p>
+                                                        <div v-if="openMenus.includes(ticket.ticketId)" class="menu-dropdown">
+                                                            <p @click="handleOption('resale', ticket.ticketId)">Resell Ticket</p>
+                                                            <p @click="handleOption('transfer', ticket.ticketId)">Transfer Ticket</p>
                                                         </div>
                                                     </div>
                                                     <!--QR code image -->
@@ -188,16 +188,17 @@
                             <div v-else>
                                 <div class="order-header" v-for="order in pastOrders" :key="order.OrderId">
                                     <template v-if="order.EventDetails">
-                                        <span><strong>{{ order.EventDetails.Name }}</strong></span><br>
-                                        <span>{{ formatDates(order.EventDetails.Dates) }}, {{ order.EventDetails.Venue
-                                            }}</span><br><br>
+                                        <div class="order-summary">
+                                            <span><strong>{{ order.EventName }}</strong></span><br>
+                                            <span>{{ formatDates(order.EventDate) }}, {{ order.Venue }}</span>
+                                        </div> <br>
+                                            <!-- Order Information -->
+                                        <div>
+                                            <span style="font-size: 15px; color: grey;">Order Information: #{{order.OrderId }}</span><br>
+                                            <span style="font-size: 15px; color: grey;">Ticket Quantity: {{order.TicketQuantity }}</span><br>
+                                            <span style="font-size: 15px; color: grey;">Total Cost: ${{order.TotalCost.toFixed(2) }}</span>
+                                        </div>
                                     </template>
-                                    <span style="font-size: 15px; color: grey;">Order Information: #{{ order.OrderId
-                                        }}</span><br>
-                                    <span style="font-size: 15px; color: grey;">Ticket Quantity: {{ order.TicketQuantity
-                                        }}</span><br>
-                                    <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2)
-                                        }}</span>
                                 </div>
                             </div>
                         </div>
@@ -235,7 +236,9 @@ export default {
             orderList: [],
             eventList: [],
             ticketList: [],
-            apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL
+            apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
+            openMenus: [],
+            
         }
     },
     mounted() {
@@ -267,8 +270,9 @@ export default {
                     return;
                 }
 
-                const userId = this.user.id;
-                const response = await axios.get(`${this.apiGatewayUrl}/orders/user/${userId}`);
+                // const userId = this.user.id;
+                const userId = '67d44330971f398f904f8c34';
+                const response = await axios.get(`http://localhost:8003//orders/user/${userId}`);
                 const rawOrders = response.data;
                 console.log("Raw Order response:", rawOrders);
                 this.processOrders(rawOrders);
@@ -323,7 +327,7 @@ export default {
             if (order.ticketIds && order.ticketIds.length > 0) {
                 try {
                 const ticketPromises = order.ticketIds.map(ticketId => 
-                    axios.get(`${this.apiGatewayUrl}/tickets/${ticketId}`)
+                    axios.get(`http://127.0.0.1:5001//tickets/${ticketId}`)
                 );
                 
                 const ticketResponses = await Promise.all(ticketPromises);
@@ -410,8 +414,13 @@ export default {
             event.currentTarget.classList.add('active');
             document.getElementById(tabName).classList.add('active');
         },
-        toggleMenu() {
-            this.isMenuOpen = !this.isMenuOpen;
+        toggleMenu(ticketId) {
+            const index = this.openMenus.indexOf(ticketId);
+            if (index === -1) {
+                this.openMenus.push(ticketId);
+            } else {
+                this.openMenus.splice(index, 1);
+            }
         },
         handleOption(action) {
             if (action === 'resale') {
@@ -421,7 +430,10 @@ export default {
                 console.log("Transfer Ticket clicked");
                 this.showTransferPopup = true;
             }
-            this.isMenuOpen = false; // Close menu after selection
+            const index = this.openMenus.indexOf(ticketId);
+            if (index !== -1) {
+                this.openMenus.splice(index, 1);
+            }
         },
         confirmResale() {
             if (this.isAgreed) {
@@ -438,9 +450,11 @@ export default {
         closePopup() {
             this.showResalePopup = false;
             this.showTransferPopup = false;
+            this.openMenus= [];
         },
         closeMenu() {
-            this.isMenuOpen = false;
+            // this.isMenuOpen = false;
+            this.openMenus= [];
         },
         confirmTransfer() {
             if (this.recipientName && this.eventivaAccount && this.phoneNumber && this.isAgreed) {
