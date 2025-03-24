@@ -43,12 +43,15 @@ class Ticket:
     @staticmethod
     def serialize_ticket(ticket_dict):
         """Serialize a ticket dictionary from MongoDB to ensure JSON compatibility"""
-        if "_id" in ticket_dict:
-            ticket_dict["_id"] = str(ticket_dict["_id"])
-        if "owner_id" in ticket_dict:
-            ticket_dict["owner_id"] = str(ticket_dict["owner_id"])
-        if "created_at" in ticket_dict:
-            ticket_dict["created_at"] = ticket_dict["created_at"].isoformat()
-        if "updated_at" in ticket_dict:
-            ticket_dict["updated_at"] = ticket_dict["updated_at"].isoformat()
-        return ticket_dict
+        serialized = ticket_dict.copy()  # Create a copy to avoid modifying the original
+        
+        if "_id" in serialized:
+            serialized["_id"] = str(serialized["_id"])
+        if "owner_id" in serialized:
+            serialized["owner_id"] = str(serialized["owner_id"])
+        if "created_at" in serialized:
+            serialized["created_at"] = serialized["created_at"].isoformat() if serialized["created_at"] else None
+        if "updated_at" in serialized:
+            serialized["updated_at"] = serialized["updated_at"].isoformat() if serialized["updated_at"] else None
+        
+        return serialized

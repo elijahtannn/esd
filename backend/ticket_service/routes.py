@@ -33,16 +33,19 @@ def release_tickets():
     if not ticket_ids or not owner_id:
         return jsonify({"error": "Missing ticket_ids or owner_id"}), 400
 
-    result = get_ticket_collection().delete_many({
-        "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
-        "owner_id": owner_id,
-        "status": "reserved"
-    })
+    try:
+        result = get_ticket_collection().delete_many({
+            "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
+            "owner_id": str(owner_id),  # Store owner_id as string
+            "status": "reserved"
+        })
 
-    return jsonify({
-        "message": f"Released and deleted {result.deleted_count} reserved ticket(s)",
-        "ticket_ids": ticket_ids
-    }), 200
+        return jsonify({
+            "message": f"Released and deleted {result.deleted_count} reserved ticket(s)",
+            "ticket_ids": ticket_ids
+        }), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to release tickets: {str(e)}"}), 400
 
 # Trigger the timer automatically in your reserve route
 @ticket_bp.route('/tickets/reserve', methods=['POST'])
@@ -139,12 +142,16 @@ def get_tickets():
 @ticket_bp.route('/tickets/<ticket_id>', methods=['GET'])
 def get_ticket(ticket_id):
     """ Get a ticket by ID """
-    ticket = get_ticket_collection().find_one({"_id": ObjectId(ticket_id)})
-    if not ticket:
-        return jsonify({"error": "Ticket not found"}), 404
-
-    ticket["_id"] = str(ticket["_id"])
-    return jsonify(ticket), 200
+    try:
+        ticket = get_ticket_collection().find_one({"_id": ObjectId(ticket_id)})
+        if not ticket:
+            return jsonify({"error": "Ticket not found"}), 404
+            
+        # Use the same serialization method as get_tickets()
+        serialized_ticket = Ticket.serialize_ticket(ticket)
+        return jsonify(serialized_ticket), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch ticket: {str(e)}"}), 500
 
 @ticket_bp.route('/tickets/<ticket_id>', methods=['PUT'])
 def update_ticket(ticket_id):
@@ -200,12 +207,13 @@ def check_ticket_transfer_eligibility():
         if not tickets:
             return jsonify({"error": "No matching tickets found"}), 404
 
-        # Process tickets and check eligibility
+        # Process tickets and check eligibility using serialization
         eligibility_results = []
         for ticket in tickets:
+            serialized_ticket = Ticket.serialize_ticket(ticket)
             eligibility_results.append({
-                "ticket_id": str(ticket["_id"]),
-                "is_transferable": ticket["is_transferable"],
+                "ticket_id": serialized_ticket["_id"],
+                "is_transferable": serialized_ticket["is_transferable"],
             })
 
         return jsonify({"eligibility": eligibility_results}), 200
