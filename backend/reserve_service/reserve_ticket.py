@@ -28,38 +28,41 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
 EXCHANGE_NAME = "ticketing.exchange"
 ROUTING_KEY = "ticket.purchase.success"
 
-
 # Check if event category has sufficient ticket
-def check_eventcat_inventory(event_date_id, ticket_quantity, catId):
-    try:
-        response = requests.get(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/categories", timeout=10)
-        if response.status_code != 200:
-            return False, f"Failed to retrieve event data, status code: {response.status_code}", None, None
+# def check_eventcat_inventory(event_date_id, ticket_quantity, catId):
+#     try:
+#         response = requests.get(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/categories", timeout=10)
+#         if response.status_code != 200:
+#             return False, f"Failed to retrieve event data, status code: {response.status_code}", None, None
 
-        event_data = json.loads(response.content.decode("utf-8-sig"))
-        for cat in event_data['Cats']:
-            if cat['Id'] == catId:  # Check and find cat id
-                if cat['AvailableTickets'] > ticket_quantity:  # Check if AvailableTickets is greater than require ticket quantity
-                    print(f"Category {cat['Cat']} (ID {cat['Id']}) has {cat['AvailableTickets']} tickets available.")
-                    return True
-                else:
-                    print(f"Category {cat['Cat']} (ID {cat['Id']}) has no tickets available.")
-                    return False
+#         event_data = json.loads(response.content.decode("utf-8-sig"))
+#         for cat in event_data['Cats']:
+#             if cat['Id'] == catId:  # Check and find cat id
+#                 if cat['AvailableTickets'] > ticket_quantity:  # Check if AvailableTickets is greater than require ticket quantity
+#                     print(f"Category {cat['Cat']} (ID {cat['Id']}) has {cat['AvailableTickets']} tickets available.")
+#                     return True
+#                 else:
+#                     print(f"Category {cat['Cat']} (ID {cat['Id']}) has no tickets available.")
+#                     return False
 
-        return False, "event_data", None, None
+#         return False, "event_data", None, None
 
-    except Exception as e:
-        return False, f"Error checking inventory: {str(e)}", None, None
+#     except Exception as e:
+#         return False, f"Error checking inventory: {str(e)}", None, None
 
 # Create new ticket
-def createTicket(user_id, event_date_id, cat_id, quantity):
+def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_category):
     ticketIds = []
     assigned_seats = set()
 
     for num in range(quantity):
 
-        # Generate seat info
-        seat_info = generate_unique_seat(assigned_seats)
+        # Only concerts has seat info
+        if event_category == 'Concert':
+            # Generate seat info
+            seat_info = generate_unique_seat(assigned_seats)
+        else:
+            seat_info = "Not Applicable"
         
         reserve_data = {
             "event_date_id": event_date_id,
@@ -69,6 +72,7 @@ def createTicket(user_id, event_date_id, cat_id, quantity):
             "num_tickets": 1,
             "is_transferable": True,
             "status": "reserved",
+            "event_id": event_id,
         }
         reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
         reserve_result = reserve_resp.json()
@@ -122,20 +126,17 @@ def checkTicketStatus(all_reserved_ticket_ids):
 
     purchaseStatus = False
     for ticketId in all_reserved_ticket_ids:
-
+        print("current ticket", ticketId)
         try:
-            ticket_id_object = ObjectId(ticketId)
-            response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id_object}")
-            # print("hereeeeeeeeeee", response.text)
+            # ticket_id_object = ObjectId(ticketId)
+            response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
             responseData = json.loads(response.content.decode("utf-8-sig"))
 
-            print("returnignngg" , responseData)
             ticketStatus = responseData['status']
 
             if ticketStatus != 'sold':
                 # Delete ticket if user did not buy the ticket within the time. Leave it untouched if user bought the ticket
                 response = requests.delete(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
-                print(response.content)
             else:
                 # If one ticket has the sold status, all ticket will have the same status as it is in the same order
                 purchaseStatus = True
@@ -161,7 +162,6 @@ def revertTicketQuantity(event_date_id, selected_tickets):
         response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/inventory/resale", json={"Count": total_quantity})
     except Exception as e:
         print("Error updating available tickets:", str(e))   
-
     
     return True
 
@@ -176,6 +176,7 @@ def process_ticket_reserve():
         selected_tickets = data["selectedTickets"]
         event_date_id = data["selectedDateId"]
         event_id = data["selectedEventId"]
+        event_category = data["eventCategory"]
         
         all_reserved_ticket_ids = []
         total_quantity = 0
@@ -190,31 +191,40 @@ def process_ticket_reserve():
             if not all([cat_id, quantity]):
                 continue
 
-            isTicketAvailable = check_eventcat_inventory(event_date_id, quantity, cat_id)
+            # isTicketAvailable = check_eventcat_inventory(event_date_id, quantity, cat_id)
 
-            if not isTicketAvailable:
-                return jsonify({"error": "no tickets available"}), 400
-            else:
-                # create new ticket entry
-                createdTickets = createTicket(user_id, event_date_id, cat_id, quantity) #store all ticket Ids for this Cat
-                all_reserved_ticket_ids.extend(createdTickets)
+            # if not isTicketAvailable:
+            #     return jsonify({"error": "no tickets available"}), 400
+            # else:
+            #     # create new ticket entry
+            #     createdTickets = createTicket(user_id, event_date_id, cat_id, quantity) #store all ticket Ids for this Cat
+            #     all_reserved_ticket_ids.extend(createdTickets)
 
-                # Update event cat available tickets
-                decrease_cat_available_tickets(cat_id, quantity)
+            #     # Update event cat available tickets
+            #     decrease_cat_available_tickets(cat_id, quantity)
+
+            # create new ticket entry
+            createdTickets = createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_category) #store all ticket Ids for this Cat
+            all_reserved_ticket_ids.extend(createdTickets)
+
+            # Update event cat available tickets
+            decrease_cat_available_tickets(cat_id, quantity)
 
         # Update event total available tickets
         decrease_event_available_tickets(event_date_id, total_quantity)
 
+        print(createdTickets)
         print("Reserved ticket while waiting for user to complete order purchase")
 
         # Wait for 3 minutes for user to complete order purchase
-        time.sleep(5) #will update this to 3 minutes: 180
+        time.sleep(20) #will update this to 3 minutes: 180
 
         purchaseStatus = checkTicketStatus(all_reserved_ticket_ids)
+        # purchaseStatus = True #for testing
 
-        if purchaseStatus == True:
-
-            # Return successful output
+        print(purchaseStatus)
+                
+        if purchaseStatus:
             return jsonify({
                 "status": True,
                 "statement": "successfully reserved tickets",
@@ -225,9 +235,7 @@ def process_ticket_reserve():
                 "tickets": selected_tickets,
             }), 200
         else:
-            # increase back the available tickets for event and cats
             revertTicketQuantity(event_date_id, selected_tickets)
-
             return jsonify({
                 "status": False,
                 "statement": "User did not purchase the tickets within the time frame",

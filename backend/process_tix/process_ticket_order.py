@@ -24,9 +24,9 @@ ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://order-service:8000")
 # RabbitMQ Configuration
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
 EXCHANGE_NAME = "ticketing.exchange"
-ROUTING_KEY = "ticket.purchase.success"
+ROUTING_KEY = "ticket.purchase"
 
-def send_purchase_notification(user_email, event_name, order_id):
+def send_purchase_notification(user_email, event_name, order_id, event_date, ticket_ids):
     try:
         credentials = pika.PlainCredentials('guest', 'guest')
         parameters = pika.ConnectionParameters(host=RABBITMQ_HOST, port=5672, credentials=credentials)
@@ -37,9 +37,11 @@ def send_purchase_notification(user_email, event_name, order_id):
 
         message = {
             "email": user_email,
-            "eventType": "ticket.purchase.success",
+            "eventType": "ticket.purchase",
             "event_name": event_name,
-            "order_id": order_id
+            "order_id": order_id,
+            "eventDate": event_date,
+            "ticketNumber": ",".join(map(str, ticket_ids))
         }
 
         channel.basic_publish(
@@ -160,19 +162,34 @@ def process_ticket_order():
             for _ in range(quantity):
                 seat_info = generate_unique_seat(assigned_seats)
                 reserve_data = {
+                    "event_id": event_id,
                     "event_date_id": event_date_id,
                     "cat_id": cat_id,
                     "owner_id": user_id,
                     "seat_info": seat_info,
-                    "num_tickets": 1
+                    "num_tickets": 1,
+                    "event_name": event_name,
+                    "event_date": event_date,
+                    "venue": venue
                 }
-                reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
-                reserve_result = reserve_resp.json()
-                ids = reserve_result.get("ticket_ids", [])
-                if not ids:
+                
+                try:
+                    reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
+                    if not reserve_resp.ok:
+                        print(f"Reservation failed with status {reserve_resp.status_code}: {reserve_resp.text}")
+                        update_available_tickets(event_date_id, 1)
+                        return jsonify({"error": "Reservation failed", "details": reserve_resp.json()}), 400
+                        
+                    reserve_result = reserve_resp.json()
+                    ids = reserve_result.get("ticket_ids", [])
+                    if not ids:
+                        update_available_tickets(event_date_id, 1)
+                        return jsonify({"error": "No ticket IDs returned", "details": reserve_result}), 400
+                    reserved_ticket_ids.extend(ids)
+                except Exception as e:
+                    print(f"Exception during reservation: {str(e)}")
                     update_available_tickets(event_date_id, 1)
-                    return jsonify({"error": "Reservation failed for one ticket", "details": reserve_result}), 400
-                reserved_ticket_ids.extend(ids)
+                    return jsonify({"error": "Reservation request failed", "details": str(e)}), 500
 
             for ticket_id in reserved_ticket_ids:
                 qr_url = generate_qr_code_url(ticket_id)
@@ -225,7 +242,13 @@ def process_ticket_order():
 
         order_id = order_resp.json().get("orderId")
 
-        notification_sent = send_purchase_notification(user_email=user_email, event_name=event_name, order_id=order_id)
+        notification_sent = send_purchase_notification(
+            user_email=user_email, 
+            event_name=event_name, 
+            order_id=order_id,
+            event_date=event_date,
+            ticket_ids=all_reserved_ticket_ids
+        )
 
         return jsonify({
             "status": "success",

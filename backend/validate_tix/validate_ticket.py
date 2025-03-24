@@ -13,7 +13,7 @@ CORS(app)
 load_dotenv()
 
 # Service URLs
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://host.docker.internal:5001")  
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")  
 EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5100")
 
@@ -46,6 +46,7 @@ def send_transfer_notification(sender_email, recipient_email, ticket_id, event_n
             "eventType": "ticket.transfer.pending",
             "sender_email": sender_email,
             "ticket_id": ticket_id,
+            "ticketNumber": ticket_id,
             "eventName": event_name
         }
 
@@ -93,7 +94,10 @@ def validate_transfer(ticket_id):
             }), 400
 
         # Step 2: Check event date (only if ticket is transferable)
-        event_validation = validate_event(ticket_validation["event_date_id"])
+        event_validation = validate_event(
+            ticket_validation["event_id"], 
+            ticket_validation["event_date_id"]
+        )
         if not event_validation["is_valid"]:
             return jsonify({
                 "can_transfer": False,
@@ -136,12 +140,14 @@ def validate_transfer(ticket_id):
 
 def validate_ticket(ticket_id):
     try:
+        # Get ticket details directly
         response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
         if response.status_code != 200:
             return {
                 "is_valid": False,
                 "messages": ["Ticket not found"],
-                "event_date_id": None
+                "event_date_id": None,
+                "event_id": None
             }
 
         ticket_data = response.json()
@@ -150,18 +156,21 @@ def validate_ticket(ticket_id):
         return {
             "is_valid": is_transferable,
             "messages": ["Ticket is transferable"] if is_transferable else ["Ticket is not transferable"],
-            "event_date_id": ticket_data.get("event_date_id")
+            "event_date_id": ticket_data.get("event_date_id"),
+            "event_id": ticket_data.get("event_id")
         }
 
     except Exception as e:
         return {
             "is_valid": False,
             "messages": [f"Error checking ticket transferability: {str(e)}"],
-            "event_date_id": None
+            "event_date_id": None,
+            "event_id": None
         }
 
-def validate_event(event_id):
+def validate_event(event_id, event_date_id):
     try:
+        # Get all events
         response = requests.get(f"{EVENT_SERVICE_URL}/events")
         if response.status_code != 200:
             return {
@@ -176,41 +185,41 @@ def validate_event(event_id):
                 "messages": ["Failed to retrieve event data"]
             }
 
-        event_dates = []
-        event_name = ""
-        for event in event_data.get("Events", []):
-            if event["EventId"] == event_id:
-                event_dates.append(datetime.strptime(event["Date"], "%Y-%m-%dT%H:%M:%SZ"))
-                event_name = event["Name"]
+        # Find the specific event date from the list
+        event = None
+        for e in event_data.get("Events", []):
+            if e["EventId"] == event_id and e["EventDateId"] == event_date_id:
+                event = e
+                break
 
-        if not event_dates:
+        if not event:
             return {
                 "is_valid": False,
-                "messages": [f"No dates found for event ID {event_id}"]
+                "messages": [f"No data found for event ID {event_id} and event date ID {event_date_id}"]
             }
 
-        # Get the earliest date for the event
-        earliest_date = min(event_dates)
+        event_date = datetime.strptime(event["Date"], "%Y-%m-%dT%H:%M:%SZ")
+        event_name = event["Name"]
         current_date = datetime.now()
 
         # Calculate days until event
-        days_until_event = (earliest_date - current_date).days
+        days_until_event = (event_date - current_date).days
 
         # Check if event has passed or is within 3 days
         if days_until_event < 0:
             return {
                 "is_valid": False,
-                "messages": [f"Event '{event_name}' has already passed (earliest date was: {earliest_date.strftime('%Y-%m-%d')})"]
+                "messages": [f"Event '{event_name}' has already passed (date was: {event_date.strftime('%Y-%m-%d')})"]
             }
         elif days_until_event < 3:
             return {
                 "is_valid": False,
-                "messages": [f"Event '{event_name}' is within 3 days (earliest date: {earliest_date.strftime('%Y-%m-%d')})"]
+                "messages": [f"Event '{event_name}' is within 3 days (date: {event_date.strftime('%Y-%m-%d')})"]
             }
         else:
             return {
                 "is_valid": True,
-                "messages": [f"Event '{event_name}' is valid (earliest date: {earliest_date.strftime('%Y-%m-%d')}, {days_until_event} days away)"]
+                "messages": [f"Event '{event_name}' is valid (date: {event_date.strftime('%Y-%m-%d')}, {days_until_event} days away)"]
             }
 
     except Exception as e:
