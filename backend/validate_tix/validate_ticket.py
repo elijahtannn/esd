@@ -15,7 +15,7 @@ load_dotenv()
 # Service URLs
 TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://host.docker.internal:5001")  
 EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5000")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5100")
 
 #RabbitMQ configuration
 EXCHANGE_NAME = "ticketing.exchange"

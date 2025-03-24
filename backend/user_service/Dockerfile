@@ -10,6 +10,6 @@ COPY . .
 ENV FLASK_APP=user_service.py
 ENV FLASK_ENV=development
 
-EXPOSE 5000
+EXPOSE 5100
 
 CMD ["flask", "run", "--host=0.0.0.0"] 

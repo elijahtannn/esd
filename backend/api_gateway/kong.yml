@@ -4,7 +4,7 @@ _transform: true
 services:
   # User Service
   - name: user-service
-    url: http://user-service:5000
+    url: http://user-service:5100
     routes:
       - name: user-route
         paths:

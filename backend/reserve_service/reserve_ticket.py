@@ -20,7 +20,7 @@ load_dotenv()
 # Service URLs
 TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://127.0.0.1:5001")
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5000")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5100")
 ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://user-service:8000")
 
 # RabbitMQ Configuration
