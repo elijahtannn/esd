@@ -31,7 +31,7 @@ class Ticket:
         return {
             "event_date_id": self.event_date_id,
             "cat_id": self.cat_id,
-            "owner_id": self.owner_id,
+            "owner_id": str(self.owner_id),  # Convert ObjectId to string
             "seat_info": self.seat_info,
             "status": self.status,
             "is_transferable": self.is_transferable,
@@ -39,3 +39,16 @@ class Ticket:
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+
+    @staticmethod
+    def serialize_ticket(ticket_dict):
+        """Serialize a ticket dictionary from MongoDB to ensure JSON compatibility"""
+        if "_id" in ticket_dict:
+            ticket_dict["_id"] = str(ticket_dict["_id"])
+        if "owner_id" in ticket_dict:
+            ticket_dict["owner_id"] = str(ticket_dict["owner_id"])
+        if "created_at" in ticket_dict:
+            ticket_dict["created_at"] = ticket_dict["created_at"].isoformat()
+        if "updated_at" in ticket_dict:
+            ticket_dict["updated_at"] = ticket_dict["updated_at"].isoformat()
+        return ticket_dict

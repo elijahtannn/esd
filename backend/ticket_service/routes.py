@@ -129,10 +129,12 @@ def confirm_ticket_purchase():
 @ticket_bp.route('/tickets', methods=['GET'])
 def get_tickets():
     """ Get all tickets """
-    tickets = list(get_ticket_collection().find())
-    for ticket in tickets:
-        ticket["_id"] = str(ticket["_id"])  # Convert ObjectId to string
-    return jsonify(tickets), 200
+    try:
+        tickets = list(get_ticket_collection().find())
+        serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
+        return jsonify(serialized_tickets), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch tickets: {str(e)}"}), 500
 
 @ticket_bp.route('/tickets/<ticket_id>', methods=['GET'])
 def get_ticket(ticket_id):
