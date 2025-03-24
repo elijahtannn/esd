@@ -85,23 +85,23 @@
                                                 <div class="qr-card" v-for="ticket in order.tickets" :key="ticket.ticketId">
                                                     <!-- Three-dot menu -->
                                                     <div class="menu-container">
-                                                        <span class="menu-icon" @click="toggleMenu(ticket.ticketId)">
+                                                        <span class="menu-icon" @click="toggleMenu(ticket)">
                                                             &#x22EE; <!-- Vertical three dots -->
                                                         </span>
-                                                        <div v-if="openMenus.includes(ticket.ticketId)" class="menu-dropdown">
-                                                            <p @click="handleOption('resale', ticket.ticketId)">Resell Ticket</p>
-                                                            <p @click="handleOption('transfer', ticket.ticketId)">Transfer Ticket</p>
+                                                        <div v-if="openMenus.includes(ticket)" class="menu-dropdown">
+                                                            <p @click="handleOption('resale', ticket)">Resell Ticket</p>
+                                                            <p @click="handleOption('transfer', ticket)">Transfer Ticket</p>
                                                         </div>
                                                     </div>
                                                     <!--QR code image -->
-                                                    <div v-if="isQrVisible">
+                                                    <div v-if="!ticketStatuses[ticket.ticketId] || ticketStatuses[ticket.ticketId].isQrVisible">
                                                         <img src="../assets/images/dummy QR code.png" class="qr-image">
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
                                                     <div v-else class="ticket-status">
                                                         <p
                                                             style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
-                                                            <strong>ON HOLD:</strong> {{ ticketStatus }}</p>
+                                                            <strong>ON HOLD:</strong> {{ ticketStatuses[ticket.ticketId].status }}</p>
                                                     </div>
                                                     <p>#{{ ticket.ticketId }}</p>
                                                     <p>Type: {{ ticket.categoryName }}</p>
@@ -221,6 +221,7 @@ export default {
     },
     data() {
         return {
+            ticketStatuses: {},
             user: null,
             isExpanded: false,
             isMenuOpen: false,
@@ -422,29 +423,26 @@ export default {
                 this.openMenus.splice(index, 1);
             }
         },
-        handleOption(action) {
+        handleOption(action, ticket) {
             if (action === 'resale') {
                 this.showResalePopup = true; // Show the resale confirmation modal
-                console.log('Resell Ticket clicked')
+                console.log('Resell Ticket clicked');
+                this.selectedTicket = ticket;
             } else if (action === 'transfer') {
                 console.log("Transfer Ticket clicked");
                 this.showTransferPopup = true;
-            }
-            const index = this.openMenus.indexOf(ticketId);
-            if (index !== -1) {
-                this.openMenus.splice(index, 1);
+                this.selectedTicket = ticket;
             }
         },
         confirmResale() {
-            if (this.isAgreed) {
-                // Proceed with resale
-                console.log('Resale confirmed');
-                this.isQrVisible = false;
-                this.ticketStatus = "TICKET IS BEING RESOLD";
-                // Close the modal after confirmation
+            if (this.isAgreed && this.selectedTicket) {
+                this.ticketStatuses[this.selectedTicket.ticketId] = {
+                isQrVisible: false,
+                status: "TICKET IS BEING RESOLD"
+                };
                 this.closePopup();
             } else {
-                console.log('Agreement not checked');
+                console.log('Agreement not checked or no ticket selected');
             }
         },
         closePopup() {
@@ -457,18 +455,16 @@ export default {
             this.openMenus= [];
         },
         confirmTransfer() {
-            if (this.recipientName && this.eventivaAccount && this.phoneNumber && this.isAgreed) {
-                // Proceed with ticket transfer
-                console.log('Ticket transfer confirmed');
-                console.log(`Recipient: ${this.recipientName}, Account ID: ${this.eventivaAccount}, Phone: ${this.phoneNumber}`);
-                this.ticketStatus = "TICKET IS BEING TRANSFERRED"; // Update status message
-                this.isQrVisible = false; // Hide QR code
-                // Close the modal after confirmation
+            if (this.recipientName && this.eventivaAccount && this.phoneNumber && this.isAgreed && this.selectedTicket) {
+                this.ticketStatuses[this.selectedTicket.ticketId] = {
+                isQrVisible: false,
+                status: "TICKET IS BEING TRANSFERRED"
+                };
                 this.closePopup();
             } else {
                 console.log('Please fill in all the details');
             }
-        },
+            },
     },
     computed: {
         upcomingOrders() {
