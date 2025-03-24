@@ -55,9 +55,17 @@ def get_orders_by_user(user_id):
 def create_order():
     data = request.json
 
-    required_fields = ["userId", "ticketIds", "eventId", "eventName", "eventDate", "venue", "orderType", "totalAmount", "paymentId"]
+    required_fields = ["userId", "ticketIds", "eventId", "eventDateId", "catId", "orderType", "totalAmount", "paymentId"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
+
+    # Convert numeric fields to integers
+    try:
+        event_id = int(data["eventId"])
+        event_date_id = int(data["eventDateId"])
+        cat_id = int(data["catId"])
+    except (ValueError, TypeError):
+        return jsonify({"error": "eventId, eventDateId, and catId must be integers"}), 400
 
     order_id = get_next_order_id()
 
@@ -65,10 +73,9 @@ def create_order():
         "orderId": order_id,
         "userId": data["userId"],
         "ticketIds": data["ticketIds"],
-        "eventId": data["eventId"],
-        "eventName": data["eventName"],
-        "eventDate": data["eventDate"],
-        "venue": data["venue"],
+        "eventId": event_id,  # Use the converted integer
+        "eventDateId": event_date_id,  # Use the converted integer
+        "catId": cat_id,  # Use the converted integer
         "orderType": data["orderType"],
         "totalAmount": data["totalAmount"],
         "paymentId": data["paymentId"],
@@ -83,9 +90,8 @@ def create_order():
         "userId": data["userId"],
         "ticketIds": data["ticketIds"],
         "eventId": data["eventId"],
-        "eventName": data["eventName"],
-        "eventDate": data["eventDate"],
-        "venue": data["venue"],
+        "eventDateId": data["eventDateId"],
+        "catId": data["catId"],
         "orderType": data["orderType"],
         "totalAmount": data["totalAmount"],
         "paymentId": data["paymentId"],
@@ -130,7 +136,7 @@ def update_order(order_id):
 @app.route("/orders/transfer", methods=["POST"])
 def transfer_ticket():
     data = request.json
-    required_fields = ["ticketId", "fromUserId", "toUserId", "eventId", "eventName", "eventDate", "venue"]
+    required_fields = ["ticketId", "fromUserId", "toUserId", "eventId", "eventDateId", "catId"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
@@ -154,9 +160,8 @@ def transfer_ticket():
         "userId": to_user_id,
         "ticketIds": [ticket_id],
         "eventId": data["eventId"],
-        "eventName": data["eventName"],
-        "eventDate": data["eventDate"],
-        "venue": data["venue"],
+        "eventDateId": data["eventDateId"],
+        "catId": data["catId"],
         "orderType": "TRANSFER",
         "totalAmount": 0.0,
         "paymentId": None,
