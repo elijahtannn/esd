@@ -10,9 +10,9 @@ services:
       - FLASK_ENV=development
       - USER_SERVICE_URL=http://user-service:5000
       - EVENT_SERVICE_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
-      - TICKET_SERVICE_URL=http://host.docker.internal:5001
-      - ORDER_SERVICE_URL=http://host.docker.internal:8000
-      - PAYMENT_SERVICE_URL=http://host.docker.internal:8002
+      - TICKET_SERVICE_URL=http://ticket-service:5001
+      - ORDER_SERVICE_URL=http://order-service:8003
+      - PAYMENT_SERVICE_URL=http://payment-service:8002
       - RABBITMQ_URL=amqp://host.docker.internal:5672
     ports:
       - "8080:8080"
@@ -21,17 +21,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      user_service_network:
+      esd_network:
         aliases:
           - process-ticket-order
 
-  rabbitmq:
-    image: "rabbitmq:3-management"
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-
 networks:
-  user_service_network:
+  esd_network:
     external: true

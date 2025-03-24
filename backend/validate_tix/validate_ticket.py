@@ -13,7 +13,7 @@ CORS(app)
 load_dotenv()
 
 # Service URLs
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://host.docker.internal:5001")  # Use host.docker.internal to access host machine
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://host.docker.internal:5001")  
 EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5000")
 
@@ -27,7 +27,7 @@ def send_transfer_notification(sender_email, recipient_email, ticket_id, event_n
         credentials = pika.PlainCredentials('guest', 'guest')
         parameters = pika.ConnectionParameters(
             host='host.docker.internal',  # This allows container to access local RabbitMQ
-            port=5672,  # Default RabbitMQ port
+            port=5672,  
             credentials=credentials
         )
         connection = pika.BlockingConnection(parameters)
@@ -55,7 +55,7 @@ def send_transfer_notification(sender_email, recipient_email, ticket_id, event_n
             routing_key=ROUTING_KEY,
             body=json.dumps(message),
             properties=pika.BasicProperties(
-                delivery_mode=2  # make message persistent
+                delivery_mode=2  
             )
         )
 
@@ -76,7 +76,7 @@ def validate_transfer(ticket_id):
     try:
         data = request.json
         recipient_email = data.get("recipientEmail")
-        sender_email = data.get("senderEmail")  # Add sender email to request
+        sender_email = data.get("senderEmail")
 
         if not recipient_email or not sender_email:
             return jsonify({
@@ -109,7 +109,7 @@ def validate_transfer(ticket_id):
             }), 400
 
         # Extract event name from validation message
-        event_name = event_validation["messages"][0].split("'")[1]  # Extract event name from message
+        event_name = event_validation["messages"][0].split("'")[1] 
 
         # Step 4: Send notification
         notification_sent = send_transfer_notification(

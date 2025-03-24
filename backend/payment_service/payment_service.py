@@ -6,12 +6,15 @@ import certifi
 from dotenv import load_dotenv
 from datetime import datetime
 from flask_cors import CORS
+import re
+
 # Load environment variables
 load_dotenv()
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+
 # ✅ MongoDB Configuration
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://your_mongo_user:your_password@cluster.mongodb.net/payments")
 mongo = PyMongo(app, tlsCAFile=certifi.where())
@@ -22,6 +25,16 @@ payments_collection = mongo.db.payments
 # ✅ Stripe API Configuration
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Make sure your .env file contains this
 
+# ✅ Helper: Validate input fields
+def is_valid_payment_data(data):
+    if not isinstance(data.get("user_id"), str) or len(data["user_id"].strip()) == 0:
+        return False, "Invalid user_id"
+    if not isinstance(data.get("amount"), (int, float)) or data["amount"] <= 0:
+        return False, "Invalid amount"
+    if not isinstance(data.get("payment_token"), str) or not re.match(r"^tok_|^pm_", data["payment_token"]):
+        return False, "Invalid payment token"
+    return True, None
+
 # 🔹 **Process Payment**
 @app.route("/payments/process", methods=["POST"])
 def process_payment():
@@ -30,6 +43,10 @@ def process_payment():
         required_fields = ["user_id", "amount", "payment_token"]
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
+
+        is_valid, error_msg = is_valid_payment_data(data)
+        if not is_valid:
+            return jsonify({"error": error_msg}), 400
 
         # ✅ Use the token to create a charge
         charge = stripe.Charge.create(
@@ -76,17 +93,26 @@ def process_payment():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-
+# ✅ Helper: Validate refund request data
+def is_valid_refund_data(data):
+    if not isinstance(data.get("payment_id"), str) or len(data["payment_id"].strip()) == 0:
+        return False, "Invalid payment_id"
+    if not isinstance(data.get("amount"), (int, float)) or data["amount"] <= 0:
+        return False, "Invalid amount"
+    return True, None
 
 # 🔹 **Process Refund**
 @app.route("/payments/refund", methods=["POST"])
 def process_refund():
     data = request.json
     try:
-        # Validate Input
         required_fields = ["payment_id", "amount"]
         if not all(field in data for field in required_fields):
             return jsonify({"error": "Missing required fields"}), 400
+
+        is_valid, error_msg = is_valid_refund_data(data)
+        if not is_valid:
+            return jsonify({"error": error_msg}), 400
 
         # Retrieve payment record from DB
         payment = payments_collection.find_one({"payment_id": data["payment_id"]})

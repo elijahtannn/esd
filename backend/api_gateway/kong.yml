@@ -15,7 +15,7 @@ services:
 
   # Ticket Service
   - name: ticket-service
-    url: http://host.docker.internal:5001
+    url: http://ticket-service:5001
     routes:
       - name: ticket-route
         paths:
@@ -28,19 +28,19 @@ services:
 
   # Order Service
   - name: order-service
-    url: http://host.docker.internal:8000
+    url: http://order-service:8003
     routes:
       - name: order-route
         paths:
           - /orders
-          - /orders/(.*)
+          - /orders/user/(.*)
           - /orders/transfer
-          - /health
+          - /orders/(\d+)
         strip_path: false
 
   # Payment Service
   - name: payment-service
-    url: http://host.docker.internal:8002
+    url: http://payment-service:8002
     routes:
       - name: payment-route
         paths:
@@ -85,4 +85,12 @@ services:
           - /events/dates/categories
           - /events/dates/categories/(.*)/inventory/purchase
           - /events/dates/categories/(.*)/inventory/resale
+        strip_path: false
+  # Validate Service
+  - name: process-ticket-order
+    url: http://process-ticket-order:8080
+    routes:
+      - name: process-route
+        paths:
+          - /process_ticket_order
         strip_path: false

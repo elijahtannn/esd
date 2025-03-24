@@ -1,0 +1,34 @@
+version: '3.8'
+
+services:
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-service
+    environment:
+      - MONGO_URI=mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd
+      - STRIPE_SECRET_KEY=sk_test_51R3Dww05deM4tavvjAb1rarfKKbcABwrev5vZYGHblpvQlsoL8YSpJyKpURYu6KvjHBq3ZT21JtdrCYh43v3Xjpd00qBCedbCK
+      - SECRET_KEY=supersecurekey
+      - GOOGLE_CLIENT_ID=603980424659-jiqs010nggvjmn6ve8c243nfral3q5a7.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+      - FRONTEND_URL=http://localhost:5173
+      - FLASK_APP=payment_service.py
+      - FLASK_ENV=development
+    ports:
+      - "8002:8002"
+    volumes:
+      - .:/app
+    networks:
+      esd_network:
+        aliases:
+          - payment-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/user/email/test@example.com"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  esd_network:
+    external: true
