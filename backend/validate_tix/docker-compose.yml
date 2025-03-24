@@ -19,10 +19,10 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
-      user_service_network:
+      esd_network:
         aliases:
           - validate-service
 
 networks:
-  user_service_network:
+  esd_network:
     external: true 

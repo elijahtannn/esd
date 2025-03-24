@@ -4,12 +4,11 @@
     <!-- Banner -->
     <div class="container-fluid bannerImg banner mx-0 p-5">
         <div class="row">
-            <div class="col-10">
+            <div class="col-12">
                 <div>
-                    <p class="bannerText p-5">{{ eventName }}</p>
+                    <p class="bannerText p-5">{{ eventDetails.Name }}</p>
                 </div>
             </div>
-            <div class="col-4"></div>
         </div>
     </div>
 
@@ -19,10 +18,10 @@
         <div class="row px-5">
             <div class="col">
                 <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
-                    startDate }} - {{ endDate }}</p>
-                <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ startTime }}
-                    - {{ endTime }}</p>
-                <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ venue }}
+                    formattedDate }}</p>
+                <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{formattedTime }}</p>
+                <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
+                    eventDetails.Venue }}
                 </p>
             </div>
             <div class="col">
@@ -31,7 +30,7 @@
             </div>
             <div class="col text-center">
                 <button style="text-transform: uppercase;" @click="toCheckout">Buy tickets</button>
-                <p style="color:var(--text-grey)">max capacity: {{ capacity }}</p>
+                <p style="color:var(--text-grey)">max capacity: {{ eventDetails.Capacity }}</p>
             </div>
         </div>
     </div>
@@ -41,7 +40,7 @@
         <div class="row p-5">
             <div class="col-6">
                 <h3 style="text-transform: uppercase; color:var(--main-blue)">Event details</h3>
-                <p style="line-height: 30px; margin-right: 100px;">{{ description }}</p>
+                <p style="line-height: 30px; margin-right: 100px;">{{ eventDetails.Description }}</p>
             </div>
             <div class="col-6">
                 <img src="../assets/carousel/eventiva_carousel1.png" style="width: 100%; object-fit: cover;">
@@ -59,11 +58,10 @@
             </div>
             <div class="col">
                 <ul style="list-style: none;">
-                    <li><b>CAT 1:</b> $80</li>
-                    <li><b>CAT 2:</b> $70</li>
-                    <li><b>CAT 3:</b> $58</li>
-                    <li><b>CAT 4:</b> $48</li>
-                    <li><b>CAT 5:</b> $38</li>
+                    <li v-for="cat in eventCategories">
+                        <b>{{ cat.Cat }}:</b>
+                        ${{ cat.Price }}
+                    </li>
                 </ul>
             </div>
         </div>
@@ -156,6 +154,7 @@
 <script>
 
 import NavBar from "../components/nav-bar.vue";
+import axios from 'axios';
 
 export default {
     name: 'event',
@@ -164,30 +163,182 @@ export default {
     },
     data() {
         return {
-            eventId: 0,
-            eventName: "Lady Gaga in Singapore",
-            startDate: "12 May 2025",
-            endDate: "15 May 2025",
-            startTime: "7pm",
-            endTime: "9pm",
-            venue: "National Stadium",
-            description: "Lady Gaga announced her highly anticipated return to Singapore with four massive stadium shows this spring. Performing in the country for the first time in 13 years since her 2012 Born This Way Ball Tour, the four-show run at National Stadium kicks off on Sunday, May 18, 2025, with additional performances on May 19, 21, and 24. Today's announcement comes just days after the release of Gaga's seventh studio album, MAYHEM, out now via Interscope Records. Marking a return to her pop roots, MAYHEM reaffirms that Gaga is a master of reinvention, crafting an album that is as bold and eclectic as it is deeply personal. It is a declaration of artistic freedom, a celebration of life's contradictions, and a testament to music's power to bring people together in the face of chaos.",
-            capacity: 899,
-            eventType: "Concert",
-            availableTickets: 200,
+            apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             eventImage: "../assets/carousel/eventiva_carousel1.png",
             minPrice: 38,
             maxPrice: 80,
+
+            eventDetails: [],
+            eventCategories: [],
+            formattedDate: "",
+            formattedTime: "",
         }
     },
     methods: {
-        toCheckout(){
-            this.$router.push({ path: '/checkout', query: { eventId: [this.eventId] } });
+        toCheckout() {
+            this.$router.push({ path: '/checkout', query: { eventId: [this.eventId], eventDetails: JSON.stringify(this.eventDetails), eventCategories: JSON.stringify(this.eventCategories) } });
+        },
+        async fetchEventDetail() {
+            console.log("Fetching events through Kong API Gateway");
+            try {
+                // Updated to use Kong API Gateway
+                const response = await axios.get(`${this.apiGatewayUrl}/events/${this.eventId}`);
+                console.log(response.data.Event);
+                var rawData = response.data.Event
+                this.processDetails(rawData);
+
+            } catch (error) {
+                console.error('Error fetching events:', error);
+            }
+        },
+        processDetails(rawData) {
+            const eventMap = new Map();
+
+            rawData.forEach(event => {
+                const key = event.Id; // Use a unique identifier for grouping
+
+                if (!eventMap.has(key)) {
+                    // If the event is not already in the map, add it with initial details
+                    eventMap.set(key, {
+                        Id: event.Id,
+                        Name: event.Name,
+                        Venue: event.Venue,
+                        Category: event.Category,
+                        Capacity: event.Capacity,
+                        AvailableTickets: event.AvailableTickets,
+                        StartTime: event.StartTime,
+                        EndTime: event.EndTime,
+                        Description: event.Description,
+                        Image: event.Image,
+                        dates: [], // Array to hold dates
+                        eventDateIds: [] // Array to hold EventDateIds
+                    });
+                }
+
+                // Push the date and EventDateId into the corresponding arrays
+                const existingEvent = eventMap.get(key);
+                existingEvent.dates.push(event.Date);
+                existingEvent.eventDateIds.push(event.EventDateId);
+            });
+
+
+            // If there's only one event, store it directly instead of as an array
+            this.eventDetails = Array.from(eventMap.values())[0]; // Extract first (and only) element
+            console.log(this.eventDetails);
+            this.formatDates(this.eventDetails.dates)
+            this.formatTimeRange(this.eventDetails.StartTime, this.eventDetails.EndTime)
+
+            // Now you can directly access properties like this:
+            this.fetchEventCats(this.eventDetails.eventDateIds);
+        },
+        async fetchEventCats(eventDateIds) {
+
+            try {
+                // Initialize an empty array to store unique categories with details
+                this.eventCategories = [];
+
+                // Loop through each eventDateId
+                for (const eventDateId of eventDateIds) {
+                    // Fetch categories for the current eventDateId
+                    const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${eventDateId}/categories`);
+
+                    // Extract the "Cats" array from the response
+                    const categories = response.data.Cats;
+
+                    // Loop through the fetched categories
+                    categories.forEach(category => {
+                        // Check if the category ("Cat") already exists in eventCategories
+                        const exists = this.eventCategories.some(
+                            existingCategory => existingCategory.Cat === category.Cat
+                        );
+
+                        if (!exists) {
+                            // If it doesn't exist, add it as an object with Cat, Price, and AvailableTickets
+                            this.eventCategories.push({
+                                Cat: category.Cat,
+                                Price: category.Price,
+                            });
+                            if (category.Price < this.minPrice) {
+                                this.minPrice = category.Price;
+                            }
+                            if (category.Price > this.maxPrice) {
+                                this.maxPrice = category.Price;
+                            }
+
+                        }
+                    });
+                }
+                console.log("Fetched categories:", this.eventCategories);
+
+            } catch (error) {
+                console.error("Error fetching event categories:", error);
+            }
+        },
+        formatDates(dates) {
+            // Convert ISO strings to Date objects and sort them
+            const sortedDates = dates.map(date => new Date(date)).sort((a, b) => a - b);
+
+            let formattedDates = [];
+            let currentRangeStart = sortedDates[0];
+            let currentRangeEnd = sortedDates[0];
+
+            for (let i = 1; i < sortedDates.length; i++) {
+                const currentDate = sortedDates[i];
+                const previousDate = sortedDates[i - 1];
+
+                // Check if currentDate is consecutive to previousDate
+                if ((currentDate - previousDate) / (1000 * 60 * 60 * 24) === 1) {
+                    currentRangeEnd = currentDate;
+                } else {
+                    // Push the formatted range or single date to formattedDates
+                    formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
+                    currentRangeStart = currentDate;
+                    currentRangeEnd = currentDate;
+                }
+            }
+
+            // Push the last range or single date
+            formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
+
+            this.formattedDate = formattedDates.join(", ");
+        },
+        formatRange(startDate, endDate) {
+            const options = { day: "numeric", month: "short" };
+
+            // Check if startDate and endDate are the same
+            if (startDate.getTime() === endDate.getTime()) {
+                return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`; // Single date in "11 May" format
+            }
+
+            // If they are in the same month, display as a range within the same month
+            if (startDate.getMonth() === endDate.getMonth()) {
+                return `${startDate.getDate()}-${endDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })}`;
+            }
+
+            // If they span different months, display full range
+            return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })} - ${endDate.getDate()} ${endDate.toLocaleString("en-US", { month: "short" })}`;
+        },
+        formatTimeRange(startTime, endTime) {
+            
+            const options = { hour: "numeric", minute: "numeric", hour12: true };
+
+            // Parse and format start time
+            const start = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${startTime}`)
+            );
+
+            // Parse and format end time
+            const end = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${endTime}`)
+            );
+
+            this.formattedTime = `${start} - ${end}`;
         }
     },
     mounted() {
         this.eventId = this.$route.query.eventId;
-    }
+        this.fetchEventDetail();
+    },
 }
 </script>
 

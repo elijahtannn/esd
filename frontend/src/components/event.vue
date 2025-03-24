@@ -8,8 +8,9 @@
                 <div class="text-start">
                     <p style="color:var(--main-blue)">{{ category }}</p>
                     <h4 class="card-title">{{ name }}</h4>
-                    <p style="text-transform: uppercase; font-size: 14px;">{{ formatDates(dates) }}
-                    <br>{{ formatTimeRange(startTime, endTime) }}</p>
+                    <p style="text-transform: uppercase; font-size: 14px;">{{ formattedDate }}
+                        <br>{{ formatTimeRange(startTime, endTime) }}
+                    </p>
                     <p style="font-size: 14px; color:var(--text-grey);">{{ venue }} (capacity: {{ capacity }})</p>
                 </div>
 
@@ -35,6 +36,7 @@ export default {
         return {
             ticketThreshold: 30,
             finalDateRange: "",
+            formattedDate: "",
         }
     },
     props: {
@@ -79,7 +81,7 @@ export default {
             // Push the last range or single date
             formattedDates.push(this.formatRange(currentRangeStart, currentRangeEnd));
 
-            return formattedDates.join(", ");
+            this.formattedDate = formattedDates.join(", ");
         },
         formatRange(startDate, endDate) {
             const options = { day: "numeric", month: "short" };
@@ -100,18 +102,18 @@ export default {
         formatTimeRange(startTime, endTime) {
             const options = { hour: "numeric", minute: "numeric", hour12: true };
 
-            // Convert the time strings into Date objects
-            const start = new Date(`1970-01-01T${startTime}Z`).toLocaleTimeString(
-            "en-US",
-            options
+            // Parse and format start time
+            const start = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${startTime}`)
             );
-            const end = new Date(`1970-01-01T${endTime}Z`).toLocaleTimeString(
-            "en-US",
-            options
+
+            // Parse and format end time
+            const end = new Intl.DateTimeFormat("en-US", options).format(
+                new Date(`1970-01-01T${endTime}`)
             );
 
             return `${start} - ${end}`;
-        },
+        }
     },
     mounted() {
 
