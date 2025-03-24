@@ -43,6 +43,15 @@
                     </div>
                 </div>
 
+                <!-- Timer -->
+                <div class="timer-container" v-if="isTimerActive">
+                    <div class="timer" :class="{ 'timer-warning': remainingSeconds <= 10 }">
+                        <span class="timer-text">Time remaining:</span>
+                        <span class="timer-count">{{ minutes }}:{{ seconds.toString().padStart(2, '0') }}</span>
+                        <p style="font-size: 12px; color:var(--text-grey)">Your tickets are being reserved. Please complete the transaction within the time limit or you will be routed back to the events page.</p>
+                    </div>
+                </div>
+
                 <!-- Step Content -->
                 <div class="step-content pt-5" style="margin-bottom: -70px;">
                     <div v-if="currentStep === 0">
@@ -171,6 +180,7 @@
                 </table>
 
                 <div class="row ps-4 pt-5">
+                    <p style="color:red; font-size: 15px;">{{ ticketError }}</p>
                     <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep">
                         Next Step
                     </button>
@@ -334,19 +344,30 @@ export default {
     },
     data() {
         return {
+            // Misc
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             stripePublishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
+
+            // Event Info
             eventId: 0,
             eventImage: "../assets/carousel/eventiva_carousel1.png",
+            formattedDate: "",
+            eventDetails: [],
+            eventDates: [],
+            eventCategories: [],
 
+            // Steps related
             previousStep: "browsing event",
             steps: ["Ticket selection", "Confirmation", "Payment", "Complete"],
             currentStep: 0,
+            ticketError: "",
 
+            // Selection
             selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }],
             selectedDate: '',
             selectedDateId: '',
 
+            // Payment
             cardName: '',
             cardNumber: '',
             cardExpiry: '',
@@ -359,17 +380,23 @@ export default {
             cardCvcElement: null,
             isStripeLoaded: false,
 
-            formattedDate: "",
-            eventDetails: [],
-            eventDates: [],
-            eventCategories: [],
-
+            // User
             user: null,
 
-
+            // Timer
+            paymentTimer: null,
+            abortController: null,
+            remainingSeconds: 25,
+            isTimerActive: false,
         }
     },
     computed: {
+        minutes() {
+            return Math.floor(this.remainingSeconds / 60);
+        },
+        seconds() {
+            return this.remainingSeconds % 60;
+        },
         selectedDate() {
             return this.eventDates.find(dateObj => dateObj.dateId === this.selectedDateId);
         },
@@ -406,7 +433,8 @@ export default {
     },
     methods: {
         goBack() {
-            this.$router.back()
+            this.cancelReservation();
+            this.$router.push({ path: '/event', query: { eventId: [this.eventId] } });
         },
         filteredeventCategories(index) {
             // Get all currently selected types except for the current row
@@ -444,29 +472,30 @@ export default {
         },
         nextStep() {
             if (this.currentStep < this.steps.length - 1) {
-                this.currentStep++;
 
-                if (this.currentStep == 2) {
-                    this.elements = this.stripe.elements();
-                    this.isStripeLoaded = true;
+                if (this.currentStep == 1) {
+                    // this.currentStep++;
+                    // this.elements = this.stripe.elements();
+                    // this.isStripeLoaded = true;
 
-                    // Wait until the DOM updates
-                    this.$nextTick(() => {
-                        if (document.getElementById('cardNumber')) {
-                            this.cardNumberElement = this.elements.create('cardNumber');
-                            this.cardExpiryElement = this.elements.create('cardExpiry');
-                            this.cardCvcElement = this.elements.create('cardCvc');
+                    // // Wait until the DOM updates
+                    // this.$nextTick(() => {
+                    //     if (document.getElementById('cardNumber')) {
+                    //         this.cardNumberElement = this.elements.create('cardNumber');
+                    //         this.cardExpiryElement = this.elements.create('cardExpiry');
+                    //         this.cardCvcElement = this.elements.create('cardCvc');
 
-                            this.cardNumberElement.mount('#cardNumber');
-                            this.cardExpiryElement.mount('#cardExpiry');
-                            this.cardCvcElement.mount('#cardCvc');
-                        } else {
-                            console.error("Card input fields are not found in the DOM.");
-                        }
-                    });
-                }else if(this.currentStep == 1){
+                    //         this.cardNumberElement.mount('#cardNumber');
+                    //         this.cardExpiryElement.mount('#cardExpiry');
+                    //         this.cardCvcElement.mount('#cardCvc');
+                    //     } else {
+                    //         console.error("Card input fields are not found in the DOM.");
+                    //     }
+                    // });
                     // create ticket and change ticket status to reserved 
                     this.reserveTicket();
+                } else {
+                    this.currentStep++;
                 }
             }
         },
@@ -474,6 +503,25 @@ export default {
             if (this.currentStep > 0) {
                 this.currentStep--;
             }
+        },
+        displayPayment() {
+            this.elements = this.stripe.elements();
+            this.isStripeLoaded = true;
+
+            // Wait until the DOM updates
+            this.$nextTick(() => {
+                if (document.getElementById('cardNumber')) {
+                    this.cardNumberElement = this.elements.create('cardNumber');
+                    this.cardExpiryElement = this.elements.create('cardExpiry');
+                    this.cardCvcElement = this.elements.create('cardCvc');
+
+                    this.cardNumberElement.mount('#cardNumber');
+                    this.cardExpiryElement.mount('#cardExpiry');
+                    this.cardCvcElement.mount('#cardCvc');
+                } else {
+                    console.error("Card input fields are not found in the DOM.");
+                }
+            });
         },
         formatDates(dates) {
             const sortedDates = dates.map(date => new Date(date)).sort((a, b) => a - b);
@@ -542,8 +590,6 @@ export default {
         },
         async processPayment() {
 
-            // console.log(this.selectedTickets);
-
             try {
                 const paymentData = {
                     user_id: this.user.id,
@@ -560,6 +606,7 @@ export default {
                 });
 
                 console.log("Payment Response:", response.data);
+                this.cancelReservation(); // Stop both timer and request
                 this.currentStep++;
             } catch (error) {
                 console.error("Payment Error:", error.response?.data || error.message);
@@ -576,7 +623,6 @@ export default {
             if (error) {
                 console.error(error.message);
             } else {
-                console.log('Token:', token.id);
                 this.paymentToken = token.id;
                 this.processPayment();
             }
@@ -584,7 +630,6 @@ export default {
         async getDates() {
             try {
                 const response = await axios.get(`${this.apiGatewayUrl}/events/${this.eventId}`);
-                console.log(response.data.Event);
 
                 for (let info of response.data.Event) {
                     var formattedDate = this.formatDate(info.Date);
@@ -598,43 +643,112 @@ export default {
         async showCategories() {
             try {
                 const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${this.selectedDateId}/categories`);
-                console.log(response.data.Cats);
-                
+
                 for (let info of response.data.Cats) {
                     this.eventCategories.push({ 'Cat': info.Cat, 'CatId': info.Id, 'Price': info.Price, 'AvailableTickets': info.AvailableTickets })
                 }
-                
+
             } catch (error) {
                 console.error('Error fetching events:', error);
             }
         },
         async reserveTicket() {
 
-            // for (let i = 0; i < this.selectedTickets.length; i++) {
-            //     const element = array[i];
-                
-            // }
+            // Create abort controller for the request
+            this.reservationController = new AbortController();
 
-            try {
-                const ticketsData = {
-                    selectedTickets: this.selectedTickets,
-                    selectedDateId: this.selectedDateId,
-                    selectedEventId: this.eventId,
-                    userId: this.user.id,
-                };
-                const response = await axios.post(`http://localhost:8006/reserve_ticket`, ticketsData, {
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                });
-                console.log(response.data);
+            var checkTicketsAvail = true;
 
-            } catch (error) {
-                console.error('Error fetching events:', error);
+            for (var ticket of this.selectedTickets) {
+                const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${this.selectedDateId}/categories`);
+
+                // loop through and find category 
+                for (var cat of response.data.Cats) {
+                    // found category info
+                    if (cat.Id == ticket.catId) {
+                        // check if there is insufficent tickets then return and inform user
+                        if (cat.AvailableTickets < ticket.quantity) {
+                            checkTicketsAvail = false;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (checkTicketsAvail == true) {
+                this.currentStep++;
+                this.ticketError = "";
+                this.displayPayment()
+
+                try {
+                    const ticketsData = {
+                        selectedTickets: this.selectedTickets,
+                        selectedDateId: this.selectedDateId,
+                        selectedEventId: this.eventId,
+                        userId: this.user.id,
+                        eventCategory: this.eventDetails.Category,
+                    };
+
+                    // Create new AbortController for this request
+                    this.abortController = new AbortController();
+                    this.startPaymentTimer();
+
+                    const response = await axios.post(
+                        'http://localhost:8006/reserve_ticket',
+                        ticketsData,
+                        {
+                            signal: this.abortController.signal, // Attach abort signal
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                    );
+
+                    if (this.paymentTimer) clearTimeout(this.paymentTimer);
+
+                    if (response.data.status === false) {
+                        this.goBack();
+                    }
+                } catch (error) {
+                    if (!axios.isCancel(error)) {
+                        this.goBack();
+                    }
+                }
+
+
+
+            } else {
+                this.ticketError = "There is insufficient tickets for the selected category type";
+            }
+
+        },
+        startPaymentTimer() {
+            if (this.paymentTimer) clearTimeout(this.paymentTimer);
+            // this.paymentTimer = setTimeout(() => {
+            //     this.cancelReservation();
+            //     this.goBack();
+            // }, 25000); // Add 5s buffer for network latency
+
+            this.isTimerActive = true;
+            this.paymentTimer = setInterval(() => {
+                if (this.remainingSeconds > 0) {
+                    this.remainingSeconds--;
+                } else {
+                    this.cancelReservation();
+                    this.goBack();
+                }
+            }, 1000);
+        },
+        cancelReservation() {
+            this.isTimerActive = false;
+            if (this.abortController) {
+                this.abortController.abort(); // Proper cancellation method
+                this.abortController = null;
+            }
+            if (this.paymentTimer) {
+                clearTimeout(this.paymentTimer);
+                this.paymentTimer = null;
             }
         },
 
-        
     },
     created() {
         this.eventId = Number(this.$route.query.eventId);
@@ -656,6 +770,9 @@ export default {
             return;
         }
 
+    },
+    beforeDestroy() {
+        this.cancelReservation();
     }
 }
 </script>
@@ -783,5 +900,12 @@ export default {
     margin-top: 5px;
     border: 1px solid #ccc;
     /* font-size: 14px; */
+}
+
+.timer-count {
+    font-size: 24px;
+    font-weight: bold;
+    color: #e74c3c;
+    margin: 0 5px;
 }
 </style>
