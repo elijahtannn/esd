@@ -1,201 +1,204 @@
 <template>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <div>
-        <NavBar />
-        <div v-if="user">
-            <!-- Banner -->
-            <div class="container-fluid bannerImg banner mx-0 p-5">
-                <div class="row">
-                    <div class="col-8">
-                        <div>
-                            <p class="bannerText">Hello,<br> {{ user.name }}</p>
-                        </div>
-                    </div>
-                    <div class="col-4"></div>
-                </div>
-            </div>
-
-            <!-- White boxes for profile and orders -->
-            <div class="content-wrapper">
-                <!-- profile box -->
-                <div class="profile-box">
-                    <h3 class="profile-heading">PROFILE</h3>
-                    <p><span class="label">Id:</span> <br> {{ user.id }}</p>
-                    <p><span class="label">Name:</span> <br> {{ user.name }}</p>
-                    <p><span class="label">Email:</span> <br> {{ user.email }}</p>
-                    <!-- EDITABLE MOBILE NUMBER -->
-                    <p>
-                        <span class="label">Mobile Number:</span> <br>
-                        <span v-if="!isEditing">{{ user.mobile }}</span>
-                        <input v-else type="text" v-model="user.mobile" class="mobile-input" />
-
-                        <!-- Font Awesome Pencil Icon -->
-                        <button @click="toggleEdit" class="icon-button">
-                            <i :class="isEditing ? 'fas fa-check' : 'fas fa-pencil-alt'"></i>
-                        </button>
-                    </p>
-                </div>
-                <!-- order box -->
-                <div class="orders-box">
-                    <h3 class="event-heading">EVENT ORDERS</h3>
-                    <!-- Tab Links -->
-                    <div class="tabs">
-                        <button class="tablinks active" @click="openTab($event, 'Upcoming')">Upcoming</button>
-                        <button class="tablinks" @click="openTab($event, 'History')">History</button>
-                    </div>
-
-                    <!-- Tab Content -->
-                    <!-- UPCOMING TAB -->
-                    <div id="Upcoming" class="tabcontent active order-card">
-                        <hr>
-                        <div v-if="upcomingOrders.length === 0">No orders available</div>
-                        <div v-else>
-                            <div v-for="order in upcomingOrders" :key="order.OrderId" class="order-item">
-                                <div class="order-header" @click="toggleExpand(order)">
-                                    <div>
-                                        <!-- Event Information -->
-                                        <div class="order-summary">
-                                            <span><strong>{{ order.EventName }}</strong></span><br>
-                                            <span>{{ formatDates(order.EventDate) }}, {{ order.Venue }}</span>
-                                        </div> <br>
-                                        <!-- Order Information -->
-                                        <div>
-                                            <span style="font-size: 15px; color: grey;">Order Information: #{{
-                                                order.OrderId }}</span><br>
-                                            <span style="font-size: 15px; color: grey;">Ticket Quantity: {{
-                                                order.TicketQuantity }}</span><br>
-                                            <span style="font-size: 15px; color: grey;">Total Cost: ${{
-                                                order.TotalCost.toFixed(2) }}</span>
-                                        </div>
-                                    </div>
-                                    <button class="toggle-button">
-                                        <i
-                                            :class="['fa-solid', order.isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
-                                    </button>
-
-                                </div>
-                                <div v-if="order.isExpanded" class="order-details">
-                                    <!-- HERE -->
-                                    <div class="order-details">
-                                        <!-- QR cards -->
-                                        <br>
-                                        <div class="qr-cards">
-                                            <!-- DEBUGGING -->
-                                            <div class="qr-card" v-for="ticket in order.ticketIds" :key="ticket._id">
-                                                <!-- Three-dot menu -->
-                                                <div class="menu-container">
-                                                    <span class="menu-icon" @click="toggleMenu">
-                                                        &#x22EE; <!-- Vertical three dots -->
-                                                    </span>
-                                                    <div v-if="isMenuOpen" class="menu-dropdown">
-                                                        <p @click="handleOption('resale')">Resell Ticket</p>
-                                                        <p @click="handleOption('transfer')">Transfer Ticket</p>
-                                                    </div>
-                                                </div>
-                                                <!--QR code image -->
-                                                <div v-if="isQrVisible">
-                                                    <img src="../assets/images/dummy QR code.png" class="qr-image">
-                                                </div>
-                                                <!-- TICKET ON HOLD TEXT -->
-                                                <div v-else class="ticket-status">
-                                                    <p
-                                                        style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
-                                                        <strong>ON HOLD:</strong> {{ ticketStatus }}</p>
-                                                </div>
-                                                <p>#{{ ticket }}</p>
-                                                <p>Type: Category{{ ticket.cat_id }}</p>
-                                                <p>Seat: #{{ ticket.seat_info }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <!-- Resale Confirmation Modal -->
-                                    <div v-if="showResalePopup" class="modal-overlay">
-                                        <div class="modal-content">
-                                            <!-- Close (X) Button -->
-                                            <span class="close-button" @click="closePopup">&times;</span>
-
-                                            <h3>Are you sure you want to resell your ticket?</h3>
-                                            <p><strong>Ticket ID:</strong> #101</p>
-                                            <p><strong>Type:</strong> Category 1</p>
-                                            <p><strong>Price:</strong> $80</p>
-                                            <p><strong>Seat:</strong> #88</p>
-                                            <hr>
-                                            <!-- Mandatory Checkbox for Agreement -->
-                                            <div class="checkbox-container">
-                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                                                <label for="agreeCheckbox">
-                                                    I agree that a refund will only be issued once the resale process is
-                                                    complete and the transaction is finalized.
-                                                </label>
-                                            </div>
-
-                                            <button @click="confirmResale" class="confirm-button">CONFIRM</button>
-                                        </div>
-                                    </div>
-                                    <!-- Transfer Ticket Modal -->
-                                    <div v-if="showTransferPopup" class="modal-overlay">
-                                        <div class="modal-content">
-                                            <!-- Close (X) Button -->
-                                            <span class="close-button" @click="closePopup">&times;</span>
-
-                                            <h3>Transfer your ticket</h3>
-                                            <p><strong>Ticket ID:</strong> #101</p>
-                                            <p><strong>Type:</strong> Category 1</p>
-                                            <p><strong>Price:</strong> $80</p>
-                                            <p><strong>Seat:</strong> #88</p>
-                                            <hr>
-
-                                            <!-- Input Form for Recipient's Information -->
-                                            <div class="form-group">
-                                                <label for="recipientName">Recipient's Name:</label>
-                                                <input type="text" id="recipientName" v-model="recipientName"
-                                                    placeholder="Enter recipient's name" />
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="eventivaAccount">Recipient's Eventiva Account ID:</label>
-                                                <input type="text" id="eventivaAccount" v-model="eventivaAccount"
-                                                    placeholder="Enter Eventiva Account ID" />
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="phoneNumber">Recipient's Phone Number:</label>
-                                                <input type="text" id="phoneNumber" v-model="phoneNumber"
-                                                    placeholder="Enter phone number" />
-                                            </div>
-
-                                            <!-- Mandatory Checkbox for Agreement -->
-                                            <div class="checkbox-container">
-                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                                                <label for="agreeCheckbox" style="font-size: 14px;">
-                                                    I agree that transfer will only be completed once both parties has
-                                                    accepted the transfer. Once the transfer is complete, it cannot be
-                                                    undone or transferred back to me. </label>
-                                            </div>
-                                            <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <hr>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+        <div>
+            <NavBar />
+            <div v-if="user">
+                <!-- Banner -->
+                <div class="container-fluid bannerImg banner mx-0 p-5">
+                    <div class="row">
+                        <div class="col-8">
+                            <div>
+                                <p class="bannerText">Hello,<br> {{ user.name }}</p>
                             </div>
                         </div>
+                        <div class="col-4"></div>
                     </div>
+                </div>
 
-                    <!-- History Tab -->
-                    <div id="History" class="tabcontent">
-                        <hr>
-                        <div v-if="pastOrders.length === 0">No past events available.</div>
-                        <div v-else>
-                            <div class="order-header" v-for="order in pastOrders" :key="order.OrderId">
-                                <template v-if="order.EventDetails">
-                                    <span><strong>{{ order.EventDetails.Name }}</strong></span><br>
-                                    <span>{{ formatDates(order.EventDetails.Dates) }}, {{ order.EventDetails.Venue
-                                        }}</span><br><br>
-                                </template>
-                                <span style="font-size: 15px; color: grey;">Order Information: #{{ order.OrderId
-                                    }}</span><br>
-                                <span style="font-size: 15px; color: grey;">Ticket Quantity: {{ order.TicketQuantity
-                                    }}</span><br>
-                                <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2)
-                                    }}</span>
+                <!-- White boxes for profile and orders -->
+                <div class="content-wrapper">
+                    <!-- profile box -->
+                    <div class="profile-box">
+                        <h3 class="profile-heading">PROFILE</h3>
+                        <p><span class="label">Id:</span> <br> {{ user.id }}</p>
+                        <p><span class="label">Name:</span> <br> {{ user.name }}</p>
+                        <p><span class="label">Email:</span> <br> {{ user.email }}</p>
+                        <!-- EDITABLE MOBILE NUMBER -->
+                        <p>
+                            <span class="label">Mobile Number:</span> <br>
+                            <span v-if="!isEditing">{{ user.mobile }}</span>
+                            <input v-else type="text" v-model="user.mobile" class="mobile-input" />
+
+                            <!-- Font Awesome Pencil Icon -->
+                            <button @click="toggleEdit" class="icon-button">
+                                <i :class="isEditing ? 'fas fa-check' : 'fas fa-pencil-alt'"></i>
+                            </button>
+                        </p>
+                    </div>
+                    <!-- order box -->
+                    <div class="orders-box">
+                        <h3 class="event-heading">EVENT ORDERS</h3>
+                        <!-- Tab Links -->
+                        <div class="tabs">
+                            <button class="tablinks active" @click="openTab($event, 'Upcoming')">Upcoming</button>
+                            <button class="tablinks" @click="openTab($event, 'History')">History</button>
+                        </div>
+
+                        <!-- Tab Content -->
+                        <!-- UPCOMING TAB -->
+                        <div id="Upcoming" class="tabcontent active order-card">
+                            <hr>
+                            <div v-if="upcomingOrders.length === 0">No orders available</div>
+                            <div v-else>
+                                <div v-for="order in upcomingOrders" :key="order.OrderId" class="order-item">
+                                    <div class="order-header" @click="toggleExpand(order)">
+                                        <div>
+                                            <!-- Event Information -->
+                                            <div class="order-summary">
+                                                <span><strong>{{ order.EventName }}</strong></span><br>
+                                                <span>{{ formatDates(order.EventDate) }}, {{ order.Venue }}</span>
+                                            </div> <br>
+                                            <!-- Order Information -->
+                                            <div>
+                                                <span style="font-size: 15px; color: grey;">Order Information: #{{
+                                                    order.OrderId }}</span><br>
+                                                <span style="font-size: 15px; color: grey;">Ticket Quantity: {{
+                                                    order.TicketQuantity }}</span><br>
+                                                <span style="font-size: 15px; color: grey;">Total Cost: ${{
+                                                    order.TotalCost.toFixed(2) }}</span>
+                                            </div>
+                                        </div>
+                                        <button class="toggle-button">
+                                            <i
+                                                :class="['fa-solid', order.isExpanded ? 'fa-chevron-up' : 'fa-chevron-down', 'icon']"></i>
+                                        </button>
+
+                                    </div>
+                                    <div v-if="order.isExpanded" class="order-details">
+                                        <!-- HERE -->
+                                        <div class="order-details">
+                                            <!-- QR cards -->
+                                            <br>
+                                            <div class="qr-cards">
+                                                <!-- DEBUGGING -->
+                                                <div class="qr-card" v-for="ticket in order.tickets" :key="ticket.ticketId">
+                                                    <!-- Three-dot menu -->
+                                                    <div class="menu-container">
+                                                        <span class="menu-icon" @click="toggleMenu">
+                                                            &#x22EE; <!-- Vertical three dots -->
+                                                        </span>
+                                                        <div v-if="isMenuOpen" class="menu-dropdown">
+                                                            <p @click="handleOption('resale')">Resell Ticket</p>
+                                                            <p @click="handleOption('transfer')">Transfer Ticket</p>
+                                                        </div>
+                                                    </div>
+                                                    <!--QR code image -->
+                                                    <div v-if="isQrVisible">
+                                                        <img src="../assets/images/dummy QR code.png" class="qr-image">
+                                                    </div>
+                                                    <!-- TICKET ON HOLD TEXT -->
+                                                    <div v-else class="ticket-status">
+                                                        <p
+                                                            style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
+                                                            <strong>ON HOLD:</strong> {{ ticketStatus }}</p>
+                                                    </div>
+                                                    <p>#{{ ticket.ticketId }}</p>
+                                                    <p>Type: {{ ticket.categoryName }}</p>
+                                                    <p>Seat: {{ ticket.seatInfo }}</p>
+                                                    <p v-if="ticket.price !== undefined">Price: ${{ ticket.price }}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <!-- Resale Confirmation Modal -->
+                                        <div v-if="showResalePopup" class="modal-overlay">
+                                            <div class="modal-content">
+                                                <!-- Close (X) Button -->
+                                                <span class="close-button" @click="closePopup">&times;</span>
+
+                                                <h3>Are you sure you want to resell your ticket?</h3>
+                                                <p><strong>Ticket ID:</strong> #101</p>
+                                                <p><strong>Type:</strong> Category 1</p>
+                                                <p><strong>Price:</strong> $80</p>
+                                                <p><strong>Seat:</strong> #88</p>
+                                                <hr>
+                                                <!-- Mandatory Checkbox for Agreement -->
+                                                <div class="checkbox-container">
+                                                    <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                                    <label for="agreeCheckbox">
+                                                        I agree that a refund will only be issued once the resale process is
+                                                        complete and the transaction is finalized.
+                                                    </label>
+                                                </div>
+
+                                                <button @click="confirmResale" class="confirm-button">CONFIRM</button>
+                                            </div>
+                                        </div>
+                                        <!-- Transfer Ticket Modal -->
+                                        <div v-if="showTransferPopup" class="modal-overlay">
+                                            <div class="modal-content">
+                                                <!-- Close (X) Button -->
+                                                <span class="close-button" @click="closePopup">&times;</span>
+
+                                                <h3>Transfer your ticket</h3>
+                                                <p><strong>Ticket ID:</strong> #101</p>
+                                                <p><strong>Type:</strong> Category 1</p>
+                                                <p><strong>Price:</strong> $80</p>
+                                                <p><strong>Seat:</strong> #88</p>
+                                                <hr>
+
+                                                <!-- Input Form for Recipient's Information -->
+                                                <div class="form-group">
+                                                    <label for="recipientName">Recipient's Name:</label>
+                                                    <input type="text" id="recipientName" v-model="recipientName"
+                                                        placeholder="Enter recipient's name" />
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="eventivaAccount">Recipient's Eventiva Account ID:</label>
+                                                    <input type="text" id="eventivaAccount" v-model="eventivaAccount"
+                                                        placeholder="Enter Eventiva Account ID" />
+                                                </div>
+                                                <div class="form-group">
+                                                    <label for="phoneNumber">Recipient's Phone Number:</label>
+                                                    <input type="text" id="phoneNumber" v-model="phoneNumber"
+                                                        placeholder="Enter phone number" />
+                                                </div>
+
+                                                <!-- Mandatory Checkbox for Agreement -->
+                                                <div class="checkbox-container">
+                                                    <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                                    <label for="agreeCheckbox" style="font-size: 14px;">
+                                                        I agree that transfer will only be completed once both parties has
+                                                        accepted the transfer. Once the transfer is complete, it cannot be
+                                                        undone or transferred back to me. </label>
+                                                </div>
+                                                <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- History Tab -->
+                        <div id="History" class="tabcontent">
+                            <hr>
+                            <div v-if="pastOrders.length === 0">No past events available.</div>
+                            <div v-else>
+                                <div class="order-header" v-for="order in pastOrders" :key="order.OrderId">
+                                    <template v-if="order.EventDetails">
+                                        <span><strong>{{ order.EventDetails.Name }}</strong></span><br>
+                                        <span>{{ formatDates(order.EventDetails.Dates) }}, {{ order.EventDetails.Venue
+                                            }}</span><br><br>
+                                    </template>
+                                    <span style="font-size: 15px; color: grey;">Order Information: #{{ order.OrderId
+                                        }}</span><br>
+                                    <span style="font-size: 15px; color: grey;">Ticket Quantity: {{ order.TicketQuantity
+                                        }}</span><br>
+                                    <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2)
+                                        }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -236,14 +239,20 @@ export default {
         }
     },
     mounted() {
-        const userData = auth.getUser();
+    const userData = auth.getUser();
         if (userData) {
             this.user = userData;
-            this.fetchOrders().then(() => {
-                console.log("Order List After Fetching Orders:", this.orderList); // Debugging
-                this.fetchTickets();
-                this.fetchTicketsForOrders();
-            });
+            this.fetchOrders()
+                .then(() => {
+                    // After fetching basic order data, get additional details
+                    return this.fetchOrderDetails();
+                })
+                .then(() => {
+                    console.log("Order List with complete details:", this.orderList);
+                })
+                .catch(error => {
+                    console.error("Error in order fetching process:", error);
+                });
         }
     },
     methods: {
@@ -253,7 +262,12 @@ export default {
         // BACKEND METHODS
         async fetchOrders() {
             try {
-                const userId = "67d44330971f398f904f8c34";
+                if (!this.user || !this.user.id) {
+                    console.error('No user ID available');
+                    return;
+                }
+
+                const userId = this.user.id;
                 const response = await axios.get(`${this.apiGatewayUrl}/orders/user/${userId}`);
                 const rawOrders = response.data;
                 console.log("Raw Order response:", rawOrders);
@@ -270,67 +284,110 @@ export default {
                 TicketQuantity: order.ticketIds?.length || 0,
                 TotalCost: order.totalAmount,
                 Status: order.status,
-                EventName: order.eventName,
-                Venue: order.venue,
-                EventDate: order.eventDate,
-                isExpanded: false,
                 ticketIds: order.ticketIds,
+                eventId: order.eventId,
+                eventDateId: order.eventDateId,
+                catId: order.catId,
+                isExpanded: false,
+                EventName: '',
+                Venue: '',
+                EventDate: null,
                 tickets: [],
             }));
             console.log("Processed Order List:", this.orderList);
         },
 
-        async fetchTickets() {
-            // try {
-            //     const response = await axios.get(`http://127.0.0.1:5001/tickets`);
-            //     const rawTickets = response.data;
-            //     console.log("Raw Ticket Data:", rawTickets);
-            //     // Debugging
-            //     this.processTickets(rawTickets); // Ensure this line exists
-            // } catch (error) {
-            //     console.error('Error fetching tickets:', error);
-            // }
-        },
-        async fetchTicketsForOrders() {
+        // Fetch additional details from other services
+        async fetchOrderDetails() {
+        try {
+            // Process each order to get event details and ticket details
+            await Promise.all(this.orderList.map(async (order) => {
+            // Fetch event details
             try {
-                for (const order of this.orderList) {
-                    const tickets = await Promise.all(
-                        order.ticketIds.map(async (ticketId) => {
-                            const response = await axios.get(`http://127.0.0.1:5001/tickets/${ticketId}`);
-
-                            if (!response.data || typeof response.data !== 'object') {
-                                throw new Error(`Invalid response for ticket ID ${ticketId}`);
-                            }
-
-                            return {
-                                ticketId,
-                                cat: response.data.cat_id,
-                                seatInfo: response.data.seat_info,
-                            };
-                        })
-                    );
-
-                    // Add tickets attribute to each order
-                    order.tickets = tickets;
+                const eventResponse = await axios.get(`/api/events/events/${order.eventId}`);
+                
+                // Process event data
+                if (eventResponse.data && eventResponse.data.Event && eventResponse.data.Event.length > 0) {
+                const eventData = eventResponse.data.Event[0];
+                order.EventName = eventData.Name;
+                order.Venue = eventData.Venue;
+                order.EventDate = eventData.Date;
                 }
-
-                console.log('Orders with Tickets:', orders);
-            } catch (error) {
-                console.error('Error fetching tickets for orders:', error);
+            } catch (eventError) {
+                console.error(`Error fetching event details for order ${order.OrderId}:`, eventError);
+                order.EventName = 'Event Information Unavailable';
+                order.Venue = 'Venue Information Unavailable';
             }
+            
+            // Fetch ticket details first
+            if (order.ticketIds && order.ticketIds.length > 0) {
+                try {
+                const ticketPromises = order.ticketIds.map(ticketId => 
+                    axios.get(`${this.apiGatewayUrl}/tickets/${ticketId}`)
+                );
+                
+                const ticketResponses = await Promise.all(ticketPromises);
+                
+                // Process ticket data
+                const ticketsWithBasicInfo = ticketResponses.map(response => {
+                    const ticketData = response.data;
+                    return {
+                    ticketId: ticketData._id,
+                    catId: ticketData.cat_id,
+                    categoryName: `Category ${ticketData.cat_id}`, // Default value, will be updated
+                    price: 0, // Default value, will be updated
+                    seatInfo: ticketData.seat_info,
+                    status: ticketData.status,
+                    isTransferable: ticketData.is_transferable,
+                    qrCode: ticketData.qr_code || ""
+                    };
+                });
+                
+                // Now fetch category details for each ticket
+                const ticketsWithCategoryPromises = ticketsWithBasicInfo.map(async (ticket) => {
+                    try {
+                    // Use the specific category endpoint you've shown
+                    const categoryResponse = await axios.get(
+                    `https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/dates/categories/${ticket.catId}`,
+                    { 
+                        headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                        }
+                    }
+                    );
+                    
+                    // Extract category information from response
+                    if (categoryResponse.data && 
+                        categoryResponse.data.Result && 
+                        categoryResponse.data.Result.Success &&
+                        categoryResponse.data.TicketCategory) {
+                        
+                        console.log("Cat data: ", categoryResponse.data);
+                        const categoryData = categoryResponse.data.TicketCategory;
+                        ticket.categoryName = categoryData.Cat || `Category ${ticket.catId}`;
+                        ticket.price = categoryData.Price || 0;
+                    }
+                    } catch (catError) {
+                    console.error(`Error fetching category ${ticket.catId} details:`, catError);
+                    }
+                    return ticket;
+                });
+                
+                // Wait for all category information to be retrieved
+                order.tickets = await Promise.all(ticketsWithCategoryPromises);
+                
+                } catch (ticketError) {
+                console.error(`Error fetching ticket details for order ${order.OrderId}:`, ticketError);
+                }
+            }
+            }));
+            
+            console.log('Orders with complete details:', this.orderList);
+        } catch (error) {
+            console.error('Error fetching order details:', error);
+        }
         },
-
-
-        processTickets(rawTickets) {
-            console.log("PROCESSTICKETS FUNCTION:", rawTickets); // Debugging
-            console.log("Order List Before Processing Tickets:", this.orderList); // Debugging
-            this.orderList.forEach(order => {
-                order.tickets = rawTickets.filter(ticket => order.ticketIds.includes(ticket._id));
-                console.log(`Order ${order.OrderId} tickets:`, order.tickets); // Debugging
-            });
-        },
-
-
 
         formatDates(dates) {
             if (!dates) return '';
