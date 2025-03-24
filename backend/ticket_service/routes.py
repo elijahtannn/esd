@@ -51,7 +51,7 @@ def release_tickets():
 @ticket_bp.route('/tickets/reserve', methods=['POST'])
 def create_tickets():
     data = request.json
-    required_fields = ["event_date_id", "cat_id", "owner_id", "seat_info"]
+    required_fields = ["event_id", "event_date_id", "cat_id", "owner_id", "seat_info"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
@@ -64,6 +64,7 @@ def create_tickets():
         now = datetime.utcnow()
         for _ in range(num_tickets):
             ticket_dict = Ticket(
+                event_id=int(data["event_id"]),
                 event_date_id=int(data["event_date_id"]),
                 cat_id=int(data["cat_id"]),
                 owner_id=data["owner_id"],
