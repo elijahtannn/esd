@@ -15,7 +15,8 @@ def get_ticket_collection():
 class Ticket:
     """Ticket Model"""
 
-    def __init__(self, event_date_id, cat_id, owner_id, seat_info, status="available", is_transferable=True, qr_code=None):
+    def __init__(self, event_id, event_date_id, cat_id, owner_id, seat_info, status="available", is_transferable=True, qr_code=None):
+        self.event_id = int(event_id)
         self.event_date_id = int(event_date_id)  # Stored as integer
         self.cat_id = int(cat_id)  # Stored as integer
         self.owner_id = ObjectId(owner_id)  # MongoDB ObjectId for user reference
@@ -29,6 +30,7 @@ class Ticket:
     def to_dict(self):
         """Convert Ticket object to a dictionary for MongoDB storage"""
         return {
+            "event_id": self.event_id,
             "event_date_id": self.event_date_id,
             "cat_id": self.cat_id,
             "owner_id": str(self.owner_id),  # Convert ObjectId to string
