@@ -14,7 +14,7 @@ load_dotenv()
 ORDER_SERVICE_URL = "http://localhost:8000"
 TICKET_SERVICE_URL = "http://127.0.0.1:5001"
 VALIDATE_SERVICE_URL = "http://localhost:8004"
-USER_SERVICE_URL = "http://localhost:5100"
+USER_SERVICE_URL = "http://localhost:5003"
 
 @app.route("/transfer/<ticket_id>", methods=["POST"])
 def transfer_ticket(ticket_id):

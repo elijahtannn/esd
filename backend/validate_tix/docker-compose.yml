@@ -9,8 +9,8 @@ services:
     environment:
       - FLASK_APP=validate_ticket.py
       - FLASK_ENV=development
-      - TICKET_SERVICE_URL=http://host.docker.internal:5001
-      - USER_SERVICE_URL=http://user-service:5000
+      - TICKET_SERVICE_URL=http://ticket-service:5001
+      - USER_SERVICE_URL=http://user-service:5003
       - RABBITMQ_URL=amqp://host.docker.internal:5672
     ports:
       - "8004:8004"
