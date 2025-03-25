@@ -88,7 +88,7 @@
                                                         <span class="menu-icon" @click="toggleMenu(ticket)">
                                                             &#x22EE; <!-- Vertical three dots -->
                                                         </span>
-                                                        <div v-if="openMenus.includes(ticket)" class="menu-dropdown">
+                                                        <div v-if="openMenus.includes(ticket) && !disabledMenus[ticket.ticketId]" class="menu-dropdown">
                                                             <p @click="handleOption('resale', ticket)">Resell Ticket</p>
                                                             <p @click="handleOption('transfer', ticket)">Transfer Ticket</p>
                                                         </div>
@@ -107,72 +107,73 @@
                                                     <p>Type: {{ ticket.categoryName }}</p>
                                                     <p>Seat: {{ ticket.seatInfo }}</p>
                                                     <p v-if="ticket.price !== undefined">Price: ${{ ticket.price }}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <!-- Resale Confirmation Modal -->
-                                        <div v-if="showResalePopup" class="modal-overlay">
-                                            <div class="modal-content">
-                                                <!-- Close (X) Button -->
-                                                <span class="close-button" @click="closePopup">&times;</span>
 
-                                                <h3>Are you sure you want to resell your ticket?</h3>
-                                                <p><strong>Ticket ID:</strong> #101</p>
-                                                <p><strong>Type:</strong> Category 1</p>
-                                                <p><strong>Price:</strong> $80</p>
-                                                <p><strong>Seat:</strong> #88</p>
-                                                <hr>
-                                                <!-- Mandatory Checkbox for Agreement -->
-                                                <div class="checkbox-container">
-                                                    <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                                                    <label for="agreeCheckbox">
-                                                        I agree that a refund will only be issued once the resale process is
-                                                        complete and the transaction is finalized.
-                                                    </label>
-                                                </div>
+                                                    <!-- Resale Confirmation Modal -->
+                                                    <div v-if="showResalePopup" class="modal-overlay">
+                                                        <div class="modal-content">
+                                                            <!-- Close (X) Button -->
+                                                            <span class="close-button" @click="closePopup">&times;</span>
 
-                                                <button @click="confirmResale" class="confirm-button">CONFIRM</button>
-                                            </div>
-                                        </div>
-                                        <!-- Transfer Ticket Modal -->
-                                        <div v-if="showTransferPopup" class="modal-overlay">
-                                            <div class="modal-content">
-                                                <!-- Close (X) Button -->
-                                                <span class="close-button" @click="closePopup">&times;</span>
+                                                            <h3>Are you sure you want to resell your ticket?</h3>
+                                                            <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
+                                                            <p><strong>Type:</strong>{{ selectedTicket.categoryName }}</p>
+                                                            <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
+                                                            <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
+                                                            <hr>
+                                                            <!-- Mandatory Checkbox for Agreement -->
+                                                            <div class="checkbox-container">
+                                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                                                <label for="agreeCheckbox">
+                                                                    I agree that a refund will only be issued once the resale process is
+                                                                    complete and the transaction is finalized.
+                                                                </label>
+                                                            </div>
 
-                                                <h3>Transfer your ticket</h3>
-                                                <p><strong>Ticket ID:</strong> #101</p>
-                                                <p><strong>Type:</strong> Category 1</p>
-                                                <p><strong>Price:</strong> $80</p>
-                                                <p><strong>Seat:</strong> #88</p>
-                                                <hr>
+                                                            <button @click="confirmResale" class="confirm-button">CONFIRM</button>
+                                                        </div>
+                                                    </div>
+                                                    <!-- Transfer Ticket Modal -->
+                                                    <div v-if="showTransferPopup" class="modal-overlay">
+                                                        <div class="modal-content">
+                                                            <!-- Close (X) Button -->
+                                                            <span class="close-button" @click="closePopup">&times;</span>
 
-                                                <!-- Input Form for Recipient's Information -->
-                                                <div class="form-group">
-                                                    <label for="recipientName">Recipient's Name:</label>
-                                                    <input type="text" id="recipientName" v-model="recipientName"
-                                                        placeholder="Enter recipient's name" />
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="eventivaAccount">Recipient's Eventiva Account ID:</label>
-                                                    <input type="text" id="eventivaAccount" v-model="eventivaAccount"
-                                                        placeholder="Enter Eventiva Account ID" />
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="phoneNumber">Recipient's Phone Number:</label>
-                                                    <input type="text" id="phoneNumber" v-model="phoneNumber"
-                                                        placeholder="Enter phone number" />
-                                                </div>
+                                                            <h3>Transfer your ticket</h3>
+                                                            <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
+                                                            <p><strong>Type:</strong> {{ selectedTicket.categoryName }}</p>
+                                                            <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
+                                                            <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
+                                                            <hr>
 
-                                                <!-- Mandatory Checkbox for Agreement -->
-                                                <div class="checkbox-container">
-                                                    <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                                                    <label for="agreeCheckbox" style="font-size: 14px;">
-                                                        I agree that transfer will only be completed once both parties has
-                                                        accepted the transfer. Once the transfer is complete, it cannot be
-                                                        undone or transferred back to me. </label>
+                                                            <!-- Input Form for Recipient's Information -->
+                                                            <div class="form-group">
+                                                                <label for="recipientName">Recipient's Name:</label>
+                                                                <input type="text" id="recipientName" v-model="recipientName"
+                                                                    placeholder="Enter recipient's name" />
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label for="eventivaAccount">Recipient's Eventiva Account ID:</label>
+                                                                <input type="text" id="eventivaAccount" v-model="eventivaAccount"
+                                                                    placeholder="Enter Eventiva Account ID" />
+                                                            </div>
+                                                            <div class="form-group">
+                                                                <label for="email">Recipient's Email:</label>
+                                                                <input type="text" id="email" v-model="email"
+                                                                    placeholder="Enter email" />
+                                                            </div>
+
+                                                            <!-- Mandatory Checkbox for Agreement -->
+                                                            <div class="checkbox-container">
+                                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                                                <label for="agreeCheckbox" style="font-size: 14px;">
+                                                                    I agree that transfer will only be completed once both parties has
+                                                                    accepted the transfer. Once the transfer is complete, it cannot be
+                                                                    undone or transferred back to me. </label>
+                                                            </div>
+                                                            <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
                                             </div>
                                         </div>
                                     </div>
@@ -221,6 +222,8 @@ export default {
     },
     data() {
         return {
+            disabledMenus: {},
+            selectedTicket: null,
             ticketStatuses: {},
             user: null,
             isExpanded: false,
@@ -230,7 +233,7 @@ export default {
             showTransferPopup: false,
             recipientName: '',
             eventivaAccount: '',
-            phoneNumber: '',
+            email: '',
             isEditing: false,
             isQrVisible: true,
             ticketStatus: "",
@@ -273,7 +276,7 @@ export default {
 
                 const userId = this.user.id;
                 // const userId = '67d44330971f398f904f8c34';
-                const response = await axios.get(`${this.apiGatewayUrl}/orders/user/${userId}`);
+                const response = await axios.get(`${apiGatewayUrl}/orders/user/${userId}`);
                 const rawOrders = response.data;
                 console.log("Raw Order response:", rawOrders);
                 this.processOrders(rawOrders);
@@ -328,7 +331,7 @@ export default {
             if (order.ticketIds && order.ticketIds.length > 0) {
                 try {
                 const ticketPromises = order.ticketIds.map(ticketId => 
-                    axios.get(`${this.apiGatewayUrl}/tickets/${ticketId}`)
+                    axios.get(`${apiGatewayUrl}/tickets/${ticketId}`)
                 );
                 
                 const ticketResponses = await Promise.all(ticketPromises);
@@ -424,15 +427,16 @@ export default {
             }
         },
         handleOption(action, ticket) {
+            this.selectedTicket = ticket;
             if (action === 'resale') {
                 this.showResalePopup = true; // Show the resale confirmation modal
                 console.log('Resell Ticket clicked');
-                this.selectedTicket = ticket;
             } else if (action === 'transfer') {
                 console.log("Transfer Ticket clicked");
                 this.showTransferPopup = true;
-                this.selectedTicket = ticket;
             }
+            this.selectedTicket = ticket;
+            this.disabledMenus = { ...this.disabledMenus, [ticket.ticketId]: true };
         },
         confirmResale() {
             if (this.isAgreed && this.selectedTicket) {
@@ -455,7 +459,7 @@ export default {
             this.openMenus= [];
         },
         confirmTransfer() {
-            if (this.recipientName && this.eventivaAccount && this.phoneNumber && this.isAgreed && this.selectedTicket) {
+            if (this.recipientName && this.eventivaAccount && this.email && this.isAgreed && this.selectedTicket) {
                 this.ticketStatuses[this.selectedTicket.ticketId] = {
                 isQrVisible: false,
                 status: "TICKET IS BEING TRANSFERRED"
