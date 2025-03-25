@@ -88,7 +88,7 @@
                                                         <span class="menu-icon" @click="toggleMenu(ticket)">
                                                             &#x22EE; <!-- Vertical three dots -->
                                                         </span>
-                                                        <div v-if="openMenus.includes(ticket)" class="menu-dropdown">
+                                                        <div v-if="openMenus.includes(ticket) && !disabledMenus[ticket.ticketId]" class="menu-dropdown">
                                                             <p @click="handleOption('resale', ticket)">Resell Ticket</p>
                                                             <p @click="handleOption('transfer', ticket)">Transfer Ticket</p>
                                                         </div>
@@ -222,6 +222,7 @@ export default {
     },
     data() {
         return {
+            disabledMenus: {},
             selectedTicket: null,
             ticketStatuses: {},
             user: null,
@@ -430,12 +431,12 @@ export default {
             if (action === 'resale') {
                 this.showResalePopup = true; // Show the resale confirmation modal
                 console.log('Resell Ticket clicked');
-                this.selectedTicket = ticket;
             } else if (action === 'transfer') {
                 console.log("Transfer Ticket clicked");
                 this.showTransferPopup = true;
-                this.selectedTicket = ticket;
             }
+            this.selectedTicket = ticket;
+            this.disabledMenus = { ...this.disabledMenus, [ticket.ticketId]: true };
         },
         confirmResale() {
             if (this.isAgreed && this.selectedTicket) {
