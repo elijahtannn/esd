@@ -595,6 +595,9 @@ export default {
                     user_id: this.user.id,
                     EventId: this.eventId,
                     EventDateId: this.selectedDateId,
+                    eventName: this.eventDetails.Name,
+                    eventDate: this.eventDetails.Date,
+                    venue: this.eventDetails.Venue,
                     payment_token: this.paymentToken,
                     ticketArr: this.selectedTickets,
                 };
