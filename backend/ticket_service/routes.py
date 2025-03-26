@@ -103,7 +103,12 @@ def confirm_ticket_purchase():
         return jsonify({"error": "Missing required fields"}), 400
 
     try:
-        ticket_ids = [ObjectId(ticket_id) for ticket_id in data["ticket_ids"]]
+        ticket_ids = []
+        for tid in data["ticket_ids"]:
+            try:
+                ticket_ids.append(ObjectId(tid))
+            except Exception:
+                continue  # Skip invalid ObjectIds
 
         # Find all matching tickets
         tickets = list(get_ticket_collection().find({"_id": {"$in": ticket_ids}}))
@@ -112,15 +117,17 @@ def confirm_ticket_purchase():
             return jsonify({"error": "No matching tickets found"}), 404
 
         # Check if any ticket is NOT in 'reserved' status
-        for ticket in tickets:
-            if ticket["status"] != "reserved":
-                return jsonify({"error": f"Ticket {str(ticket['_id'])} is not reserved"}), 400
+        reserved_ticket_ids = [t["_id"] for t in tickets if t["status"] == "reserved"]
+        non_reserved = [str(t["_id"]) for t in tickets if t["status"] != "reserved"]
+
+        if not reserved_ticket_ids:
+            return jsonify({"error": "No tickets in 'reserved' state", "non_reserved": non_reserved}), 400
 
         # Update all tickets to 'sold'
         result = get_ticket_collection().update_many(
-            {"_id": {"$in": ticket_ids}},
-            {"$set": {"status": "sold", "updated_at": datetime.utcnow()}}
-        )
+        {"_id": {"$in": reserved_ticket_ids}},
+        {"$set": {"status": "sold", "updated_at": datetime.utcnow()}}
+    )
 
         return jsonify({
             "message": f"Successfully updated {result.modified_count} ticket(s) to 'sold'"

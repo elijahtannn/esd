@@ -217,7 +217,7 @@ def process_ticket_reserve():
         print("Reserved ticket while waiting for user to complete order purchase")
 
         # Wait for 3 minutes for user to complete order purchase
-        time.sleep(20) #will update this to 3 minutes: 180
+        time.sleep(90) #will update this to 3 minutes: 180
 
         purchaseStatus = checkTicketStatus(all_reserved_ticket_ids)
         # purchaseStatus = True #for testing
