@@ -163,7 +163,7 @@ def get_ticket(ticket_id):
 
 @ticket_bp.route('/tickets/<ticket_id>', methods=['PUT'])
 def update_ticket(ticket_id):
-    """ Update a ticket's status or owner or is_transferable """
+    """ Update a ticket's status, owner, is_transferable, or pending_transfer_to """
     data = request.json
     update_data = {}
 
@@ -174,13 +174,32 @@ def update_ticket(ticket_id):
         update_data["is_transferable"] = bool(data["is_transferable"])
     
     if "owner_id" in data:
-        update_data["owner_id"] = ObjectId(data["owner_id"])
+        update_data["owner_id"] = str(data["owner_id"])  # Store as string
     
-    if not update_data:
+    # Add support for pending_transfer_to
+    if "pending_transfer_to" in data:
+        if data["pending_transfer_to"] is None:
+            # If None, remove the field
+            result = get_ticket_collection().update_one(
+                {"_id": ObjectId(ticket_id)},
+                {
+                    "$unset": {"pending_transfer_to": ""},
+                    "$set": {k: v for k, v in update_data.items() if k != "pending_transfer_to"}
+                }
+            )
+        else:
+            update_data["pending_transfer_to"] = data["pending_transfer_to"]
+    
+    if not update_data and "pending_transfer_to" not in data:
         return jsonify({"error": "No valid fields to update"}), 400
 
     update_data["updated_at"] = datetime.utcnow()
-    result = get_ticket_collection().update_one({"_id": ObjectId(ticket_id)}, {"$set": update_data})
+    
+    if update_data:  # Only perform $set if there are fields to update
+        result = get_ticket_collection().update_one(
+            {"_id": ObjectId(ticket_id)}, 
+            {"$set": update_data}
+        )
 
     if result.matched_count == 0:
         return jsonify({"error": "Ticket not found"}), 404
@@ -246,3 +265,17 @@ def update_ticket_qr(ticket_id):
         return jsonify({"error": "Ticket not found"}), 404
 
     return jsonify({"message": "QR code updated successfully"}), 200
+
+# Add new endpoint to get pending transfers
+@ticket_bp.route('/tickets/pending/<recipient_email>', methods=['GET'])
+def get_pending_transfers(recipient_email):
+    """Get all tickets pending transfer to a specific email"""
+    try:
+        tickets = list(get_ticket_collection().find({
+            "status": "pending_transfer",
+            "pending_transfer_to": recipient_email
+        }))
+        serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
+        return jsonify(serialized_tickets), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

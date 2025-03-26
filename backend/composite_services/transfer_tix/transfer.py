@@ -4,6 +4,8 @@ from datetime import datetime
 from dotenv import load_dotenv
 import os
 from flask_cors import CORS
+import pika
+import json
 
 app = Flask(__name__)
 CORS(app)
@@ -15,6 +17,10 @@ ORDER_SERVICE_URL = "http://order-service:8003"
 TICKET_SERVICE_URL = "http://ticket-service:5001"
 VALIDATE_SERVICE_URL = "http://validate-service:8004"
 USER_SERVICE_URL = "http://user-service:5003"
+
+# RabbitMQ configuration
+EXCHANGE_NAME = "ticketing.exchange"
+ROUTING_KEY = "ticket.transfer.success"
 
 @app.route("/transfer/<ticket_id>", methods=["POST"])
 def transfer_ticket(ticket_id):
@@ -33,11 +39,12 @@ def transfer_ticket(ticket_id):
         
         # Check if transfer was accepted by recipient
         if not data.get("accepted", False):
-            # If rejected, update ticket status back to "sold"
+            # If rejected, update ticket status back to "sold" and remove pending_transfer_to
             ticket_response = requests.put(
                 f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
                 json={
-                    "status": "sold"  # Reset status back to sold
+                    "status": "sold",
+                    "pending_transfer_to": None  # Remove pending transfer
                 }
             )
             
@@ -90,24 +97,70 @@ def transfer_ticket(ticket_id):
                 "message": validation_response.get("message", "Transfer conditions are no longer valid")
             }), 400
 
-        # Create transfer order in Order Service
+        # Get ticket details for event information
+        ticket_details_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
+        if ticket_details_response.status_code != 200:
+            return jsonify({
+                "error": "Failed to get ticket details",
+                "message": "Could not retrieve ticket information"
+            }), 400
+            
+        ticket_details = ticket_details_response.json()
+        
+        # Print ticket details for debugging
+        print("Ticket Details:", ticket_details)
+        
+        # Create transfer order in Order Service with all required fields
+        order_request_data = {
+            "ticketId": ticket_id,
+            "fromUserId": data.get("sender_id"),
+            "toUserId": recipient_id,
+            "eventId": ticket_details.get("event_id"),
+            "eventDateId": ticket_details.get("event_date_id"),
+            "catId": ticket_details.get("cat_id")
+        }
+        
+        # Print order request data for debugging
+        print("Order Request Data:", order_request_data)
+        
         order_response = requests.post(
             f"{ORDER_SERVICE_URL}/orders/transfer",
-            json={
-                "ticketId": ticket_id,
-                "fromUserId": data.get("sender_id"),
-                "toUserId": recipient_id
-            }
-        ).json()
-        
+            json=order_request_data
+        )
+
+        # Print order response for debugging
+        print("Order Response Status:", order_response.status_code)
+        print("Order Response Content:", order_response.text)
+
+        if order_response.status_code != 201:
+            return jsonify({
+                "error": "Failed to create transfer order",
+                "message": f"Order service error: {order_response.text}"
+            }), 500
+
+        order_data = order_response.json()
+
         # Update ticket ownership and status in Ticket Service
         ticket_response = requests.put(
             f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
             json={
                 "owner_id": recipient_id,
-                "status": "transferred"
+                "status": "transferred",
+                "pending_transfer_to": None  # Remove pending transfer after successful transfer
             }
         ).json()
+
+        # After successful ticket update, get event name from validation response
+        # Get event name from ticket details or validation response
+        event_name = ticket_details.get("event_name", "Event")  # Use ticket details for event name
+
+        # Send success notifications
+        notification_sent = send_transfer_success_notification(
+            sender_email=data.get("sender_email"),
+            recipient_email=data.get("recipient_email"),
+            ticket_id=ticket_id,
+            event_name=event_name
+        )
 
         return jsonify({
             "success": True,
@@ -117,7 +170,8 @@ def transfer_ticket(ticket_id):
                 "from_user_id": data.get("sender_id"),
                 "to_user_id": recipient_id,
                 "transfer_date": datetime.now().isoformat(),
-                "order_id": order_response.get("orderId")
+                "order_id": order_data.get("orderId"),
+                "notification_sent": notification_sent
             }
         }), 200
 
@@ -126,7 +180,10 @@ def transfer_ticket(ticket_id):
         try:
             requests.put(
                 f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
-                json={"status": "sold"}
+                json={
+                    "status": "sold",
+                    "pending_transfer_to": None
+                }
             )
         except:
             pass  # Ignore errors in cleanup
@@ -136,5 +193,73 @@ def transfer_ticket(ticket_id):
             "message": str(e)
         }), 500
 
+# Add this function to send notifications
+def send_transfer_success_notification(sender_email, recipient_email, ticket_id, event_name):
+    try:
+        credentials = pika.PlainCredentials('guest', 'guest')
+        parameters = pika.ConnectionParameters(
+            host='host.docker.internal',  # Make sure this is correct for your setup
+            port=5672,
+            credentials=credentials
+        )
+        connection = pika.BlockingConnection(parameters)
+        channel = connection.channel()
+
+        # Declare exchange
+        channel.exchange_declare(
+            exchange=EXCHANGE_NAME,
+            exchange_type='topic',
+            durable=True
+        )
+
+        # Send notification to recipient
+        recipient_message = {
+            "email": recipient_email,
+            "eventType": "ticket.transfer.success",
+            "sender_email": sender_email,
+            "ticket_id": ticket_id,
+            "ticketNumber": ticket_id,
+            "eventName": event_name,
+            "role": "recipient"
+        }
+
+        # Send notification to sender
+        sender_message = {
+            "email": sender_email,
+            "eventType": "ticket.transfer.success",
+            "recipient_email": recipient_email,
+            "ticket_id": ticket_id,
+            "ticketNumber": ticket_id,
+            "eventName": event_name,
+            "role": "sender"
+        }
+
+        # Publish both messages with the correct routing key
+        channel.basic_publish(
+            exchange=EXCHANGE_NAME,
+            routing_key=ROUTING_KEY,
+            body=json.dumps(recipient_message),
+            properties=pika.BasicProperties(
+                delivery_mode=2,  # make message persistent
+                content_type='application/json'
+            )
+        )
+
+        channel.basic_publish(
+            exchange=EXCHANGE_NAME,
+            routing_key=ROUTING_KEY,
+            body=json.dumps(sender_message),
+            properties=pika.BasicProperties(
+                delivery_mode=2,  # make message persistent
+                content_type='application/json'
+            )
+        )
+
+        connection.close()
+        return True
+    except Exception as e:
+        print(f"Error sending notification: {str(e)}")
+        return False
+
 if __name__ == "__main__":
-    app.run(host="localhost", port=8005, debug=True)
+    app.run(host="0.0.0.0", port=8011, debug=True)

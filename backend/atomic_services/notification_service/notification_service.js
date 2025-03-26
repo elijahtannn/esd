@@ -35,9 +35,9 @@ const mailGenerator = new Mailgen({
         copyright: 'Copyright © 2025 EVENTIVA. All rights reserved.',
         // Add custom styles for the header
         styles: {
-            // Theme specific styles
+            
             theme: {
-                link: '#2563EB',  // Change link color
+                link: '#2563EB',
                 head: {
                     backgroundColor: 'white',
                     color: '#2563EB',  
@@ -117,7 +117,7 @@ async function consumeMessages() {
                 const eventData = JSON.parse(msg.content.toString());
                 console.log('📨 Received Message:', eventData);
 
-                const { email, eventName, ticketNumber, eventType, sender_email } = eventData;
+                const { email, eventName, ticketNumber, eventType, sender_email, recipient_email, role } = eventData;
 
                 if (eventType === 'ticket.purchase') {
                     const subject = `🎟 Your Ticket for ${eventName}`;
@@ -171,6 +171,41 @@ async function consumeMessages() {
                                 }
                             },
                             outro: 'This transfer will expire in 24 hours if not accepted.'
+                        }
+                    };
+
+                    // Generate HTML email
+                    const message = mailGenerator.generate(emailBody);
+
+                    // Send email
+                    await sendEmail(email, subject, message);
+                } else if (eventType === 'ticket.transfer.success') {
+                    const subject = `🎟 Ticket Transfer ${role === 'sender' ? 'Completed' : 'Received'} for ${eventName}`;
+                    
+                    const emailBody = {
+                        body: {
+                            name: email.split('@')[0],
+                            intro: role === 'sender' 
+                                ? `Your ticket for ${eventName} has been successfully transferred to ${recipient_email}!`
+                                : `The ticket transfer from ${sender_email} for ${eventName} has been completed!`,
+                            dictionary: {
+                                'Ticket Number': ticketNumber,
+                                'Event Name': eventName,
+                                [role === 'sender' ? 'Transferred To' : 'Transferred From']: 
+                                    role === 'sender' ? recipient_email : sender_email,
+                                'Transfer Date': new Date().toLocaleDateString()
+                            },
+                            action: {
+                                instructions: 'You can view your tickets by clicking the button below:',
+                                button: {
+                                    color: '#2563EB',
+                                    text: 'View Tickets',
+                                    link: `${FRONTEND_URL}/profile`
+                                }
+                            },
+                            outro: role === 'sender' 
+                                ? 'Thank you for using our transfer service!'
+                                : 'Enjoy the event!'
                         }
                     };
 

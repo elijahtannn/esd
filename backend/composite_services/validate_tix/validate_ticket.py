@@ -116,7 +116,8 @@ def validate_transfer(ticket_id):
         ticket_update_response = requests.put(
             f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
             json={
-                "status": "pending_transfer"
+                "status": "pending_transfer",
+                "pending_transfer_to": recipient_email
             }
         )
 

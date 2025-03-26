@@ -21,7 +21,7 @@ services:
           - /events/dates/categories/(.*)/inventory/purchase
           - /events/dates/categories/(.*)/inventory/resale
         strip_path: false
-        
+
   # User Service
   - name: user-service
     url: http://user-service:5003
@@ -71,7 +71,7 @@ services:
 
   # Transfer Service
   - name: transfer-service
-    url: http://transfer-service:8005
+    url: http://transfer-service:8011
     routes:
       - name: transfer-route
         paths:
