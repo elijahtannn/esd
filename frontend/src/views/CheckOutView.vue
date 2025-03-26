@@ -386,7 +386,7 @@ export default {
             // Timer
             paymentTimer: null,
             abortController: null,
-            remainingSeconds: 25,
+            remainingSeconds: 95,
             isTimerActive: false,
         }
     },
@@ -610,7 +610,7 @@ export default {
 
                 console.log("Payment Response:", response.data);
                 this.cancelReservation(); // Stop both timer and request
-                this.currentStep++;
+                this.currentStep=3;
             } catch (error) {
                 console.error("Payment Error:", error.response?.data || error.message);
             }
