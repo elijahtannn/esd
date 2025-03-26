@@ -166,7 +166,7 @@ def process_ticket_order():
             message = {
                 "email": user_email,
                 "eventType": "ticket.purchase",
-                "event_name": event_name,
+                "eventName": event_name,
                 "order_id": created_orders[0]["orderId"] if created_orders else "N/A",
                 "eventDate": event_date,
                 "ticketNumber": ",".join([tid for order in created_orders for tid in order["ticketIds"]])
