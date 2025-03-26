@@ -11,10 +11,10 @@ CORS(app)
 load_dotenv()
 
 # Service URLs
-ORDER_SERVICE_URL = "http://localhost:8000"
-TICKET_SERVICE_URL = "http://127.0.0.1:5001"
-VALIDATE_SERVICE_URL = "http://localhost:8004"
-USER_SERVICE_URL = "http://localhost:5003"
+ORDER_SERVICE_URL = "http://order-service:8003"
+TICKET_SERVICE_URL = "http://ticket-service:5001"
+VALIDATE_SERVICE_URL = "http://validate-service:8004"
+USER_SERVICE_URL = "http://user-service:5003"
 
 @app.route("/transfer/<ticket_id>", methods=["POST"])
 def transfer_ticket(ticket_id):
@@ -33,20 +33,24 @@ def transfer_ticket(ticket_id):
         
         # Check if transfer was accepted by recipient
         if not data.get("accepted", False):
+            # If rejected, update ticket status back to "sold"
+            ticket_response = requests.put(
+                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                json={
+                    "status": "sold"  # Reset status back to sold
+                }
+            )
+            
             return jsonify({
-                "error": "Transfer not accepted",
-                "message": "Recipient must accept the transfer to proceed"
-            }), 400
+                "success": False,
+                "message": "Transfer rejected by recipient"
+            }), 200
 
-        # Get recipient's user ID from email using correct endpoint
+        # Get recipient's user ID from email
         recipient_email = data.get('recipient_email')
         recipient_response = requests.get(
             f"{USER_SERVICE_URL}/user/email/{recipient_email}"
         )
-        
-        # Add debug logging
-        print("User Service Response Status:", recipient_response.status_code)
-        print("User Service Response Body:", recipient_response.text)
         
         if recipient_response.status_code != 200:
             return jsonify({
@@ -55,9 +59,6 @@ def transfer_ticket(ticket_id):
             }), 400
             
         recipient_data = recipient_response.json()
-        print("Parsed recipient data:", recipient_data)
-        
-        # Get user_id from the response
         recipient_id = recipient_data.get("user_id")
 
         if not recipient_id:
@@ -66,7 +67,7 @@ def transfer_ticket(ticket_id):
                 "message": "Could not get user ID from response"
             }), 400
 
-        # Revalidate the transfer
+        # Revalidate the transfer to ensure conditions are still valid
         validation_response = requests.post(
             f"{VALIDATE_SERVICE_URL}/validateTransfer/{ticket_id}",
             json={
@@ -76,6 +77,14 @@ def transfer_ticket(ticket_id):
         ).json()
         
         if not validation_response.get("can_transfer", False):
+            # Reset ticket status back to "sold" if validation fails
+            ticket_response = requests.put(
+                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                json={
+                    "status": "sold"
+                }
+            )
+            
             return jsonify({
                 "error": "Validation failed",
                 "message": validation_response.get("message", "Transfer conditions are no longer valid")
@@ -91,7 +100,7 @@ def transfer_ticket(ticket_id):
             }
         ).json()
         
-        # Update ticket ownership in Ticket Service
+        # Update ticket ownership and status in Ticket Service
         ticket_response = requests.put(
             f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
             json={
@@ -113,6 +122,15 @@ def transfer_ticket(ticket_id):
         }), 200
 
     except Exception as e:
+        # In case of error, attempt to reset ticket status
+        try:
+            requests.put(
+                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                json={"status": "sold"}
+            )
+        except:
+            pass  # Ignore errors in cleanup
+            
         return jsonify({
             "error": "Transfer service error",
             "message": str(e)

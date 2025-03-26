@@ -112,10 +112,24 @@ def validate_transfer(ticket_id):
                 "message": recipient_validation["messages"][0]
             }), 400
 
+        # After all validations pass but before sending notification, update ticket status
+        ticket_update_response = requests.put(
+            f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+            json={
+                "status": "pending_transfer"
+            }
+        )
+
+        if ticket_update_response.status_code != 200:
+            return jsonify({
+                "error": "Failed to update ticket status",
+                "message": "Could not mark ticket as pending transfer"
+            }), 500
+
         # Extract event name from validation message
         event_name = event_validation["messages"][0].split("'")[1] 
 
-        # Step 4: Send notification
+        # Send notification
         notification_sent = send_transfer_notification(
             sender_email=sender_email,
             recipient_email=recipient_email,

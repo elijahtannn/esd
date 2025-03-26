@@ -2,6 +2,26 @@ _format_version: "2.1"
 _transform: true
 
 services:
+  # Event Service (External)
+  - name: event-service
+    url: https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
+    routes:
+      - name: event-route
+        paths:
+          - /createEventWithDates
+          - /events
+          - /events/(.*)
+          - /events/(.*)/
+          - /events/dates/(.*)
+          - /events/dates/(.*)/categories
+          - /events/dates/(.*)/inventory
+          - /events/dates/(.*)/inventory/purchase
+          - /events/dates/(.*)/inventory/resale
+          - /events/dates/categories
+          - /events/dates/categories/(.*)/inventory/purchase
+          - /events/dates/categories/(.*)/inventory/resale
+        strip_path: false
+        
   # User Service
   - name: user-service
     url: http://user-service:5003
@@ -51,7 +71,7 @@ services:
 
   # Transfer Service
   - name: transfer-service
-    url: http://host.docker.internal:8005
+    url: http://transfer-service:8005
     routes:
       - name: transfer-route
         paths:
@@ -60,33 +80,14 @@ services:
 
   # Validate Service
   - name: validate-service
-    url: http://host.docker.internal:8004
+    url: http://validate-service:8004
     routes:
       - name: validate-route
         paths:
           - /validateTransfer/(.*)
         strip_path: false
 
-  # Event Service (External)
-  - name: event-service
-    url: https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
-    routes:
-      - name: event-route
-        paths:
-          - /createEventWithDates
-          - /events
-          - /events/(.*)
-          - /events/(.*)/
-          - /events/dates/(.*)
-          - /events/dates/(.*)/categories
-          - /events/dates/(.*)/inventory
-          - /events/dates/(.*)/inventory/purchase
-          - /events/dates/(.*)/inventory/resale
-          - /events/dates/categories
-          - /events/dates/categories/(.*)/inventory/purchase
-          - /events/dates/categories/(.*)/inventory/resale
-        strip_path: false
-  # Validate Service
+  # Process Ticket Order
   - name: process-ticket-order
     url: http://process-ticket-order:8080
     routes:
