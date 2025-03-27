@@ -279,3 +279,18 @@ def get_pending_transfers(recipient_email):
         return jsonify(serialized_tickets), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@ticket_bp.route('/tickets/category/<int:cat_id>', methods=['GET'])
+def get_tickets_by_category(cat_id):
+    """ Get all tickets for a specific cat ID """
+    try:
+        tickets = list(get_ticket_collection().find({"cat_id": cat_id}))
+        
+        if not tickets:
+            return jsonify({"message": f"No tickets found for category ID {cat_id}"}), 200
+            
+        serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
+        return jsonify(serialized_tickets), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch tickets by category: {str(e)}"}), 500

@@ -209,7 +209,10 @@
         <!-- Step 3: Payment -->
         <div class="row p-5" v-if="currentStep == 2">
 
-            <div class="col">
+            <div class="col" v-if="loadingPayment">
+                <p>Your payment is loading... Please give us a moment.</p>
+            </div>
+            <div class="col" v-else>
 
                 <div>
 
@@ -283,7 +286,7 @@
 
                 <p>Your tickets have been successfully <b>confirmed!</b></p>
                 <p style="color:var(--text-grey); width: 60%; margin: auto; margin-bottom: 30px;">A confirmation email
-                    has been sent to yadayada@gmail.com with your ticket details.</p>
+                    has been sent to {{user.email}} with your ticket details.</p>
 
                 <router-link to="/"><button style="text-transform: uppercase;">Browse more events</button></router-link>
             </div>
@@ -379,6 +382,7 @@ export default {
             cardExpiryElement: null,
             cardCvcElement: null,
             isStripeLoaded: false,
+            loadingPayment: false,
 
             // User
             user: null,
@@ -386,7 +390,8 @@ export default {
             // Timer
             paymentTimer: null,
             abortController: null,
-            remainingSeconds: 95,
+            secondsThreshold: 20,
+            remainingSeconds: 20,
             isTimerActive: false,
         }
     },
@@ -434,7 +439,11 @@ export default {
     methods: {
         goBack() {
             this.cancelReservation();
-            this.$router.push({ path: '/event', query: { eventId: [this.eventId] } });
+            if(this.currentStep == 0){
+                this.$router.push({ path: '/event', query: { eventId: [this.eventId] } });
+            }else{
+                this.prevStep();
+            }
         },
         filteredeventCategories(index) {
             // Get all currently selected types except for the current row
@@ -471,28 +480,10 @@ export default {
             this.selectedTickets.splice(index, 1);
         },
         nextStep() {
+            this.ticketError = ""
             if (this.currentStep < this.steps.length - 1) {
 
                 if (this.currentStep == 1) {
-                    // this.currentStep++;
-                    // this.elements = this.stripe.elements();
-                    // this.isStripeLoaded = true;
-
-                    // // Wait until the DOM updates
-                    // this.$nextTick(() => {
-                    //     if (document.getElementById('cardNumber')) {
-                    //         this.cardNumberElement = this.elements.create('cardNumber');
-                    //         this.cardExpiryElement = this.elements.create('cardExpiry');
-                    //         this.cardCvcElement = this.elements.create('cardCvc');
-
-                    //         this.cardNumberElement.mount('#cardNumber');
-                    //         this.cardExpiryElement.mount('#cardExpiry');
-                    //         this.cardCvcElement.mount('#cardCvc');
-                    //     } else {
-                    //         console.error("Card input fields are not found in the DOM.");
-                    //     }
-                    // });
-                    // create ticket and change ticket status to reserved 
                     this.reserveTicket();
                 } else {
                     this.currentStep++;
@@ -500,7 +491,12 @@ export default {
             }
         },
         prevStep() {
-            if (this.currentStep > 0) {
+            this.ticketError = ""
+            if(this.currentStep == 2){
+                this.cancelReservation();
+                this.remainingSeconds = this.secondsThreshold;
+                this.currentStep--;
+            } else if (this.currentStep > 0) {
                 this.currentStep--;
             }
         },
@@ -590,6 +586,9 @@ export default {
         },
         async processPayment() {
 
+            console.log(this.selectedTickets);
+            
+            this.loadingPayment = true;
             try {
                 const paymentData = {
                     user_id: this.user.id,
@@ -708,11 +707,17 @@ export default {
                     if (this.paymentTimer) clearTimeout(this.paymentTimer);
 
                     if (response.data.status === false) {
-                        this.goBack();
+                        if(this.currentStep != 3){
+                            console.log(response.data.status)
+                            this.goBack();
+                        }
                     }
                 } catch (error) {
                     if (!axios.isCancel(error)) {
-                        this.goBack();
+                        console.log(error)
+                        if(this.currentStep != 3){
+                            this.goBack();
+                        }
                     }
                 }
 
@@ -725,16 +730,14 @@ export default {
         },
         startPaymentTimer() {
             if (this.paymentTimer) clearTimeout(this.paymentTimer);
-            // this.paymentTimer = setTimeout(() => {
-            //     this.cancelReservation();
-            //     this.goBack();
-            // }, 25000); // Add 5s buffer for network latency
 
             this.isTimerActive = true;
             this.paymentTimer = setInterval(() => {
                 if (this.remainingSeconds > 0) {
                     this.remainingSeconds--;
+                    console.log("timer on")
                 } else {
+                    console.log("timer endded?")
                     this.cancelReservation();
                     this.goBack();
                 }
@@ -743,12 +746,15 @@ export default {
         cancelReservation() {
             this.isTimerActive = false;
             if (this.abortController) {
+                console.log("timer idk")
                 this.abortController.abort(); // Proper cancellation method
                 this.abortController = null;
             }
             if (this.paymentTimer) {
+                console.log("timer endded????")
                 clearTimeout(this.paymentTimer);
                 this.paymentTimer = null;
+                this.goBack();
             }
         },
 

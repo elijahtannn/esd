@@ -276,7 +276,7 @@ export default {
 
                 const userId = this.user.id;
                 // const userId = '67d44330971f398f904f8c34';
-                const response = await axios.get(`${apiGatewayUrl}/orders/user/${userId}`);
+                const response = await axios.get(`${this.apiGatewayUrl}/orders/user/${userId}`);
                 const rawOrders = response.data;
                 console.log("Raw Order response:", rawOrders);
                 this.processOrders(rawOrders);
@@ -331,7 +331,7 @@ export default {
             if (order.ticketIds && order.ticketIds.length > 0) {
                 try {
                 const ticketPromises = order.ticketIds.map(ticketId => 
-                    axios.get(`${apiGatewayUrl}/tickets/${ticketId}`)
+                    axios.get(`${this.apiGatewayUrl}/tickets/${ticketId}`)
                 );
                 
                 const ticketResponses = await Promise.all(ticketPromises);
