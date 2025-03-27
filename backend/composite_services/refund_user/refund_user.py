@@ -266,7 +266,7 @@ def validate_recipient(email):
 def refund_user_ticket():
     """Process ticket refund end-to-end"""
     data = request.json
-    required_fields = ["ticket_id", "order_id", "refund_amount", "user_id"]
+    required_fields = ["ticket_id", "order_id", "user_id"]
 
 
     # Validate required fields
@@ -280,20 +280,17 @@ def refund_user_ticket():
     ticket_id = data["ticket_id"]
     order_id = data["order_id"]
     user_id = data["user_id"]
-    try:
-        refund_amount = round(float(data["refund_amount"]), 2)
-        if refund_amount <= 0:
-            return jsonify({"error": "Refund amount must be positive"}), 400
-    except ValueError:
-        return jsonify({"error": "Invalid refund amount format"}), 400
-
-
 
 
     # Step 1: Get order details
     order_data, status = get_order_via_user_endpoint(user_id, order_id)
     if status != 200:
         return jsonify(order_data), status
+    
+    try:
+        refund_amount = order_data["totalAmount"]
+    except KeyError:
+        return jsonify({"error": "Unable to determine refund amount from order"}), 400
 
 
 
