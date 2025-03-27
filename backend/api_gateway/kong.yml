@@ -2,7 +2,7 @@ _format_version: "2.1"
 _transform: true
 
 services:
-  # Event Service (External)
+  # Event Service (External on Outsystems)
   - name: event-service
     url: https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
     routes:
@@ -94,4 +94,13 @@ services:
       - name: process-route
         paths:
           - /process_ticket_order
+        strip_path: false
+
+  # Reserve Ticket 
+  - name: reserve-ticket
+    url: http://reserve-ticket:8006
+    routes:
+      - name: reserve-route
+        paths:
+          - /reserve_ticket
         strip_path: false
