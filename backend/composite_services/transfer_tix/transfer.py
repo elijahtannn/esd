@@ -88,7 +88,7 @@ def transfer_ticket(ticket_id):
             ticket_response = requests.put(
                 f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
                 json={
-                    "status": "sold"
+                    "status": "SOLD"
                 }
             )
             
@@ -107,30 +107,55 @@ def transfer_ticket(ticket_id):
             
         ticket_details = ticket_details_response.json()
         
-        # Print ticket details for debugging
-        print("Ticket Details:", ticket_details)
+        # Validate required fields exist
+        required_fields = ["event_id", "event_date_id", "cat_id"]
+        missing_fields = [field for field in required_fields if not ticket_details.get(field)]
         
-        # Create transfer order in Order Service with all required fields
+        if missing_fields:
+            return jsonify({
+                "error": "Missing ticket details",
+                "message": f"Ticket is missing required fields: {', '.join(missing_fields)}"
+            }), 400
+        
+        # Create transfer order with validated data
         order_request_data = {
-            "ticketId": ticket_id,
-            "fromUserId": data.get("sender_id"),
-            "toUserId": recipient_id,
-            "eventId": ticket_details.get("event_id"),
-            "eventDateId": ticket_details.get("event_date_id"),
-            "catId": ticket_details.get("cat_id")
+            "ticketId": str(ticket_id),
+            "fromUserId": str(data.get("sender_id")),
+            "toUserId": str(recipient_id),
+            "eventId": int(ticket_details["event_id"]),
+            "eventDateId": int(ticket_details["event_date_id"]),
+            "catId": int(ticket_details["cat_id"])
         }
         
-        # Print order request data for debugging
-        print("Order Request Data:", order_request_data)
+        # Debug logging
+        print("\n=== Transfer Debug Information ===")
+        print("Ticket Details:", json.dumps(ticket_details, indent=2, default=str))
+        print("\nOrder Request Data:", json.dumps(order_request_data, indent=2))
+        print("\nMaking request to:", f"{ORDER_SERVICE_URL}/orders/transfer")
+        print("=================================\n")
         
-        order_response = requests.post(
-            f"{ORDER_SERVICE_URL}/orders/transfer",
-            json=order_request_data
-        )
-
-        # Print order response for debugging
-        print("Order Response Status:", order_response.status_code)
-        print("Order Response Content:", order_response.text)
+        try:
+            # Add more detailed request debugging
+            print("Request Headers:", {'Content-Type': 'application/json'})
+            print("Request Body:", json.dumps(order_request_data, indent=2))
+            
+            order_response = requests.post(
+                f"{ORDER_SERVICE_URL}/orders/transfer",
+                json=order_request_data,
+                headers={'Content-Type': 'application/json'}
+            )
+            
+            # Detailed response debugging
+            print("Order Response Status:", order_response.status_code)
+            print("Order Response Headers:", order_response.headers)
+            print("Order Response Content:", order_response.text)
+            
+        except requests.exceptions.RequestException as e:
+            print("Request Exception:", str(e))
+            return jsonify({
+                "error": "Connection error to order service",
+                "message": str(e)
+            }), 500
 
         if order_response.status_code != 201:
             return jsonify({
@@ -145,7 +170,7 @@ def transfer_ticket(ticket_id):
             f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
             json={
                 "owner_id": recipient_id,
-                "status": "transferred",
+                "status": "TRANSFERRED",
                 "pending_transfer_to": None  # Remove pending transfer after successful transfer
             }
         ).json()
@@ -181,7 +206,7 @@ def transfer_ticket(ticket_id):
             requests.put(
                 f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
                 json={
-                    "status": "sold",
+                    "status": "SOLD",
                     "pending_transfer_to": None
                 }
             )

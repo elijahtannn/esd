@@ -23,10 +23,10 @@ ROUTING_KEY = "ticket.transfer.pending"
 
 def send_transfer_notification(sender_email, recipient_email, ticket_id, event_name):
     try:
-        # For local RabbitMQ, use host.docker.internal since service is in container
+        
         credentials = pika.PlainCredentials('guest', 'guest')
         parameters = pika.ConnectionParameters(
-            host='host.docker.internal',  # This allows container to access local RabbitMQ
+            host='host.docker.internal',  
             port=5672,  
             credentials=credentials
         )
@@ -116,7 +116,7 @@ def validate_transfer(ticket_id):
         ticket_update_response = requests.put(
             f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
             json={
-                "status": "pending_transfer",
+                "status": "PENDING_TRANSFER",
                 "pending_transfer_to": recipient_email
             }
         )
