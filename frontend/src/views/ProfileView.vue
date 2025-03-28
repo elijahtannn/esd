@@ -94,14 +94,15 @@
                                                         </div>
                                                     </div>
                                                     <!--QR code image -->
-                                                    <div v-if="!ticketStatuses[ticket.ticketId] || ticketStatuses[ticket.ticketId].isQrVisible">
+                                                    <div>
                                                         <img src="../assets/images/dummy QR code.png" class="qr-image">
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
-                                                    <div v-else class="ticket-status">
+                                                    <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
                                                         <p
                                                             style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
-                                                            <strong>ON HOLD:</strong> {{ ticketStatuses[ticket.ticketId].status }}</p>
+                                                            <strong>ON HOLD:</strong> {{ ticketStatuses[ticket.ticketId].status }}
+                                                        </p>
                                                     </div>
                                                     <p>#{{ ticket.ticketId }}</p>
                                                     <p>Type: {{ ticket.categoryName }}</p>
