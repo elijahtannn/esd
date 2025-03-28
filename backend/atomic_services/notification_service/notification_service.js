@@ -214,6 +214,32 @@ async function consumeMessages() {
 
                     // Send email
                     await sendEmail(email, subject, message);
+                } else if (eventType === 'ticket.resale.available') {
+                    const subject = `🎟 Resale Ticket Available for ${eventName}`;
+                        
+                        const emailBody = {
+                            body: {
+                                name: email.split('@')[0],
+                                intro: `A ticket has become available for resale!`,
+                                dictionary: {
+                                    'Event Name': eventName,
+                                    'Venue': eventData.venue || 'Not specified',
+                                    'Date': eventData.eventDate || 'Not specified'
+                                },
+                                action: {
+                                    instructions: 'Click below to grab yours:',
+                                    button: {
+                                        color: '#2563EB',
+                                        text: 'Get Tickets',
+                                        link: `${FRONTEND_URL}`
+                                    }
+                                },
+                                outro: 'Hurry, resale tickets sell fast!'
+                            }
+                        };
+
+                        const message = mailGenerator.generate(emailBody);
+                        await sendEmail(email, subject, message);
                 } else {
                     console.log(`📥 Received ${eventType} message, but handling is not yet implemented.`);
                 }

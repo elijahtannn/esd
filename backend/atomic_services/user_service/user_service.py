@@ -154,6 +154,115 @@ def check_email(email):
             "error": "Database error",
             "message": str(e)
         }), 500
+    
+#POST: Add a new route to add event interest for a user
+@app.route("/user/add_event_interest", methods=["POST"])
+def add_event_interest():
+    data = request.json
+    
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+    
+    user_id = data.get("user_id")
+    event_id = data.get("event_id")
+    
+    if not user_id:
+        return jsonify({"error": "User ID is required"}), 400
+    if not event_id:
+        return jsonify({"error": "Event ID is required"}), 400
+    
+    try:    
+        
+        update_result = mongo.db.users.update_one(
+             {"_id": user_id},
+            {"$addToSet": {"event_interests": event_id}}
+        )
+        
+        # Check if the update was successful
+        if update_result.modified_count > 0:
+            return jsonify({
+                "message": "Event interest added successfully",
+                "event_id": event_id
+            }), 200
+        else:
+            return jsonify({
+                "message": "Event interest already exists",
+                "event_id": event_id
+            }), 200
+    
+    except Exception as e:
+        # Log the error for debugging
+        app.logger.error(f"Error adding event interest: {str(e)}")
+        return jsonify({
+            "error": "Failed to add event interest",
+            "details": str(e)
+        }), 500
+    
+#GET: Get a user's event interest
+@app.route("/user/event_interests/<string:user_id>", methods=["GET"])
+def get_user_event_interests(user_id):
+    """
+    Retrieve a user's event interests
+    
+    Returns a list of event IDs that the user is interested in
+    """
+    try:
+        # Find the user
+        user = mongo.db.users.find_one({"_id": user_id})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        
+        # Retrieve event interests, defaulting to an empty list if not exists
+        event_interests = user.get("event_interests", [])
+        
+        return jsonify({
+            "user_id": user_id,
+            "event_interests": event_interests,
+            "total_interests": len(event_interests)
+        }), 200
+    
+    except Exception as e:
+        # Log the error for debugging
+        app.logger.error(f"Error retrieving event interests: {str(e)}")
+        return jsonify({
+            "error": "Failed to retrieve event interests",
+            "details": str(e)
+        }), 500
+
+# GET: Get all users who have interest in a particular event   
+@app.route("/user/interested_users/<string:event_id>", methods=["GET"])
+def get_interested_users(event_id):
+    """
+    Fetch users interested in a specific event
+    
+    Returns a list of users who are interested in the given event
+    """
+    try:
+        # Find users interested in the specific event
+        interested_users_cursor = mongo.db.users.find(
+            {"event_interests": event_id},
+            {"_id": 1, "email": 1, "name": 1}
+        )
+        
+        # Convert cursor to list and format user data
+        interested_users = [{
+            "id": str(user["_id"]),
+            "email": user["email"],
+            "name": user.get("name", "")
+        } for user in interested_users_cursor]
+        
+        return jsonify({
+            "users": interested_users,
+            "total_count": len(interested_users)
+        }), 200
+    
+    except Exception as e:
+        # Log the error for debugging
+        app.logger.error(f"Error fetching interested users: {str(e)}")
+        return jsonify({
+            "error": "Failed to fetch interested users",
+            "details": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5003, debug=True)
