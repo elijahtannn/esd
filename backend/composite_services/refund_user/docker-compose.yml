@@ -1,18 +1,20 @@
 
 services:
-  reserve-ticket:
+  refund-user:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: reserve-ticket
+    container_name: refund-user
     environment:
-      - FLASK_APP=reserve_ticket.py
+      - FLASK_APP=refund_user.py
       - FLASK_ENV=development
       - USER_SERVICE_URL=http://user-service:5003
-      - EVENT_SERVICE_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
       - TICKET_SERVICE_URL=http://ticket-service:5001
+      - ORDER_SERVICE_URL=http://order-service:8003
+      - PAYMENT_SERVICE_URL=http://payment-service:8002
+      - RABBITMQ_URL=amqp://host.docker.internal:5672
     ports:
-      - "8006:8006"
+      - "5004:5004"
     volumes:
       - .:/app
     extra_hosts:
@@ -20,7 +22,7 @@ services:
     networks:
       esd_network:
         aliases:
-          - reserve-ticket
+          - refund-user
 
 networks:
   esd_network:
