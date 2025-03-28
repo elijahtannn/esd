@@ -55,27 +55,28 @@ def get_orders_by_user(user_id):
 def create_order():
     data = request.json
 
-    required_fields = ["userId", "ticketIds", "eventId", "eventDateId", "catId", "orderType", "totalAmount", "paymentId"]
+    # Now require "tickets" as a nested array
+    required_fields = ["userId", "tickets", "eventId", "eventDateId", "orderType", "totalAmount", "paymentId"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
-    # Convert numeric fields to integers
     try:
         event_id = int(data["eventId"])
         event_date_id = int(data["eventDateId"])
-        cat_id = int(data["catId"])
-    except (ValueError, TypeError):
-        return jsonify({"error": "eventId, eventDateId, and catId must be integers"}), 400
+        tickets = data["tickets"]  # Must be a list of nested ticket objects
+        if not isinstance(tickets, list):
+            raise ValueError("tickets must be a list")
+    except (ValueError, TypeError) as e:
+        return jsonify({"error": str(e)}), 400
 
     order_id = get_next_order_id()
 
     new_order = {
         "orderId": order_id,
         "userId": data["userId"],
-        "ticketIds": data["ticketIds"],
-        "eventId": event_id,  # Use the converted integer
-        "eventDateId": event_date_id,  # Use the converted integer
-        "catId": cat_id,  # Use the converted integer
+        "tickets": tickets,  # Nested array, e.g. [{"catId": "14", "ticketIds": ["id1"]}, {"catId": "13", "ticketIds": ["id2"]}]
+        "eventId": event_id,
+        "eventDateId": event_date_id,
         "orderType": data["orderType"],
         "totalAmount": data["totalAmount"],
         "paymentId": data["paymentId"],
@@ -88,10 +89,9 @@ def create_order():
         "message": "Order created successfully",
         "orderId": order_id,
         "userId": data["userId"],
-        "ticketIds": data["ticketIds"],
+        "tickets": tickets,
         "eventId": data["eventId"],
         "eventDateId": data["eventDateId"],
-        "catId": data["catId"],
         "orderType": data["orderType"],
         "totalAmount": data["totalAmount"],
         "paymentId": data["paymentId"],

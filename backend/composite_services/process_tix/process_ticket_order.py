@@ -78,9 +78,11 @@ def process_ticket_order():
             return jsonify({"error": "User not found"}), 404
 
         user_email = user_resp.json().get("email")
-        all_reserved_ticket_ids = []
+        # Instead of a flat list, we build a dictionary to group ticket IDs by catId
+        tickets_by_cat = {}
         total_amount = 0
 
+        # Loop through each ticket category to gather reserved ticket IDs
         for item in ticket_arr:
             cat_id = item.get("catId")
             quantity = item.get("quantity")
@@ -99,12 +101,30 @@ def process_ticket_order():
 
             reserved_tickets = response.json()
             matching_tickets = [t for t in reserved_tickets if t["status"] == "reserved"]
+            if len(matching_tickets) < quantity:
+                return jsonify({"error": f"Not enough reserved tickets for category {cat_id}"}), 400
 
             selected_ids = [t["_id"] for t in matching_tickets[:quantity]]
-            all_reserved_ticket_ids.extend(selected_ids)
+            # Group the ticket IDs by category
+            if cat_id in tickets_by_cat:
+                tickets_by_cat[cat_id].extend(selected_ids)
+            else:
+                tickets_by_cat[cat_id] = selected_ids
+
             total_amount += price * quantity
 
-        # Process payment
+        # Flatten all ticket IDs if needed for other purposes:
+        all_ticket_ids = []
+        for ids in tickets_by_cat.values():
+            all_ticket_ids.extend(ids)
+
+        # Confirm all reserved tickets at once (mark them as sold)
+        confirm_data = {"ticket_ids": all_ticket_ids}
+        confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json=confirm_data)
+        if confirm_resp.status_code != 200:
+            return jsonify({"error": "Ticket confirmation failed", "details": confirm_resp.text}), 400
+
+        # Process payment for the total amount
         payment_data = {
             "user_id": user_id,
             "amount": total_amount,
@@ -116,46 +136,29 @@ def process_ticket_order():
 
         payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
 
-        # Confirm tickets
-        confirm_data = {
-            "ticket_ids": all_reserved_ticket_ids
-        }
-        confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json=confirm_data)
-        if confirm_resp.status_code != 200:
-            return jsonify({"error": "Ticket confirmation failed", "details": confirm_resp.text}), 400
+        # Build the nested structure for tickets
+        nested_ticket_ids = [{"catId": cat, "ticketIds": ids} for cat, ids in tickets_by_cat.items()]
 
-        # Fetch extra order details from request
-        event_name = data.get("eventName", "")
-        event_date = data.get("eventDate", "")
-        venue = data.get("venue", "")
-        created_orders = []
-        ticket_idx = 0
-        for item in ticket_arr:
-            cat_id = item.get("catId")
-            quantity = item.get("quantity")
-            price = item.get("price")
-            ticket_ids = all_reserved_ticket_ids[ticket_idx:ticket_idx + quantity]
-            ticket_idx += quantity
-
-            order_data = {
+        # Create a single order with the nested ticket IDs and the total amount
+        order_data = {
             "userId": user_id,
-            "ticketIds": ticket_ids,
+            "ticketIds": all_ticket_ids,  # Optionally include the flat list as well
+            "tickets": nested_ticket_ids, # Nested array of ticket IDs by category
             "eventId": event_id,
             "eventDateId": event_date_id,
-            "eventName": event_name,
-            "venue": venue,
-            "catId": cat_id,
             "orderType": "PURCHASE",
-            "totalAmount": quantity * price,
-            "paymentId": payment_id
-            }
+            "totalAmount": total_amount,
+            "paymentId": payment_id,
+            "eventName": data.get("eventName", ""),
+            "venue": data.get("venue", "")
+        }
+        order_resp = requests.post(f"{ORDER_SERVICE_URL}/orders", json=order_data)
+        if order_resp.status_code != 201:
+            return jsonify({"error": "Order creation failed", "details": order_resp.text}), 400
 
-            order_resp = requests.post(f"{ORDER_SERVICE_URL}/orders", json=order_data)
-            if order_resp.status_code != 201:
-                return jsonify({"error": "Order creation failed", "details": order_resp.text}), 400
-            created_orders.append(order_resp.json())  # Collect successful order
+        created_order = order_resp.json()
 
-        # Send notification via RabbitMQ
+        # Send notification via RabbitMQ (unchanged)
         try:
             credentials = pika.PlainCredentials('guest', 'guest')
             parameters = pika.ConnectionParameters(host=RABBITMQ_HOST, port=5672, credentials=credentials)
@@ -166,10 +169,10 @@ def process_ticket_order():
             message = {
                 "email": user_email,
                 "eventType": "ticket.purchase",
-                "event_name": event_name,
-                "order_id": created_orders[0]["orderId"] if created_orders else "N/A",
-                "eventDate": event_date,
-                "ticketNumber": ",".join([tid for order in created_orders for tid in order["ticketIds"]])
+                "event_name": data.get("eventName", ""),
+                "order_id": created_order.get("orderId", "N/A"),
+                "eventDate": data.get("eventDate", ""),
+                "ticketNumber": ",".join(all_ticket_ids)
             }
             channel.basic_publish(
                 exchange=EXCHANGE_NAME,
@@ -182,13 +185,10 @@ def process_ticket_order():
             print(f"Error sending RabbitMQ message: {str(e)}")
 
         return jsonify({
-            "status": "success",
-            "orders": created_orders
+            "status": "SUCCESS",
+            "order": created_order
         }), 200
 
     except Exception as e:
         logging.exception("Unexpected error during ticket order processing")
         return jsonify({"error": "Service error", "message": str(e)}), 500
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080, debug=True)
