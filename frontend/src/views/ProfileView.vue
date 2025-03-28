@@ -534,7 +534,36 @@ export default {
             } else {
                 console.log('Please fill in all the details');
             }
-            },
+        },
+        async validateTicket() {
+            try {
+                const validateData = {
+                    recipientEmail: this.email,
+                    senderEmail: this.user.email,
+                };
+
+                const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
+
+                console.log("Validate Response:", response.data);
+            } catch (error) {
+                console.error("Payment Error:", error.response?.data || error.message);
+            }
+        },
+        async transferTicket(acceptedChoice) {
+            try {
+                const transferData = {
+                    accepted: acceptedChoice, // change "true" to correct variable
+                    recipient_email: true, // change "true" to correct variable
+                    sender_id: true, // change "true" to correct variable
+                    sender_email: true, // change "true" to correct variable
+                };
+                const response = await axios.post(`http://localhost:8011/transfer/${ticketId}`, transferData); // change "ticketId" to correct variable
+
+                console.log("Transfer Response:", response.data);
+            } catch (error) {
+                console.error("Payment Error:", error.response?.data || error.message);
+            }
+        },
     },
     computed: {
         upcomingOrders() {
