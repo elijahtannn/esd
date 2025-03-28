@@ -18,12 +18,25 @@ load_dotenv()
 TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://127.0.0.1:5001")
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
+REFUND_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:5004")
 
 
 def getAllCatTickets(cat_id):
     response = requests.get(f"{TICKET_SERVICE_URL}/tickets/category/{cat_id}")
     responseData = json.loads(response.content.decode("utf-8-sig"))
-    return responseData
+    
+    if isinstance(responseData, list):
+        # It's an array of tickets
+        print("Received an array of tickets")
+        return responseData
+    elif isinstance(responseData, dict) and 'message' in responseData:
+        # It's a dictionary with a 'message' key
+        print(f"Message received: {responseData['message']}")
+        return []
+    else:
+        # Unexpected response format
+        print("Unexpected response format")
+        return None
 
 
 # Create new ticket
@@ -160,6 +173,15 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets):
             else:
                 # If one ticket has the sold status, all ticket will have the same status as it is in the same order
                 purchaseStatus = True
+
+                # refund all the resale ticket if any
+                for ticket in all_used_resale_tickets:
+                    refund_data = {
+                        "ticket_id": ticket['_id'],
+                        "owner_id": ticket['owner_id'],
+                    }
+                    response = requests.post(f"{REFUND_SERVICE_URL}/refund", json=refund_data)
+
         except Exception as e:
             print("Error:", str(e))
             return False
