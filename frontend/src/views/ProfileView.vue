@@ -297,39 +297,56 @@ export default {
         // BACKEND METHODS
         async fetchOrders() {
             try {
-                if (!this.user || !this.user._id) {
-                    console.error('No user ID available');
-                    return;
+                if (!this.user || (!this.user._id && !this.user.id)) {
+                console.error('No user ID available');
+                return;
                 }
 
-                const userId = this.user.id;
-                // const userId = '67d44330971f398f904f8c34';
+                const userId = this.user._id || this.user.id;
+                console.log("Fetching orders for user:", userId);
+                
                 const response = await axios.get(`${this.apiGatewayUrl}/orders/user/${userId}`);
                 const rawOrders = response.data;
                 console.log("Raw Order response:", rawOrders);
+                
                 this.processOrders(rawOrders);
+                
+                // After processing orders, fetch additional details
+                await this.fetchOrderDetails();
             } catch (error) {
                 console.error('Error fetching orders:', error);
             }
         },
 
         processOrders(rawOrders) {
-            console.log("Processing Order", rawOrders)
-            this.orderList = rawOrders.map(order => ({
+            console.log("Processing Order", rawOrders);
+            this.orderList = rawOrders.map(order => {
+                // Extract all ticket IDs from the nested structure
+                let allTicketIds = [];
+                if (order.tickets && Array.isArray(order.tickets)) {
+                // Flatten the nested ticketIds arrays from all category objects
+                order.tickets.forEach(category => {
+                    if (category.ticketIds && Array.isArray(category.ticketIds)) {
+                    allTicketIds = [...allTicketIds, ...category.ticketIds];
+                    }
+                });
+                }
+                
+                return {
                 OrderId: order.orderId,
-                TicketQuantity: order.ticketIds?.length || 0,
+                TicketQuantity: allTicketIds.length,
                 TotalCost: order.totalAmount,
                 Status: order.status,
-                ticketIds: order.ticketIds,
+                ticketIds: allTicketIds,
                 eventId: order.eventId,
                 eventDateId: order.eventDateId,
-                catId: order.catId,
+                tickets: [],
                 isExpanded: false,
                 EventName: '',
                 Venue: '',
-                EventDate: null,
-                tickets: [],
-            }));
+                EventDate: null
+                };
+            });
             console.log("Processed Order List:", this.orderList);
         },
 
