@@ -602,7 +602,7 @@ export default {
             this.loadingPayment = true;
             try {
                 const paymentData = {
-                    user_id: this.user['_id'],
+                    user_id: this.user['_id'] ?? this.user.id,
                     user_email: this.user.email,
                     event_id: this.eventId,
                     event_date_id: this.selectedDateId,
