@@ -607,13 +607,13 @@ export default {
                 const paymentData = {
                     user_id: this.user.id,
                     user_email: this.user.email,
-                    EventId: this.eventId,
-                    EventDateId: this.selectedDateId,
-                    eventName: this.eventDetails.Name,
-                    eventDate: this.eventDetails.Date,
+                    event_id: this.eventId,
+                    event_date_id: this.selectedDateId,
+                    event_name: this.eventDetails.Name,
+                    event_date: this.eventDetails.Date,
                     venue: this.eventDetails.Venue,
                     payment_token: this.paymentToken,
-                    ticketArr: this.selectedTickets,
+                    ticket_arr: this.selectedTickets,
                 };
 
                 const response = await axios.post(`http://localhost:8080/process_ticket_order`, paymentData, {
