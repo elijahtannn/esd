@@ -46,7 +46,8 @@
 
       <div class="container text-center py-5">
         <div class="row g-5 justify-content-center row-cols-1 row-cols-lg-3 row-cols-sm-2">
-          <eventCard v-for="event in eventList" 
+          <eventCard v-for="event in eventList"
+            :key="event.Id" 
             :id="event.Id" 
             :name="event.Name" 
             :dates="event.Dates"
@@ -56,7 +57,8 @@
             :capacity="event.Capacity" 
             :category="event.Category" 
             :image="event.Image" 
-            :description="event.Description" />
+            :description="event.Description"
+            @notify-resale="handleResaleNotification" />
         </div>
       </div>
 
@@ -124,8 +126,13 @@ export default {
       });
 
       this.eventList = processedEvents;
-      console.log(this.eventList)
+      console.log(this.eventList);
     },
+    handleResaleNotification(eventDetails) {
+      // Open a modal or trigger notification signup process
+      // For example:
+      this.$refs.resaleNotificationModal.open(eventDetails);
+    }
   },
   mounted() {
     this.fetchEvents();
