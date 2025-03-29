@@ -100,7 +100,7 @@ def process_ticket_order():
                 return jsonify({"error": "Failed to fetch reserved tickets"}), 400
 
             reserved_tickets = response.json()
-            matching_tickets = [t for t in reserved_tickets if t["status"] == "reserved"]
+            matching_tickets = [t for t in reserved_tickets if t["status"] == "RESERVED"]
             if len(matching_tickets) < quantity:
                 return jsonify({"error": f"Not enough reserved tickets for category {cat_id}"}), 400
 
@@ -110,7 +110,7 @@ def process_ticket_order():
                 tickets_by_cat[cat_id].extend(selected_ids)
             else:
                 tickets_by_cat[cat_id] = selected_ids
-
+            print("DEBUG: selected_ids for cat", cat_id, "=", selected_ids)
             total_amount += price * quantity
 
         # Flatten all ticket IDs if needed for other purposes:
