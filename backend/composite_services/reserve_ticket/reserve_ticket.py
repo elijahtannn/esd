@@ -186,6 +186,7 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
                         "refund_amount": catPrice,
                     }
                     response = requests.post(f"{REFUND_SERVICE_URL}/refund", json=refund_data)
+                    print(response)
 
         except Exception as e:
             print("Error:", str(e))
