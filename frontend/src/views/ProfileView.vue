@@ -247,33 +247,23 @@ export default {
         }
     },
     mounted() {
-        const userData = auth.getUser();
+    const userData = auth.getUser();
 
-        if (!userData || !userData._id) { // ✅ Check _id instead of id
-            console.error("User ID is missing from auth.getUser()!", userData);
-            return;
-        }
+    if (!userData || (!userData._id && !userData.id)) { // Check for both _id and id
+        console.error("User ID is missing from auth.getUser()!", userData);
+        return;
+    }
 
-        console.log("Fetched User from auth:", userData); // Debugging log
+    // Normalize the user object: map id to _id if _id is missing
+    this.user = { ...userData, _id: userData._id || userData.id };
 
-        // ✅ Convert _id to id for consistency
-        this.user = { ...userData, id: userData._id };
+    console.log("Fetched User from auth:", this.user);
 
-        // Fetch the latest user data from backend
-        this.fetchUserData()
-            .then(() => {
-                return this.fetchOrders();
-            })
-            .then(() => {
-                return this.fetchOrderDetails();
-            })
-            .then(() => {
-                console.log("Order List with complete details:", this.orderList);
-            })
-            .catch(error => {
-                console.error("Error in order fetching process:", error);
-            });
-    },
+    // Fetch the latest user data
+    this.fetchUserData()
+        .then(() => this.fetchOrders())
+        .catch(error => console.error("Error in fetching process:", error));
+},
 
     methods: {
         toggleExpand(order) {
