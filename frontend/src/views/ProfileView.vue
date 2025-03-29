@@ -545,6 +545,7 @@ export default {
                 isQrVisible: false,
                 status: "TICKET IS BEING TRANSFERRED"
                 };
+                this.transferTicket(true);
                 this.closePopup();
             } else {
                 console.log('Please fill in all the details');
@@ -572,6 +573,7 @@ export default {
                     sender_id: true, // change "true" to correct variable
                     sender_email: true, // change "true" to correct variable
                 };
+                const ticketId = this.selectedTicket.ticketId; // Get ticket ID from selected ticket
                 const response = await axios.post(`http://localhost:8011/transfer/${ticketId}`, transferData); // change "ticketId" to correct variable
 
                 console.log("Transfer Response:", response.data);
