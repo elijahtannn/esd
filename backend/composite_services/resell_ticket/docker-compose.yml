@@ -1,10 +1,10 @@
 
 services:
-  list-resale:
+  resell-ticket:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: list-resale
+    container_name: resell-ticket
     environment:
       - FLASK_APP=app.py
       - FLASK_ENV=development
@@ -19,7 +19,7 @@ services:
     networks:
       esd_network:
         aliases:
-          - list-resale
+          - resell-ticket
 
 networks:
   esd_network:
