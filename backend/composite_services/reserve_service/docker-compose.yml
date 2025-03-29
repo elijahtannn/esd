@@ -1,0 +1,27 @@
+
+services:
+  reserve-ticket:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reserve-ticket
+    environment:
+      - FLASK_APP=reserve_ticket.py
+      - FLASK_ENV=development
+      - USER_SERVICE_URL=http://user-service:5003
+      - EVENT_SERVICE_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
+      - TICKET_SERVICE_URL=http://ticket-service:5001
+    ports:
+      - "8006:8006"
+    volumes:
+      - .:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      esd_network:
+        aliases:
+          - reserve-ticket
+
+networks:
+  esd_network:
+    external: true

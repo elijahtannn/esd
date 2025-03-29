@@ -15,17 +15,17 @@ load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-# ✅ MongoDB Configuration
+# MongoDB Configuration
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://your_mongo_user:your_password@cluster.mongodb.net/payments")
 mongo = PyMongo(app, tlsCAFile=certifi.where())
 
 # Collection Reference
 payments_collection = mongo.db.payments
 
-# ✅ Stripe API Configuration
+# Stripe API Configuration
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Make sure your .env file contains this
 
-# ✅ Helper: Validate input fields
+# Helper: Validate input fields
 def is_valid_payment_data(data):
     if not isinstance(data.get("user_id"), str) or len(data["user_id"].strip()) == 0:
         return False, "Invalid user_id"
@@ -35,7 +35,7 @@ def is_valid_payment_data(data):
         return False, "Invalid payment token"
     return True, None
 
-# 🔹 **Process Payment**
+#Process Payment
 @app.route("/payments/process", methods=["POST"])
 def process_payment():
     data = request.json
@@ -48,7 +48,7 @@ def process_payment():
         if not is_valid:
             return jsonify({"error": error_msg}), 400
 
-        # ✅ Use the token to create a charge
+        # Use the token to create a charge
         charge = stripe.Charge.create(
             amount=int(data["amount"] * 100),  # cents
             currency="usd",
@@ -56,7 +56,7 @@ def process_payment():
             description=f"Payment for user {data['user_id']}"
         )
 
-        # ✅ Extract card details from the charge object
+        # Extract card details from the charge object
         card = charge["payment_method_details"]["card"]
         card_info = {
             "brand": card.get("brand"),
@@ -66,7 +66,7 @@ def process_payment():
             "fingerprint": card.get("fingerprint")
         }
 
-        # ✅ Store in MongoDB
+        # Store in MongoDB
         payment_record = {
             "user_id": data["user_id"],
             "amount": data["amount"],
@@ -101,7 +101,7 @@ def is_valid_refund_data(data):
         return False, "Invalid amount"
     return True, None
 
-# 🔹 **Process Refund**
+#Process Refund
 @app.route("/payments/refund", methods=["POST"])
 def process_refund():
     data = request.json
@@ -141,6 +141,6 @@ def process_refund():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# ✅ Run Flask App
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8002, debug=True)

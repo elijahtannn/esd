@@ -94,14 +94,15 @@
                                                         </div>
                                                     </div>
                                                     <!--QR code image -->
-                                                    <div v-if="!ticketStatuses[ticket.ticketId] || ticketStatuses[ticket.ticketId].isQrVisible">
+                                                    <div>
                                                         <img src="../assets/images/dummy QR code.png" class="qr-image">
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
-                                                    <div v-else class="ticket-status">
+                                                    <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
                                                         <p
                                                             style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
-                                                            <strong>ON HOLD:</strong> {{ ticketStatuses[ticket.ticketId].status }}</p>
+                                                            <strong>ON HOLD:</strong> {{ ticketStatuses[ticket.ticketId].status }}
+                                                        </p>
                                                     </div>
                                                     <p>#{{ ticket.ticketId }}</p>
                                                     <p>Type: {{ ticket.categoryName }}</p>
@@ -247,21 +248,23 @@ export default {
     },
     mounted() {
     const userData = auth.getUser();
-        if (userData) {
-            this.user = userData;
-            this.fetchOrders()
-                .then(() => {
-                    // After fetching basic order data, get additional details
-                    return this.fetchOrderDetails();
-                })
-                .then(() => {
-                    console.log("Order List with complete details:", this.orderList);
-                })
-                .catch(error => {
-                    console.error("Error in order fetching process:", error);
-                });
-        }
-    },
+
+    if (!userData || (!userData._id && !userData.id)) { // Check for both _id and id
+        console.error("User ID is missing from auth.getUser()!", userData);
+        return;
+    }
+
+    // Normalize the user object: map id to _id if _id is missing
+    this.user = { ...userData, _id: userData._id || userData.id };
+
+    console.log("Fetched User from auth:", this.user);
+
+    // Fetch the latest user data
+    this.fetchUserData()
+        .then(() => this.fetchOrders())
+        .catch(error => console.error("Error in fetching process:", error));
+},
+
     methods: {
         toggleExpand(order) {
             order.isExpanded = !order.isExpanded;
@@ -269,7 +272,7 @@ export default {
         // BACKEND METHODS
         async fetchOrders() {
             try {
-                if (!this.user || !this.user.id) {
+                if (!this.user || !this.user._id) {
                     console.error('No user ID available');
                     return;
                 }
@@ -405,8 +408,61 @@ export default {
             });
         },
         // FRONTEND METHODS
-        toggleEdit() {
+        async toggleEdit() {
+            if (this.isEditing) {
+                console.log("Before update:", this.user.mobile); // Debugging log
+                await this.updateMobileNumber();
+            }
             this.isEditing = !this.isEditing;
+        },
+        async updateMobileNumber() {
+            try {
+                let userId = this.user?._id || auth.getUser()?._id; // Fallback check
+
+                if (!userId) {
+                    console.error("User ID is missing! Cannot update mobile number.");
+                    return;
+                }
+                const url = `${this.apiGatewayUrl}/user/${userId}`;
+                console.log("Sending request to:", url);
+                const response = await axios.put(url, { mobile: this.user.mobile || "" }, {
+                    headers: { "Content-Type": "application/json" }
+                });
+                console.log("API Response:", response.data);
+                if (response.status === 200) {
+                    console.log("Mobile number updated successfully:", response.data);
+                    
+                    // Store the latest user data
+                    auth.setUser(response.data);
+                    
+                    // Fetch updated user data
+                    this.fetchUserData();
+                } else {
+                    console.error("Failed to update mobile number:", response.data.error);
+                }
+            } catch (error) {
+                console.error("Error updating mobile number:", error);
+            }
+        },
+        async fetchUserData() {
+            try {
+                let userId = this.user?._id || auth.getUser()?._id; // Double-check user ID
+
+                if (!userId) {
+                    console.error("User ID is missing! Cannot fetch user data.");
+                    return;
+                }
+
+                const response = await axios.get(`${this.apiGatewayUrl}/user/${userId}`);
+                
+                if (response.status === 200) {
+                    console.log("Fetched latest user data:", response.data);
+                    this.user = response.data;
+                    auth.setUser(response.data); // Store updated user data
+                }
+            } catch (error) {
+                console.error("Error fetching user data:", error);
+            }
         },
         openTab(event, tabName) {
             // Remove active class from all tabs and content
@@ -467,7 +523,36 @@ export default {
             } else {
                 console.log('Please fill in all the details');
             }
-            },
+        },
+        async validateTicket() {
+            try {
+                const validateData = {
+                    recipientEmail: this.email,
+                    senderEmail: this.user.email,
+                };
+
+                const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
+
+                console.log("Validate Response:", response.data);
+            } catch (error) {
+                console.error("Payment Error:", error.response?.data || error.message);
+            }
+        },
+        async transferTicket(acceptedChoice) {
+            try {
+                const transferData = {
+                    accepted: acceptedChoice, // change "true" to correct variable
+                    recipient_email: true, // change "true" to correct variable
+                    sender_id: true, // change "true" to correct variable
+                    sender_email: true, // change "true" to correct variable
+                };
+                const response = await axios.post(`http://localhost:8011/transfer/${ticketId}`, transferData); // change "ticketId" to correct variable
+
+                console.log("Transfer Response:", response.data);
+            } catch (error) {
+                console.error("Payment Error:", error.response?.data || error.message);
+            }
+        },
     },
     computed: {
         upcomingOrders() {

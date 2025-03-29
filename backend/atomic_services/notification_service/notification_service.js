@@ -117,7 +117,7 @@ async function consumeMessages() {
                 const eventData = JSON.parse(msg.content.toString());
                 console.log('📨 Received Message:', eventData);
 
-                const { email, eventName, ticketNumber, eventType, sender_email, recipient_email, role } = eventData;
+                const { email, eventName, ticketNumber, eventType, sender_email, recipient_email, role, amount, message } = eventData;
 
                 if (eventType === 'ticket.purchase') {
                     const subject = `🎟 Your Ticket for ${eventName}`;
@@ -214,6 +214,37 @@ async function consumeMessages() {
 
                     // Send email
                     await sendEmail(email, subject, message);
+                } else if (eventType === 'ticket.refund.complete') {
+                    const subject = `💰 Refund Processed for ${eventName || "Ticket Refund"}`;
+                    
+                    // Generate email body using Mailgen
+                    const emailBody = {
+                        body: {
+                            name: email.split('@')[0],
+                            intro: message || `Your refund has been processed successfully!`,
+                            dictionary: {
+                                'Ticket Number': ticketNumber,
+                                'Refund Amount': `$${amount}`,
+                                'Refund Date': new Date().toLocaleDateString()
+                            },
+                            action: {
+                                instructions: 'You can view your tickets and transactions by clicking the button below:',
+                                button: {
+                                    color: '#2563EB',
+                                    text: 'View Account',
+                                    link: `${FRONTEND_URL}/profile`
+                                }
+                            },
+                            outro: 'Thank you for using our service!'
+                        }
+                    };
+                
+                    // Generate HTML email
+                    const emailMessage = mailGenerator.generate(emailBody);
+                
+                    // Send email
+                    await sendEmail(email, subject, emailMessage);
+                    console.log(`✅ Refund notification email sent to ${email}`);
                 } else if (eventType === 'ticket.resale.available') {
                     const subject = `🎟 Resale Ticket Available for ${eventName}`;
                         
@@ -242,8 +273,7 @@ async function consumeMessages() {
                         await sendEmail(email, subject, message);
                 } else {
                     console.log(`📥 Received ${eventType} message, but handling is not yet implemented.`);
-                }
-
+                }        
                 // Acknowledge message after processing
                 channel.ack(msg);
             }

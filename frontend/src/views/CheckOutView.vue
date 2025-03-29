@@ -25,7 +25,7 @@
                 v-if="currentStep == 1 || currentStep == 2">
                 <i class="bi bi-arrow-left-short"></i> Back to {{ steps[currentStep - 1] }}
             </p>
-            <p style="cursor: pointer;" @click="goBack" v-else>
+            <p style="cursor: pointer; width: fit-content;" @click="goBack" v-else>
                 <i class="bi bi-arrow-left-short"></i> Back to browsing event
             </p>
         </div>
@@ -48,12 +48,15 @@
                     <div class="timer" :class="{ 'timer-warning': remainingSeconds <= 10 }">
                         <span class="timer-text">Time remaining:</span>
                         <span class="timer-count">{{ minutes }}:{{ seconds.toString().padStart(2, '0') }}</span>
-                        <p style="font-size: 12px; color:var(--text-grey)">Your tickets are being reserved. Please complete the transaction within the time limit or you will be routed back to the events page.</p>
+                        <p style="font-size: 12px; color:var(--text-grey)">Your tickets are being reserved. Please
+                            complete the transaction within the time limit or you will be routed back to the events
+                            page.</p>
                     </div>
                 </div>
 
                 <!-- Step Content -->
                 <div class="step-content pt-5" style="margin-bottom: -70px;">
+                    <p style="color:red;">{{error}}</p>
                     <div v-if="currentStep === 0">
                         <h2>Ticket Selection</h2>
                         <p>Select your tickets and quantities here.</p>
@@ -88,12 +91,13 @@
                 <label for="date" class="input-label">Date</label>
                 <div class="input-container">
                     <select v-model="selectedDateId" id="eventDate" class="input-field" style="width: fit-content;"
-                        @change="showCategories()">
+                        @change="handleDateChange">
                         <option disabled value="">Select a date</option>
                         <option v-for="date in eventDates" :key="date.dateId" :value="date.dateId">
                             {{ date.date }}
                         </option>
                     </select>
+
                 </div>
 
                 <!-- Selecting ticket types and their quantity -->
@@ -146,7 +150,9 @@
             <div class="col"></div>
 
             <div class="row ps-4 pt-5">
-                <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep">
+                <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep"
+                    :disabled="!isFormValid || eventCategories.length === 0"
+                    :class="{ 'disabled-button': !isFormValid || eventCategories.length === 0 }">
                     Next Step
                 </button>
             </div>
@@ -209,7 +215,10 @@
         <!-- Step 3: Payment -->
         <div class="row p-5" v-if="currentStep == 2">
 
-            <div class="col">
+            <div class="col" v-if="loadingPayment">
+                <p>Your payment is loading... Please give us a moment.</p>
+            </div>
+            <div class="col" v-else>
 
                 <div>
 
@@ -283,7 +292,7 @@
 
                 <p>Your tickets have been successfully <b>confirmed!</b></p>
                 <p style="color:var(--text-grey); width: 60%; margin: auto; margin-bottom: 30px;">A confirmation email
-                    has been sent to yadayada@gmail.com with your ticket details.</p>
+                    has been sent to {{ user.email }} with your ticket details.</p>
 
                 <router-link to="/"><button style="text-transform: uppercase;">Browse more events</button></router-link>
             </div>
@@ -298,7 +307,7 @@
                         formatTimeRange(eventDetails.StartTime, eventDetails.EndTime) }}</p>
                     <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                         eventDetails.Venue
-                    }}
+                        }}
                     </p>
 
                     <hr>
@@ -347,7 +356,7 @@ export default {
             // Misc
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             stripePublishableKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY,
-
+            
             // Event Info
             eventId: 0,
             eventImage: "../assets/carousel/eventiva_carousel1.png",
@@ -355,12 +364,13 @@ export default {
             eventDetails: [],
             eventDates: [],
             eventCategories: [],
-
+            
             // Steps related
             previousStep: "browsing event",
             steps: ["Ticket selection", "Confirmation", "Payment", "Complete"],
             currentStep: 0,
             ticketError: "",
+            error: "",
 
             // Selection
             selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }],
@@ -379,6 +389,7 @@ export default {
             cardExpiryElement: null,
             cardCvcElement: null,
             isStripeLoaded: false,
+            loadingPayment: false,
 
             // User
             user: null,
@@ -386,7 +397,8 @@ export default {
             // Timer
             paymentTimer: null,
             abortController: null,
-            remainingSeconds: 95,
+            secondsThreshold: 20,
+            remainingSeconds: 20,
             isTimerActive: false,
         }
     },
@@ -419,22 +431,27 @@ export default {
         grandTotal() {
             return this.calculatedTickets.reduce((total, ticket) => total + ticket.subtotal, 0);
         },
-        listDates() {
-            return this.eventDetails.dates.map((dateString) => {
-                const date = new Date(dateString);
-                const formatted = new Intl.DateTimeFormat("en-GB", {
-                    day: "2-digit",
-                    month: "long",
-                    year: "numeric",
-                }).format(date);
-                return { value: dateString, label: formatted };
-            });
-        },
+        isFormValid() {
+            // Ensure a date is selected and all ticket types are filled with valid quantities
+            return this.selectedDateId !== '' && this.selectedTickets.every(ticket => ticket.selectedType !== '' && ticket.quantity > 0);
+        }
     },
     methods: {
         goBack() {
             this.cancelReservation();
-            this.$router.push({ path: '/event', query: { eventId: [this.eventId] } });
+            if (this.currentStep == 0 || this.currentStep == 3) {
+                this.$router.push({ path: '/event', query: { eventId: [this.eventId] } });
+            } else {
+                this.prevStep();
+            }
+        },
+        handleDateChange() {
+            // Reset ticket selections to a single default entry
+            this.selectedTickets = [{ selectedType: "", quantity: 1, price: 0 }];
+
+            // Clear existing categories and fetch new ones for the selected date
+            this.eventCategories = [];
+            this.showCategories();
         },
         filteredeventCategories(index) {
             // Get all currently selected types except for the current row
@@ -451,6 +468,7 @@ export default {
         },
         addTicketType() {
             // Add a new ticket row with default values
+
             if (this.selectedTickets.length < this.eventCategories.length) {
                 this.selectedTickets.push({ selectedType: "", quantity: 1, price: 0 });
             } else {
@@ -471,28 +489,11 @@ export default {
             this.selectedTickets.splice(index, 1);
         },
         nextStep() {
+            this.ticketError = "";
+            this.error = "";
             if (this.currentStep < this.steps.length - 1) {
 
                 if (this.currentStep == 1) {
-                    // this.currentStep++;
-                    // this.elements = this.stripe.elements();
-                    // this.isStripeLoaded = true;
-
-                    // // Wait until the DOM updates
-                    // this.$nextTick(() => {
-                    //     if (document.getElementById('cardNumber')) {
-                    //         this.cardNumberElement = this.elements.create('cardNumber');
-                    //         this.cardExpiryElement = this.elements.create('cardExpiry');
-                    //         this.cardCvcElement = this.elements.create('cardCvc');
-
-                    //         this.cardNumberElement.mount('#cardNumber');
-                    //         this.cardExpiryElement.mount('#cardExpiry');
-                    //         this.cardCvcElement.mount('#cardCvc');
-                    //     } else {
-                    //         console.error("Card input fields are not found in the DOM.");
-                    //     }
-                    // });
-                    // create ticket and change ticket status to reserved 
                     this.reserveTicket();
                 } else {
                     this.currentStep++;
@@ -500,7 +501,13 @@ export default {
             }
         },
         prevStep() {
-            if (this.currentStep > 0) {
+            this.ticketError = ""
+            // this.error = ""
+            if (this.currentStep == 2) {
+                this.cancelReservation(true);
+                this.remainingSeconds = this.secondsThreshold;
+                this.currentStep--;
+            } else if (this.currentStep > 0) {
                 this.currentStep--;
             }
         },
@@ -590,16 +597,23 @@ export default {
         },
         async processPayment() {
 
+            this.cancelReservation(false);
+
+            this.loadingPayment = true;
+            console.log(this.user)
+            console.log(this.user.id)
+            console.log(this.user.email)
             try {
                 const paymentData = {
                     user_id: this.user.id,
-                    EventId: this.eventId,
-                    EventDateId: this.selectedDateId,
-                    eventName: this.eventDetails.Name,
-                    eventDate: this.eventDetails.Date,
+                    user_email: this.user.email,
+                    event_id: this.eventId,
+                    event_date_id: this.selectedDateId,
+                    event_name: this.eventDetails.Name,
+                    event_date: this.eventDetails.Date,
                     venue: this.eventDetails.Venue,
                     payment_token: this.paymentToken,
-                    ticketArr: this.selectedTickets,
+                    ticket_arr: this.selectedTickets,
                 };
 
                 const response = await axios.post(`http://localhost:8080/process_ticket_order`, paymentData, {
@@ -609,11 +623,15 @@ export default {
                 });
 
                 console.log("Payment Response:", response.data);
-                this.cancelReservation(); // Stop both timer and request
                 this.currentStep=3;
             } catch (error) {
+                this.currentStep=0;
+                this.remainingSeconds = this.secondsThreshold;
+                this.cancelReservation(true);
+                this.error = "Payment declined. Please try again.";
                 console.error("Payment Error:", error.response?.data || error.message);
             }
+            this.loadingPayment = false;
         },
         async getToken() {
             if (!this.cardNumberElement) {
@@ -624,8 +642,10 @@ export default {
             const { token, error } = await this.stripe.createToken(this.cardNumberElement);
 
             if (error) {
+                this.error = "Incomplete fields";
                 console.error(error.message);
             } else {
+                this.error = "";
                 this.paymentToken = token.id;
                 this.processPayment();
             }
@@ -644,6 +664,7 @@ export default {
             }
         },
         async showCategories() {
+            this.eventCategories = []
             try {
                 const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${this.selectedDateId}/categories`);
 
@@ -708,11 +729,17 @@ export default {
                     if (this.paymentTimer) clearTimeout(this.paymentTimer);
 
                     if (response.data.status === false) {
-                        this.goBack();
+                        if (this.currentStep != 3) {
+                            console.log(response.data.status)
+                            this.goBack();
+                        }
                     }
                 } catch (error) {
                     if (!axios.isCancel(error)) {
-                        this.goBack();
+                        console.log(error)
+                        if (this.currentStep != 3) {
+                            this.goBack();
+                        }
                     }
                 }
 
@@ -725,22 +752,21 @@ export default {
         },
         startPaymentTimer() {
             if (this.paymentTimer) clearTimeout(this.paymentTimer);
-            // this.paymentTimer = setTimeout(() => {
-            //     this.cancelReservation();
-            //     this.goBack();
-            // }, 25000); // Add 5s buffer for network latency
 
             this.isTimerActive = true;
             this.paymentTimer = setInterval(() => {
                 if (this.remainingSeconds > 0) {
                     this.remainingSeconds--;
+                    if (this.remainingSeconds == 0) {
+                        this.error = "You ran out of time, please select your tickets again.";
+                    }
                 } else {
-                    this.cancelReservation();
+                    this.cancelReservation(true);
                     this.goBack();
                 }
             }, 1000);
         },
-        cancelReservation() {
+        cancelReservation(goback) {
             this.isTimerActive = false;
             if (this.abortController) {
                 this.abortController.abort(); // Proper cancellation method
@@ -749,6 +775,8 @@ export default {
             if (this.paymentTimer) {
                 clearTimeout(this.paymentTimer);
                 this.paymentTimer = null;
+                this.loadingPayment = false;
+                if(goback){this.goBack();}
             }
         },
 
@@ -775,12 +803,18 @@ export default {
 
     },
     beforeDestroy() {
-        this.cancelReservation();
+        this.cancelReservation(true);
     }
 }
 </script>
 
 <style scoped>
+.disabled-button {
+    background-color: #cccccc;
+    color: #666666;
+    cursor: not-allowed;
+}
+
 .bannerImg {
     background-image: linear-gradient(to right, rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.1)),
         url("../assets/carousel/eventiva_carousel1.png");

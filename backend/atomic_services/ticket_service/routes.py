@@ -16,7 +16,7 @@ def release_ticket_after_delay(ticket_ids, delay_seconds=180):
         expired_time = now - timedelta(seconds=delay_seconds)
         result = ticket_collection.delete_many({
             "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
-            "status": "reserved",
+            "status": "RESERVED",
             "created_at": {"$lt": expired_time}
         })
         print(f"[Timer] Released and deleted {result.deleted_count} unconfirmed reserved ticket(s)")
@@ -37,7 +37,7 @@ def release_tickets():
         result = get_ticket_collection().delete_many({
             "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
             "owner_id": str(owner_id),  # Store owner_id as string
-            "status": "reserved"
+            "status": "RESERVED"
         })
 
         return jsonify({
@@ -69,7 +69,7 @@ def create_tickets():
                 cat_id=int(data["cat_id"]),
                 owner_id=data["owner_id"],
                 seat_info=data["seat_info"],
-                status="reserved",
+                status="RESERVED",
                 is_transferable=data.get("is_transferable", True),
                 qr_code=data.get("qr_code", "")
             ).to_dict()
@@ -116,21 +116,21 @@ def confirm_ticket_purchase():
         if not tickets:
             return jsonify({"error": "No matching tickets found"}), 404
 
-        # Check if any ticket is NOT in 'reserved' status
-        reserved_ticket_ids = [t["_id"] for t in tickets if t["status"] == "reserved"]
-        non_reserved = [str(t["_id"]) for t in tickets if t["status"] != "reserved"]
+        # Check if any ticket is NOT in 'RESERVED' status
+        reserved_ticket_ids = [t["_id"] for t in tickets if t["status"] == "RESERVED"]
+        non_reserved = [str(t["_id"]) for t in tickets if t["status"] != "RESERVED"]
 
         if not reserved_ticket_ids:
-            return jsonify({"error": "No tickets in 'reserved' state", "non_reserved": non_reserved}), 400
+            return jsonify({"error": "No tickets in 'RESERVED' state", "non_reserved": non_reserved}), 400
 
         # Update all tickets to 'sold'
         result = get_ticket_collection().update_many(
         {"_id": {"$in": reserved_ticket_ids}},
-        {"$set": {"status": "sold", "updated_at": datetime.utcnow()}}
+        {"$set": {"status": "SOLD", "updated_at": datetime.utcnow()}}
     )
 
         return jsonify({
-            "message": f"Successfully updated {result.modified_count} ticket(s) to 'sold'"
+            "message": f"Successfully updated {result.modified_count} ticket(s) to 'SOLD'"
         }), 200
 
     except Exception as e:
@@ -146,6 +146,42 @@ def get_tickets():
         return jsonify(serialized_tickets), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch tickets: {str(e)}"}), 500
+    
+# @ticket_bp.route('/tickets', methods=['GET'])
+# def get_tickets():
+#     try:
+#         query = {}
+#         owner_id = request.args.get("owner_id")
+#         cat_id = request.args.get("cat_id")
+#         event_id = request.args.get("event_id")
+#         event_date_id = request.args.get("event_date_id")
+#         status = request.args.get("status")
+        
+#         if owner_id:
+#             query["owner_id"] = owner_id
+#         if cat_id:
+#             try:
+#                 query["cat_id"] = int(cat_id)
+#             except ValueError:
+#                 query["cat_id"] = cat_id
+#         if event_id:
+#             try:
+#                 query["event_id"] = int(event_id)
+#             except ValueError:
+#                 query["event_id"] = event_id
+#         if event_date_id:
+#             try:
+#                 query["event_date_id"] = int(event_date_id)
+#             except ValueError:
+#                 query["event_date_id"] = event_date_id
+#         if status:
+#             query["status"] = status
+
+#         tickets = list(get_ticket_collection().find(query))
+#         serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
+#         return jsonify(serialized_tickets), 200
+#     except Exception as e:
+#         return jsonify({"error": f"Failed to fetch tickets: {str(e)}"}), 500
 
 @ticket_bp.route('/tickets/<ticket_id>', methods=['GET'])
 def get_ticket(ticket_id):
@@ -279,3 +315,38 @@ def get_pending_transfers(recipient_email):
         return jsonify(serialized_tickets), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@ticket_bp.route('/tickets/category/<int:cat_id>', methods=['GET'])
+def get_tickets_by_category(cat_id):
+    try:
+        query = {"cat_id": cat_id}
+        owner_id = request.args.get("owner_id")
+        event_id = request.args.get("event_id")
+        event_date_id = request.args.get("event_date_id")
+        status = request.args.get("status")
+        
+        if owner_id:
+            query["owner_id"] = owner_id
+        if event_id:
+            try:
+                query["event_id"] = int(event_id)
+            except ValueError:
+                query["event_id"] = event_id
+        if event_date_id:
+            try:
+                query["event_date_id"] = int(event_date_id)
+            except ValueError:
+                query["event_date_id"] = event_date_id
+        if status:
+            query["status"] = status
+
+        tickets = list(get_ticket_collection().find(query))
+        
+        if not tickets:
+            return jsonify({"message": f"No tickets found for category ID {cat_id}"}), 200
+            
+        serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
+        return jsonify(serialized_tickets), 200
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch tickets by category: {str(e)}"}), 500

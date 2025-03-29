@@ -1,0 +1,26 @@
+
+services:
+  list-resale:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: list-resale
+    environment:
+      - FLASK_APP=app.py
+      - FLASK_ENV=development
+      - TICKET_SERVICE_URL=http://ticket-service:5001
+      - OUTSYSTEMS_EVENT_API_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
+    ports:
+      - "5003:5003"
+    volumes:
+      - .:/app
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      esd_network:
+        aliases:
+          - list-resale
+
+networks:
+  esd_network:
+    external: true

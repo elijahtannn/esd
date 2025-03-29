@@ -264,5 +264,42 @@ def get_interested_users(event_id):
             "details": str(e)
         }), 500
 
+#PUT: Update user's mobile number and name
+@app.route("/user/<string:user_id>", methods=["PUT"])
+def update_user(user_id):
+    try:
+        
+        data = request.get_json()
+        
+        
+        update_fields = {}
+        if "mobile" in data:
+            update_fields["mobile"] = data["mobile"]
+        if "name" in data:
+            update_fields["name"] = data["name"]
+            
+        if not update_fields:
+            return jsonify({"error": "No valid fields to update"}), 400
+
+        
+        result = mongo.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$set": update_fields}
+        )
+
+        if result.modified_count == 0:
+            return jsonify({"error": "User not found or no changes made"}), 404
+
+        
+        updated_user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        updated_user["_id"] = str(updated_user["_id"])  # Convert ObjectId to string
+        return jsonify(updated_user), 200
+
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to update user",
+            "message": str(e)
+        }), 500
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5003, debug=True)
