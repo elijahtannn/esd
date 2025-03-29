@@ -562,7 +562,7 @@ export default {
                 isQrVisible: false,
                 status: "TICKET IS BEING TRANSFERRED"
                 };
-                this.transferTicket(true);
+                this.validateTicket();
                 this.closePopup();
             } else {
                 console.log('Please fill in all the details');

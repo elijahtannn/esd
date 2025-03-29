@@ -600,12 +600,9 @@ export default {
             this.cancelReservation(false);
 
             this.loadingPayment = true;
-            console.log(this.user)
-            console.log(this.user.id)
-            console.log(this.user.email)
             try {
                 const paymentData = {
-                    user_id: this.user.id,
+                    user_id: this.user['_id'],
                     user_email: this.user.email,
                     event_id: this.eventId,
                     event_date_id: this.selectedDateId,
@@ -709,7 +706,7 @@ export default {
                         selected_tickets: this.selectedTickets,
                         event_date_id: this.selectedDateId,
                         event_id: this.eventId,
-                        user_id: this.user.id,
+                        user_id: this.user["_id"],
                         event_category: this.eventDetails.Category,
                     };
 
