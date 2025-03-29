@@ -192,3 +192,6 @@ def process_ticket_order():
     except Exception as e:
         logging.exception("Unexpected error during ticket order processing")
         return jsonify({"error": "Service error", "message": str(e)}), 500
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)
