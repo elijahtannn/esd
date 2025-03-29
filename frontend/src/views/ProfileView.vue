@@ -222,7 +222,6 @@ export default {
             showResalePopup: false,
             isAgreed: false,
             showTransferPopup: false,
-            recipientName: '',
             eventivaAccount: '',
             email: '',
             isEditing: false,
@@ -505,7 +504,7 @@ export default {
             this.openMenus= [];
         },
         confirmTransfer() {
-            if (this.recipientName && this.eventivaAccount && this.email && this.isAgreed && this.selectedTicket) {
+            if ( this.email && this.isAgreed && this.selectedTicket) {
                 this.ticketStatuses[this.selectedTicket.ticketId] = {
                 isQrVisible: false,
                 status: "TICKET IS BEING TRANSFERRED"
