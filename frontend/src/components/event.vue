@@ -1,9 +1,18 @@
 <template>
-
     <div class="col">
-        <div class="card rounded-0 border-0 addShadow" @click="toEvent" style="cursor: pointer;">
-            <img src="../assets/carousel/eventiva_carousel1.png" class="card-img-top rounded-0"
+        <div 
+            class="card rounded-0 border-0 addShadow" 
+            @click="handleCardClick" 
+            style="cursor: pointer;"
+        >
+            <div class="position-relative">
+                <img src="../assets/carousel/eventiva_carousel1.png" class="card-img-top rounded-0"
                 style="object-fit: cover; height: 35vh;">
+                <!-- Sold Out Overlay -->
+                <div v-if="isSoldOut" class="sold-out-overlay">
+                    <span class="sold-out-badge">SOLD OUT</span>
+                </div>
+            </div>
             <div class="card-body p-4">
                 <div class="text-start">
                     <p style="color:var(--main-blue)">{{ category }}</p>
@@ -14,21 +23,52 @@
                     <p style="font-size: 14px; color:var(--text-grey);">{{ venue }} (capacity: {{ capacity }})</p>
                 </div>
 
-                <button style="padding: 5px 20px; text-transform: uppercase;" class="text-center" @click="toEvent">
-                    Learn more
-                </button>
+                <!-- Conditional buttons for sold out events -->
+                <div v-if="isSoldOut" class="d-flex justify-content-between align-items-center">
+                    <button 
+                        v-if="!isInterestedInResale"
+                        @click.stop="openResaleNotificationModal" 
+                        class="btn btn-outline-primary w-100"
+                        style="text-transform: uppercase;"
+                    >
+                        Notify When Resale Available
+                    </button>
+                    <button 
+                        v-else
+                        class="btn btn-outline-success w-100"
+                        style="text-transform: uppercase;"
+                        disabled
+                    >
+                        <i class="bi bi-bell-fill me-2"></i>Notification Set
+                    </button>
+                </div>
 
-                <p style="color:red; font-size: 14px;" v-if="availableTickets < ticketThreshold">Tickets running low!
-                </p>
+                <div v-else>
+                    <button 
+                        @click.stop="toEvent" 
+                        class="btn btn-primary w-100"
+                        style="text-transform: uppercase;"
+                    >
+                        Learn More
+                    </button>
+
+                    <p 
+                        v-if="availableTickets < ticketThreshold" 
+                        class="text-danger mt-2 mb-0"
+                        style="font-size: 14px;"
+                    >
+                        Tickets Running Low!
+                    </p>
+                </div>
             </div>
         </div>
-
     </div>
-
 </template>
 
 <script>
 
+import axios from 'axios';
+import { auth } from '../stores/auth.js';
 
 export default {
     name: 'event',
@@ -37,6 +77,8 @@ export default {
             ticketThreshold: 30,
             finalDateRange: "",
             formattedDate: "",
+            isSoldOut: false,
+            isInterestedInResale: false
         }
     },
     props: {
@@ -52,6 +94,11 @@ export default {
         description: String,
     },
     methods: {
+        handleCardClick() {
+            if (!this.isSoldOut) {
+                this.toEvent();
+            }
+        },
         toEvent() {
             this.$router.push({ path: '/event', query: { eventId: [this.id] } });
         },
@@ -113,14 +160,121 @@ export default {
             );
 
             return `${start} - ${end}`;
+        },
+
+        async checkSoldOutStatus() {
+            try {
+                const response = await axios.get(`https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/${this.id}/is-sold-out`);
+                
+                console.log(`Sold out status for event ${this.id}:`, response.data);
+                
+                if (response.data && response.data.Result) {
+                this.isSoldOut = response.data.isSoldOut || false;
+                } else {
+                this.isSoldOut = false;
+                }
+                
+                console.log(`Event ${this.id} sold out status:`, this.isSoldOut);
+            } catch (error) {
+                console.error(`Failed to check sold-out status for event ${this.id}`, error);
+                this.isSoldOut = false;
+            }
+        },
+        async checkUserInterestStatus() {
+            // Get user data from auth store
+            const userData = auth.getUser();
+            
+            if (!userData) {
+                // User not logged in, can't check interest status
+                this.isInterestedInResale = false;
+                return;
+            }
+            
+            const userId = userData.id || userData._id; // Handle both formats
+            console.log('Checking interest status for user:', userId); // Debug log
+            
+            try {
+                const response = await axios.get(
+                    `${this.apiGatewayUrl || 'http://localhost:5003'}/user/event_interests/${userId}`
+                );
+                
+                console.log('User interests response:', response.data); // Debug log
+                
+                if (response.data && response.data.event_interests) {
+                    // Check if this event ID is in the user's interests
+                    // Handle both string and number comparisons
+                    const eventId = parseInt(this.id);
+                    this.isInterestedInResale = response.data.event_interests.some(id => 
+                        parseInt(id) === eventId || id === this.id
+                    );
+                }
+            } catch (error) {
+                console.error('Failed to check user interest status:', error);
+                // Don't change the interest status on error
+            }
+        },
+        async openResaleNotificationModal() {
+            try {
+                // Get user data from auth store
+                const userData = auth.getUser();
+                
+                if (!userData) {
+                    // User is not logged in, redirect to login
+                    this.$router.push('/login');
+                    return;
+                }
+                
+                console.log('User data from auth store:', userData); // Debug log
+                
+                // Use the correct endpoint URL
+                const response = await axios.post(`${this.apiGatewayUrl || 'http://localhost:5003'}/user/add_event_interest`, {
+                    user_id: userData.id || userData._id, // Handle both formats
+                    event_id: this.id
+                });
+
+                // Update UI to show user is now interested
+                this.isInterestedInResale = true;
+                
+                // Simple success message
+                alert("We'll notify you when resale tickets become available!");
+            } catch (error) {
+                console.error('Failed to add event interest', error);
+                alert('Failed to register for resale notification. Please try again.');
+            }
         }
     },
     mounted() {
 
         this.formatDates(this.dates);
+        this.checkSoldOutStatus();
+        this.checkUserInterestStatus(); 
     },
 
 }
 
 
 </script>
+
+
+<style scoped>
+.sold-out-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+.sold-out-badge {
+    color: white;
+    padding: 10px 20px;
+    font-weight: bold;
+    text-transform: uppercase;
+    border-radius: 5px;
+}
+</style>
