@@ -64,10 +64,11 @@ def process_ticket_order():
     try:
         data = request.json
         user_id = data.get("user_id")
-        event_id = data.get("EventId")
-        event_date_id = data.get("EventDateId")
-        ticket_arr = data.get("ticketArr")
+        event_id = data.get("event_id")
+        event_date_id = data.get("event_date_id")
+        ticket_arr = data.get("ticket_arr")
         payment_token = data.get("payment_token")
+        user_email = data.get("user_email")
 
         if not all([user_id, event_id, event_date_id, ticket_arr, payment_token]):
             return jsonify({"error": "Missing required fields"}), 400
@@ -77,7 +78,6 @@ def process_ticket_order():
         if user_resp.status_code != 200:
             return jsonify({"error": "User not found"}), 404
 
-        user_email = user_resp.json().get("email")
         # Instead of a flat list, we build a dictionary to group ticket IDs by catId
         tickets_by_cat = {}
         total_amount = 0
@@ -95,7 +95,7 @@ def process_ticket_order():
                 "event_date_id": event_date_id,
                 "status": "RESERVED"
             }
-            response = requests.get(f"{TICKET_SERVICE_URL}/tickets", params=query_params)
+            response = requests.get(f"{TICKET_SERVICE_URL}/tickets/category/{cat_id}", params=query_params)
             if response.status_code != 200:
                 return jsonify({"error": "Failed to fetch reserved tickets"}), 400
 
