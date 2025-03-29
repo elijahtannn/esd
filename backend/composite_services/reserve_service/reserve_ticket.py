@@ -229,11 +229,11 @@ logging.basicConfig(level=logging.INFO)
 def process_ticket_reserve():
     try:
         data = request.json
-        user_id = data["userId"]
-        selected_tickets = data["selectedTickets"]
-        event_date_id = data["selectedDateId"]
-        event_id = data["selectedEventId"]
-        event_category = data["eventCategory"]
+        user_id = data["user_id"]
+        selected_tickets = data["selected_tickets"]
+        event_date_id = data["event_date_id"]
+        event_id = data["event_id"]
+        event_category = data["event_category"]
         
         all_reserved_ticket_ids = []
         all_used_resale_tickets = []

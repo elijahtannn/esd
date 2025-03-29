@@ -706,11 +706,11 @@ export default {
 
                 try {
                     const ticketsData = {
-                        selectedTickets: this.selectedTickets,
-                        selectedDateId: this.selectedDateId,
-                        selectedEventId: this.eventId,
-                        userId: this.user.id,
-                        eventCategory: this.eventDetails.Category,
+                        selected_tickets: this.selectedTickets,
+                        event_date_id: this.selectedDateId,
+                        event_id: this.eventId,
+                        user_id: this.user.id,
+                        event_category: this.eventDetails.Category,
                     };
 
                     // Create new AbortController for this request
