@@ -21,7 +21,7 @@
                     <!-- profile box -->
                     <div class="profile-box">
                         <h3 class="profile-heading">PROFILE</h3>
-                        <p><span class="label">Id:</span> <br> {{ user.id }}</p>
+                        <p><span class="label">Id:</span> <br> {{ user._id || user.id}}</p>
                         <p><span class="label">Name:</span> <br> {{ user.name }}</p>
                         <p><span class="label">Email:</span> <br> {{ user.email }}</p>
                         <!-- EDITABLE MOBILE NUMBER -->
@@ -147,16 +147,6 @@
                                                             <hr>
 
                                                             <!-- Input Form for Recipient's Information -->
-                                                            <div class="form-group">
-                                                                <label for="recipientName">Recipient's Name:</label>
-                                                                <input type="text" id="recipientName" v-model="recipientName"
-                                                                    placeholder="Enter recipient's name" />
-                                                            </div>
-                                                            <div class="form-group">
-                                                                <label for="eventivaAccount">Recipient's Eventiva Account ID:</label>
-                                                                <input type="text" id="eventivaAccount" v-model="eventivaAccount"
-                                                                    placeholder="Enter Eventiva Account ID" />
-                                                            </div>
                                                             <div class="form-group">
                                                                 <label for="email">Recipient's Email:</label>
                                                                 <input type="text" id="email" v-model="email"
