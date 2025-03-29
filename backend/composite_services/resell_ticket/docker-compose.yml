@@ -11,7 +11,7 @@ services:
       - TICKET_SERVICE_URL=http://ticket-service:5001
       - OUTSYSTEMS_EVENT_API_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
     ports:
-      - "5003:5003"
+      - "5005:5005"
     volumes:
       - .:/app
     extra_hosts:

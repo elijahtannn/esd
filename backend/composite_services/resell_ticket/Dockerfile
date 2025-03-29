@@ -10,4 +10,4 @@ COPY . .
 ENV FLASK_APP=app.py
 ENV FLASK_ENV=development
 
-CMD ["flask", "run", "--host=0.0.0.0", "--port=5003"] 
+CMD ["flask", "run", "--host=0.0.0.0", "--port=5005"] 
