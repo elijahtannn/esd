@@ -16,7 +16,7 @@ def release_ticket_after_delay(ticket_ids, delay_seconds=180):
         expired_time = now - timedelta(seconds=delay_seconds)
         result = ticket_collection.delete_many({
             "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
-            "status": "reserved",
+            "status": "RESERVED",
             "created_at": {"$lt": expired_time}
         })
         print(f"[Timer] Released and deleted {result.deleted_count} unconfirmed reserved ticket(s)")
@@ -37,7 +37,7 @@ def release_tickets():
         result = get_ticket_collection().delete_many({
             "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
             "owner_id": str(owner_id),  # Store owner_id as string
-            "status": "reserved"
+            "status": "RESERVED"
         })
 
         return jsonify({
@@ -69,7 +69,7 @@ def create_tickets():
                 cat_id=int(data["cat_id"]),
                 owner_id=data["owner_id"],
                 seat_info=data["seat_info"],
-                status="reserved",
+                status="RESERVED",
                 is_transferable=data.get("is_transferable", True),
                 qr_code=data.get("qr_code", "")
             ).to_dict()
@@ -116,21 +116,21 @@ def confirm_ticket_purchase():
         if not tickets:
             return jsonify({"error": "No matching tickets found"}), 404
 
-        # Check if any ticket is NOT in 'reserved' status
-        reserved_ticket_ids = [t["_id"] for t in tickets if t["status"] == "reserved"]
-        non_reserved = [str(t["_id"]) for t in tickets if t["status"] != "reserved"]
+        # Check if any ticket is NOT in 'RESERVED' status
+        reserved_ticket_ids = [t["_id"] for t in tickets if t["status"] == "RESERVED"]
+        non_reserved = [str(t["_id"]) for t in tickets if t["status"] != "RESERVED"]
 
         if not reserved_ticket_ids:
-            return jsonify({"error": "No tickets in 'reserved' state", "non_reserved": non_reserved}), 400
+            return jsonify({"error": "No tickets in 'RESERVED' state", "non_reserved": non_reserved}), 400
 
         # Update all tickets to 'sold'
         result = get_ticket_collection().update_many(
         {"_id": {"$in": reserved_ticket_ids}},
-        {"$set": {"status": "sold", "updated_at": datetime.utcnow()}}
+        {"$set": {"status": "SOLD", "updated_at": datetime.utcnow()}}
     )
 
         return jsonify({
-            "message": f"Successfully updated {result.modified_count} ticket(s) to 'sold'"
+            "message": f"Successfully updated {result.modified_count} ticket(s) to 'SOLD'"
         }), 200
 
     except Exception as e:

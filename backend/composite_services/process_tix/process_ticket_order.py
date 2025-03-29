@@ -15,11 +15,14 @@ CORS(app)
 
 load_dotenv()
 # Service URLs
-PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8002")
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
+PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://127.0.0.1:8002")
+# PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://payment-service:8002")
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://127.0.0.1:5001")
+# TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
-ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://order-service:8003")
+# ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://order-service:8003")
+ORDER_SERVICE_URL = os.getenv("ORDER_SERVICE_URL", "http://127.0.0.1:8003")
 
 # RabbitMQ Configuration
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
@@ -64,62 +67,95 @@ def process_ticket_order():
     try:
         data = request.json
         user_id = data.get("user_id")
+        user_email = data.get("user_email")
         event_id = data.get("EventId")
         event_date_id = data.get("EventDateId")
         ticket_arr = data.get("ticketArr")
         payment_token = data.get("payment_token")
 
-        if not all([user_id, event_id, event_date_id, ticket_arr, payment_token]):
-            return jsonify({"error": "Missing required fields"}), 400
+        # if not all([user_id, event_id, event_date_id, ticket_arr, payment_token]):
+        #     return jsonify({"error": "Missing required fields"}), 400
 
-        # Fetch user email
-        user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
-        if user_resp.status_code != 200:
-            return jsonify({"error": "User not found"}), 404
+        # # Fetch user email
+        # user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
+        # if user_resp.status_code != 200:
+        #     return jsonify({"error": "User not found"}), 404
 
-        user_email = user_resp.json().get("email")
+        # user_email = user_resp.json().get("email")
         # Instead of a flat list, we build a dictionary to group ticket IDs by catId
-        tickets_by_cat = {}
-        total_amount = 0
+        # tickets_by_cat = {}
+        # total_amount = 0
 
-        # Loop through each ticket category to gather reserved ticket IDs
+        # # Loop through each ticket category to gather reserved ticket IDs
+        # for item in ticket_arr:
+        #     cat_id = item.get("catId")
+        #     quantity = item.get("quantity")
+        #     price = item.get("price")
+
+        #     query_params = {
+        #         "owner_id": user_id,
+        #         "cat_id": cat_id,
+        #         "event_id": event_id,
+        #         "event_date_id": event_date_id,
+        #         "status": "RESERVED"
+        #     }
+        #     response = requests.get(f"{TICKET_SERVICE_URL}/tickets", params=query_params)
+        #     if response.status_code != 200:
+        #         return jsonify({"error": "Failed to fetch reserved tickets"}), 400
+
+        #     reserved_tickets = response.json()
+        #     matching_tickets = [t for t in reserved_tickets if t["status"] == "RESERVED"]
+        #     if len(matching_tickets) < quantity:
+        #         return jsonify({"error": f"Not enough reserved tickets for category {cat_id}"}), 400
+
+        #     selected_ids = [t["_id"] for t in matching_tickets[:quantity]]
+        #     # Group the ticket IDs by category
+        #     if cat_id in tickets_by_cat:
+        #         tickets_by_cat[cat_id].extend(selected_ids)
+        #     else:
+        #         tickets_by_cat[cat_id] = selected_ids
+
+        #     total_amount += price * quantity
+
+        # # Flatten all ticket IDs if needed for other purposes:
+        # all_ticket_ids = []
+        # for ids in tickets_by_cat.values():
+        #     all_ticket_ids.extend(ids)
+
+
+        # revised - Loop through each ticket category to gather reserved ticket IDs belonging to user
+        all_ticket_ids = []
+        total_amount = 0
+        tickets_by_cat = {}
+
         for item in ticket_arr:
             cat_id = item.get("catId")
             quantity = item.get("quantity")
             price = item.get("price")
 
-            query_params = {
-                "owner_id": user_id,
-                "cat_id": cat_id,
-                "event_id": event_id,
-                "event_date_id": event_date_id,
-                "status": "reserved"
-            }
-            response = requests.get(f"{TICKET_SERVICE_URL}/tickets", params=query_params)
-            if response.status_code != 200:
-                return jsonify({"error": "Failed to fetch reserved tickets"}), 400
-
-            reserved_tickets = response.json()
-            matching_tickets = [t for t in reserved_tickets if t["status"] == "reserved"]
-            if len(matching_tickets) < quantity:
-                return jsonify({"error": f"Not enough reserved tickets for category {cat_id}"}), 400
-
-            selected_ids = [t["_id"] for t in matching_tickets[:quantity]]
-            # Group the ticket IDs by category
-            if cat_id in tickets_by_cat:
-                tickets_by_cat[cat_id].extend(selected_ids)
-            else:
-                tickets_by_cat[cat_id] = selected_ids
-
             total_amount += price * quantity
 
-        # Flatten all ticket IDs if needed for other purposes:
-        all_ticket_ids = []
-        for ids in tickets_by_cat.values():
-            all_ticket_ids.extend(ids)
+            response = requests.get(f"{TICKET_SERVICE_URL}/tickets/category/{cat_id}")
+            responseData = json.loads(response.content.decode("utf-8-sig"))
+            print("TICKETSSSSSSSSS", responseData)
+            for ticket in responseData:
+                if ticket['owner_id'] == user_id and ticket['status'] == 'RESERVED':
+                    print("found")
+                    all_ticket_ids.append(ticket['_id'])
+
+                    # Add ticket IDs to list of category tickets
+                    if cat_id in tickets_by_cat:
+                        tickets_by_cat[cat_id].extend(ticket['_id'])
+                    else:
+                        tickets_by_cat[cat_id] = ticket['_id']
+
+
+        print(all_ticket_ids)
+
 
         # Confirm all reserved tickets at once (mark them as sold)
         confirm_data = {"ticket_ids": all_ticket_ids}
+        print(confirm_data)
         confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json=confirm_data)
         if confirm_resp.status_code != 200:
             return jsonify({"error": "Ticket confirmation failed", "details": confirm_resp.text}), 400
@@ -136,8 +172,11 @@ def process_ticket_order():
 
         payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
 
+        print(tickets_by_cat)
         # Build the nested structure for tickets
         nested_ticket_ids = [{"catId": cat, "ticketIds": ids} for cat, ids in tickets_by_cat.items()]
+        print(nested_ticket_ids)
+
 
         # Create a single order with the nested ticket IDs and the total amount
         order_data = {
@@ -192,3 +231,8 @@ def process_ticket_order():
     except Exception as e:
         logging.exception("Unexpected error during ticket order processing")
         return jsonify({"error": "Service error", "message": str(e)}), 500
+    
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080, debug=True)

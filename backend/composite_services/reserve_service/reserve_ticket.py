@@ -145,7 +145,7 @@ def generate_unique_seat(existing_seats):
         
 
 # After time frame, check ticket status to determine purchase status
-def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets):
+def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets):
 
     purchaseStatus = False
     for ticketId in all_reserved_ticket_ids:
@@ -176,9 +176,14 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets):
 
                 # refund all the resale ticket if any
                 for ticket in all_used_resale_tickets:
+                    catTicket = next((ticketTemp for ticketTemp in selected_tickets if ticketTemp['catId'] == ticket['cat_id']), None)
+                    catPrice = catTicket['price'] if catTicket else None
+                    print(catPrice)
+
                     refund_data = {
                         "ticket_id": ticket['_id'],
-                        "owner_id": ticket['owner_id'],
+                        "seller_id": ticket['owner_id'],
+                        "refund_amount": catPrice,
                     }
                     response = requests.post(f"{REFUND_SERVICE_URL}/refund", json=refund_data)
 
@@ -261,9 +266,9 @@ def process_ticket_reserve():
         print("Reserved ticket while waiting for user to complete order purchase")
 
         # Wait for 3 minutes for user to complete order purchase
-        time.sleep(30) #will update this to 3 minutes: 180
+        time.sleep(60) #will update this to 3 minutes: 180
 
-        purchaseStatus = checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets)
+        purchaseStatus = checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets)
         # purchaseStatus = True #for testing
 
         print(purchaseStatus)

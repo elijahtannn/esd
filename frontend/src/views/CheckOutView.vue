@@ -25,7 +25,7 @@
                 v-if="currentStep == 1 || currentStep == 2">
                 <i class="bi bi-arrow-left-short"></i> Back to {{ steps[currentStep - 1] }}
             </p>
-            <p style="cursor: pointer;" @click="goBack" v-else>
+            <p style="cursor: pointer; width: fit-content;" @click="goBack" v-else>
                 <i class="bi bi-arrow-left-short"></i> Back to browsing event
             </p>
         </div>
@@ -439,7 +439,7 @@ export default {
     methods: {
         goBack() {
             this.cancelReservation();
-            if (this.currentStep == 0) {
+            if (this.currentStep == 0 || this.currentStep == 3) {
                 this.$router.push({ path: '/event', query: { eventId: [this.eventId] } });
             } else {
                 this.prevStep();
@@ -600,9 +600,13 @@ export default {
             this.cancelReservation(false);
 
             this.loadingPayment = true;
+            console.log(this.user)
+            console.log(this.user.id)
+            console.log(this.user.email)
             try {
                 const paymentData = {
                     user_id: this.user.id,
+                    user_email: this.user.email,
                     EventId: this.eventId,
                     EventDateId: this.selectedDateId,
                     eventName: this.eventDetails.Name,
