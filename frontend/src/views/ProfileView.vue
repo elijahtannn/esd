@@ -79,8 +79,9 @@
                         <!-- UPCOMING TAB -->
                         <div id="Upcoming" class="tabcontent active order-card">
                             <hr>
-                            <div v-if="upcomingOrders.length === 0">No orders available</div>
-                            <div v-else>
+                            <div v-if="loadingMsg">Your orders are loading please hold on ...</div>
+                            <div v-if="upcomingOrders.length === 0 && loadingMsg == false">No orders available</div>
+                            <div v-if="loadingMsg == false">
                                 <div v-for="order in upcomingOrders" :key="order.OrderId" class="order-item">
                                     <div class="order-header" @click="toggleExpand(order)">
                                         <div>
@@ -268,6 +269,7 @@ export default {
             ticketList: [],
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             openMenus: [],
+            loadingMsg: true,
             
         }
     },
@@ -437,6 +439,7 @@ export default {
             }));
             
             console.log('Orders with complete details:', this.orderList);
+            this.loadingMsg = false;
         } catch (error) {
             console.error('Error fetching order details:', error);
         }

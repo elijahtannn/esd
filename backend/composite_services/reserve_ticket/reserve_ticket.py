@@ -227,6 +227,22 @@ logging.basicConfig(level=logging.INFO)
 
 @app.route("/reserve_ticket", methods=["POST"])
 def process_ticket_reserve():
+    """
+    Reserve ticket for user for a fixed period of time
+    Required request body:
+    {
+        "userId": "abcd1234",
+        "selectedEventId": 10,
+        "selectedDateId": 33,
+        "eventCategory": "abcd",
+        "selectedTickets": [{
+            "selectedType": "abcd",
+            "quantity": 1,
+            "price": 300,
+            "catId": 12
+        }]
+    }
+    """
     try:
         data = request.json
         user_id = data["user_id"]

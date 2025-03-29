@@ -29,8 +29,10 @@
                 <h2 style="color:var(--main-blue); margin-top: -10px;">${{ minPrice }} - ${{ maxPrice }}</h2>
             </div>
             <div class="col text-center">
-                <button style="text-transform: uppercase;" @click="toCheckout">Buy tickets</button>
-                <p style="color:var(--text-grey)">max capacity: {{ eventDetails.Capacity }}</p>
+                <div v-if="doneLoading">
+                    <button style="text-transform: uppercase;" @click="toCheckout">Buy tickets</button>
+                    <p style="color:var(--text-grey)">max capacity: {{ eventDetails.Capacity }}</p>
+                </div>
             </div>
         </div>
     </div>
@@ -172,6 +174,8 @@ export default {
             eventCategories: [],
             formattedDate: "",
             formattedTime: "",
+
+            doneLoading: false,
         }
     },
     methods: {
@@ -179,11 +183,9 @@ export default {
             this.$router.push({ path: '/checkout', query: { eventId: [this.eventId], eventDetails: JSON.stringify(this.eventDetails), eventCategories: JSON.stringify(this.eventCategories) } });
         },
         async fetchEventDetail() {
-            console.log("Fetching events through Kong API Gateway");
             try {
                 // Updated to use Kong API Gateway
                 const response = await axios.get(`${this.apiGatewayUrl}/events/${this.eventId}`);
-                console.log(response.data.Event);
                 var rawData = response.data.Event
                 this.processDetails(rawData);
 
@@ -224,7 +226,6 @@ export default {
 
             // If there's only one event, store it directly instead of as an array
             this.eventDetails = Array.from(eventMap.values())[0]; // Extract first (and only) element
-            console.log(this.eventDetails);
             this.formatDates(this.eventDetails.dates)
             this.formatTimeRange(this.eventDetails.StartTime, this.eventDetails.EndTime)
 
@@ -268,7 +269,7 @@ export default {
                         }
                     });
                 }
-                console.log("Fetched categories:", this.eventCategories);
+                this.doneLoading = true;
 
             } catch (error) {
                 console.error("Error fetching event categories:", error);
