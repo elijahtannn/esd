@@ -35,6 +35,36 @@
                                 <i :class="isEditing ? 'fas fa-check' : 'fas fa-pencil-alt'"></i>
                             </button>
                         </p>
+
+                        <!-- Divider Line Between Notifications and Phone -->
+                        <hr class="divider" />
+
+                        <div class="notifications-section">
+                            <!-- Notifications Label -->
+                            <span class="notifications-label">Notifications:</span>
+
+                            <!-- Notifications List -->
+                            <div class="notifications-list">
+                                <div
+                                    v-for="(notification, index) in notifications"
+                                    :key="index"
+                                    class="notification-item"
+                                    @click="showExpandedNotification(notification)">
+                                    {{ notification.message.substring(0, 30) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Expanded Notification Modal -->
+                        <div v-if="isModalOpen" class="notification-modal" @click.self="closeModal">
+                            <div class="modal-content">
+                                <span class="close-button" @click="closeModal">&times;</span>
+                                <h3>Pending Transfer</h3>
+                                <br>
+                                <p>{{ selectedNotification.message }}</p> <!-- Display full message -->
+                            </div>
+                        </div>
+
                     </div>
                     <!-- order box -->
                     <div class="orders-box">
@@ -213,6 +243,12 @@ export default {
     },
     data() {
         return {
+            isModalOpen: false,
+            selectedNotification: null,
+            unreadCount: 1,
+            notifications: [{ id: 1, message: "You have a new message!jgahgjhjrhtuihbersuibyuithythyivuhtrbytruibghygyg" },
+            { id: 2, message: "Your order has been shippedlkrjybijtryimjbinjhyifjhoijbtyuoguihugmofb!" }],
+            //test notif
             disabledMenus: {},
             selectedTicket: null,
             ticketStatuses: {},
@@ -543,6 +579,16 @@ export default {
                 console.error("Payment Error:", error.response?.data || error.message);
             }
         },
+        showExpandedNotification(notification) {
+            this.selectedNotification = notification; // Set the clicked notification
+            this.isModalOpen = true; // Open the modal
+        },
+        
+        closeModal() {
+            this.isModalOpen = false; // Close the modal
+            this.selectedNotification = null; // Reset selected notification
+        }
+
     },
     computed: {
         upcomingOrders() {
@@ -636,7 +682,6 @@ button {
     background-color: white;
     padding: 20px;
     box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 2;
 }
 
 .label {
@@ -841,7 +886,7 @@ button {
 .close-button {
     position: absolute;
     top: 10px;
-    right: 10px;
+    right: 20px;
     font-size: 24px;
     cursor: pointer;
     color: #333;
@@ -892,4 +937,74 @@ button {
 .icon-button:hover {
     color: dark grey;
 }
+
+/* Divider Line Under Mobile Number */
+.divider {
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 10px 0;
+}
+
+.notifications-section {
+    margin-top: 10px;
+}
+
+/* Notifications List */
+.notifications-list {
+    margin-top: 10px;
+}
+
+
+/* Individual Notification Item */
+.notification-item {
+    background-color: #f9f9f9; /* Light background for each notification */
+    padding: 10px; /* Adds spacing inside each notification */
+    border-radius: 8px; /* Rounded corners for a modern look */
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 10px; /* Adds spacing between notifications */
+}
+
+.notification-item:hover {
+    background-color: #e6e6e6; /* Slightly darker background on hover */
+}
+
+/* Notifications Label */
+.notifications-label {
+    font-size: 1em;
+    color: #808080;
+    margin-bottom: 10px;
+    display: block; /* Ensures the label stays on its own line */
+}
+
+/* Notification Modal */
+.notification-modal {
+    position: fixed; /* Keeps the modal fixed in place */
+    top: 50%; /* Centers vertically */
+    left: 50%; /* Centers horizontally */
+    transform: translate(-50%, -50%); /* Adjusts for modal's own dimensions */
+    z-index: 3; /* Ensures it appears above other elements */
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    width: 100vw; /* Full viewport width for the overlay */
+    height: 100vh; /* Full viewport height for the overlay */
+    display: flex; /* Flexbox for centering content */
+    justify-content: center; /* Centers horizontally */
+    align-items: center; /* Centers vertically */
+}
+/* Modal Content Box */
+/* Modal Content Box */
+.modal-content {
+    background-color: white; /* Modal box background color */
+    padding: 20px; /* Adds spacing inside the modal box */
+    border-radius: 8px; /* Rounded corners for a modern look */
+    width: 80%; /* Width of the modal box (adjustable) */
+    max-width: 400px; /* Maximum width for larger screens */
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3); /* Adds a shadow for depth */
+    overflow-wrap: break-word; /* Ensures long words break to fit within the container */
+    word-wrap: break-word; /* Legacy support for word wrapping */
+    overflow-y: auto; /* Adds scroll if content exceeds modal height */
+    max-height: 80vh; /* Limits height to prevent overflow outside viewport */
+}
+
+
 </style>
