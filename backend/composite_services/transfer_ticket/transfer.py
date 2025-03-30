@@ -178,14 +178,14 @@ def transfer_ticket(ticket_id):
         ).json()
 
         # Get event name from ticket details
-        event_name = ticket_details.get("event_name", "Event")  # This line seems to not be getting the correct event name
+        event_name = ticket_details.get("event_name", "Event")
 
         # Send success notifications with correct event name
         notification_sent = send_transfer_success_notification(
             sender_email=data.get("sender_email"),
             recipient_email=data.get("recipient_email"),
             ticket_id=ticket_id,
-            event_name=event_name  # Make sure this is the correct event name
+            event_name=event_name
         )
 
         return jsonify({
@@ -224,7 +224,7 @@ def send_transfer_success_notification(sender_email, recipient_email, ticket_id,
     try:
         credentials = pika.PlainCredentials('guest', 'guest')
         parameters = pika.ConnectionParameters(
-            host='host.docker.internal',  # Make sure this is correct for your setup
+            host='host.docker.internal', 
             port=5672,
             credentials=credentials
         )
