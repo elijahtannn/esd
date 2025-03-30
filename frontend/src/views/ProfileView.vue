@@ -463,7 +463,7 @@ export default {
         },
         async updateMobileNumber() {
             try {
-                let userId = this.user?._id || auth.getUser()?._id; // Fallback check
+                let userId = this.user?._id || this.user?.id || auth.getUser()?._id; // Fallback check
 
                 if (!userId) {
                     console.error("User ID is missing! Cannot update mobile number.");
@@ -492,7 +492,7 @@ export default {
         },
         async fetchUserData() {
             try {
-                let userId = this.user?._id || auth.getUser()?._id; // Double-check user ID
+                let userId = this.user?._id|| this.user?.id || auth.getUser()?._id; // Double-check user ID
 
                 if (!userId) {
                     console.error("User ID is missing! Cannot fetch user data.");
@@ -537,7 +537,6 @@ export default {
                 this.showTransferPopup = true;
             }
             this.selectedTicket = ticket;
-            this.disabledMenus = { ...this.disabledMenus, [ticket.ticketId]: true };
         },
         confirmResale() {
             if (this.isAgreed && this.selectedTicket) {
@@ -550,6 +549,7 @@ export default {
                 };
                 this.resellTicket(ticketId, catId, resaleCount);
                 this.closePopup();
+                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
             } else {
                 console.log('Agreement not checked or no ticket selected');
             }
@@ -571,6 +571,7 @@ export default {
                 };
                 this.validateTicket();
                 this.closePopup();
+                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
             } else {
                 console.log('Please fill in all the details');
             }
@@ -614,7 +615,7 @@ export default {
                     resale_count: resaleCount
                 };
 
-                const response = await axios.post(`http://localhost:5005/resale/list`, resaleData);
+                const response = await axios.post("http://localhost:5005/resale/list", resaleData);
 
                 console.log("Resale Response:", response.data);
                 return response.data;
@@ -642,7 +643,7 @@ export default {
         pastOrders() {
             const now = new Date();
             return this.orderList.filter(order => new Date(order.EventDate) <= now);
-        }
+        },
     }
 }
 </script>
