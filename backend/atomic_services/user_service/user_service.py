@@ -188,6 +188,219 @@ def update_user(user_id):
             "error": "Failed to update user",
             "message": str(e)
         }), 500
+    
+
+# POST: Add an event to user's interested_events list
+@app.route("/user/<string:user_id>/interested-events", methods=["POST"])
+def add_interested_event(user_id):
+    try:
+        data = request.get_json()
+        
+        if not data or "event_id" not in data:
+            return jsonify({"error": "Event ID is required"}), 400
+        
+        event_id = data["event_id"]
+        
+        # Check if user exists
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        # Check if event is already in the user's interested_events list
+        # Handle both string and integer event IDs
+        is_already_interested = False
+        interested_events = user.get("interested_events", [])
+        
+        for interested_event in interested_events:
+            if str(interested_event) == str(event_id):
+                is_already_interested = True
+                break
+                
+        if is_already_interested:
+            return jsonify({
+                "message": "User is already subscribed to notifications for this event",
+                "event_id": event_id
+            }), 200
+            
+        # Add the event to the interested_events list
+        # Decide whether to store as int or string based on what was passed
+        try:
+            # If it can be converted to an integer, store it that way for consistency
+            if event_id.isdigit():
+                event_id_to_store = int(event_id)
+            else:
+                event_id_to_store = event_id
+        except (AttributeError, ValueError):
+            # If conversion fails, store as is
+            event_id_to_store = event_id
+            
+        result = mongo.db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$addToSet": {"interested_events": event_id_to_store}}  # Use addToSet to avoid duplicates
+        )
+        
+        if result.modified_count == 1:
+            return jsonify({
+                "message": "Event added to user's interested events",
+                "event_id": event_id
+            }), 201
+        else:
+            return jsonify({
+                "message": "No changes made",
+                "event_id": event_id
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to add event to interested events",
+            "message": str(e)
+        }), 500
+
+# DELETE: Remove an event from user's interested_events list
+@app.route("/user/<string:user_id>/interested-events/<string:event_id>", methods=["DELETE"])
+def remove_interested_event(user_id, event_id):
+    try:
+        # Check if user exists
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        # We need to handle both integer and string event IDs
+        # First, find the actual event ID format in the array
+        interested_events = user.get("interested_events", [])
+        target_event = None
+        
+        for interested_event in interested_events:
+            if str(interested_event) == str(event_id):
+                target_event = interested_event
+                break
+        
+        if target_event is not None:
+            # Remove the event from the interested_events list
+            result = mongo.db.users.update_one(
+                {"_id": ObjectId(user_id)},
+                {"$pull": {"interested_events": target_event}}
+            )
+            
+            if result.modified_count == 1:
+                return jsonify({
+                    "message": "Event removed from user's interested events",
+                    "event_id": event_id
+                }), 200
+            else:
+                return jsonify({
+                    "message": "Failed to remove event from user's interested events",
+                    "event_id": event_id
+                }), 500
+        else:
+            return jsonify({
+                "message": "Event was not in user's interested events",
+                "event_id": event_id
+            }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to remove event from interested events",
+            "message": str(e)
+        }), 500
+
+# GET: Get all events a user is interested in
+@app.route("/user/<string:user_id>/interested-events", methods=["GET"])
+def get_interested_events(user_id):
+    try:
+        # Check if user exists
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        # Return the interested_events list
+        interested_events = user.get("interested_events", [])
+        return jsonify({
+            "interested_events": interested_events,
+            "count": len(interested_events)
+        }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to get interested events",
+            "message": str(e)
+        }), 500
+
+# GET: Check if user is interested in a specific event
+@app.route("/user/<string:user_id>/interested-events/<string:event_id>", methods=["GET"])
+def check_interested_event(user_id, event_id):
+    try:
+        # Check if user exists
+        user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+            
+        # Check if event is in interested_events list
+        # Handle both string and integer event IDs
+        interested_events = user.get("interested_events", [])
+        is_interested = False
+        
+        # Convert both to strings for comparison
+        for interested_event in interested_events:
+            if str(interested_event) == str(event_id):
+                is_interested = True
+                break
+                
+        return jsonify({
+            "is_interested": is_interested,
+            "event_id": event_id
+        }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to check interested event",
+            "message": str(e)
+        }), 500
+    
+# GET: Get all users interested in a specific event (for notification service)
+@app.route("/events/<string:event_id>/interested-users", methods=["GET"])
+def get_interested_users(event_id):
+    try:
+        # Convert event_id to int if it's a digit string for proper matching
+        event_id_value = int(event_id) if event_id.isdigit() else event_id
+        
+        # Find all users who have this event in their interested_events list
+        # We need to use $or to handle both string and integer event IDs
+        users = list(mongo.db.users.find({
+            "$or": [
+                {"interested_events": event_id_value},
+                {"interested_events": event_id}
+            ]
+        }))
+        
+        if not users:
+            return jsonify({
+                "message": "No users found interested in this event",
+                "event_id": event_id,
+                "users": []
+            }), 200
+            
+        # Format user data for response
+        user_list = []
+        for user in users:
+            user_list.append({
+                "user_id": str(user["_id"]),
+                "name": user.get("name", ""),
+                "email": user.get("email", ""),
+                "mobile": user.get("mobile", "")
+            })
+            
+        return jsonify({
+            "event_id": event_id,
+            "users_count": len(user_list),
+            "users": user_list
+        }), 200
+            
+    except Exception as e:
+        return jsonify({
+            "error": "Failed to get interested users",
+            "message": str(e)
+        }), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5003, debug=True)
