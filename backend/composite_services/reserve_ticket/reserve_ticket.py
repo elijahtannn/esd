@@ -292,7 +292,7 @@ def process_ticket_reserve():
         if purchaseStatus:
             return jsonify({
                 "status": True,
-                "statement": "successfully reserved tickets",
+                "message": "successfully reserved tickets",
                 "user_id": user_id,
                 "event_id": event_id,
                 "event_date_id": event_date_id,
@@ -303,7 +303,7 @@ def process_ticket_reserve():
             revertTicketQuantity(event_date_id, selected_tickets)
             return jsonify({
                 "status": False,
-                "statement": "User did not purchase the tickets within the time frame",
+                "message": "User did not purchase the tickets within the time frame",
                 "user_id": user_id,
                 "event_id": event_id,
                 "event_date_id": event_date_id,
