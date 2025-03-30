@@ -78,6 +78,7 @@ def validate_transfer(ticket_id):
         data = request.json
         recipient_email = data.get("recipientEmail")
         sender_email = data.get("senderEmail")
+        is_revalidation = data.get("is_revalidation", False)
 
         if not recipient_email or not sender_email:
             return jsonify({
@@ -130,21 +131,21 @@ def validate_transfer(ticket_id):
         # Extract event name from validation message
         event_name = event_validation["messages"][0].split("'")[1] 
 
-        # Send notification
-        notification_sent = send_transfer_notification(
-            sender_email=sender_email,
-            recipient_email=recipient_email,
-            ticket_id=ticket_id,
-            event_name=event_name
-        )
+        # Only send notification if it's not a revalidation
+        if not is_revalidation:
+            notification_sent = send_transfer_notification(
+                sender_email=sender_email,
+                recipient_email=recipient_email,
+                ticket_id=ticket_id,
+                event_name=event_name
+            )
 
-        # All validations passed
         return jsonify({
             "can_transfer": True,
             "message": "Ticket is eligible for transfer",
             "ticket_id": ticket_id,
             "recipient_email": recipient_email,
-            "notification_sent": notification_sent
+            "notification_sent": not is_revalidation
         })
 
     except Exception as e:

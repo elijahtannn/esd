@@ -1,10 +1,10 @@
 
 services:
-  refund-user:
+  refund-ticket:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: refund-user
+    container_name: refund-ticket
     environment:
       - FLASK_APP=refund_user.py
       - FLASK_ENV=development
@@ -22,7 +22,7 @@ services:
     networks:
       esd_network:
         aliases:
-          - refund-user
+          - refund-ticket
 
 networks:
   esd_network:

@@ -15,12 +15,9 @@ CORS(app)
 # Secret Key for Sessions
 app.secret_key = os.getenv("SECRET_KEY", "supersecurekey")
 
-#Old MongoDB Configuration
-#app.config["MONGO_URI"] = f"mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd?tlsCAFile={certifi.where()}"
-#mongo = PyMongo(app)
 
 #New MongoDB Configuration
-app.config["MONGO_URI"] = "mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd"
+app.config["MONGO_URI"] = os.getenv("MONGO_URI")
 mongo = PyMongo(app, tlsCAFile=certifi.where())
 
 # Google OAuth Credentials
@@ -128,7 +125,7 @@ def get_user_by_id(user_id):
     try:
         user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
         if user:
-            user["_id"] = str(user["_id"])  # Convert ObjectId to string
+            user["_id"] = str(user["_id"])
             return jsonify(user)
         return jsonify({"error": "User not found"}), 404
     except Exception:
@@ -183,7 +180,7 @@ def update_user(user_id):
 
         
         updated_user = mongo.db.users.find_one({"_id": ObjectId(user_id)})
-        updated_user["_id"] = str(updated_user["_id"])  # Convert ObjectId to string
+        updated_user["_id"] = str(updated_user["_id"]) 
         return jsonify(updated_user), 200
 
     except Exception as e:

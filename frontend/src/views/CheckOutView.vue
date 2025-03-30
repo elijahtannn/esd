@@ -596,21 +596,23 @@ export default {
             return formattedDate;
         },
         async processPayment() {
-
             this.cancelReservation(false);
-
             this.loadingPayment = true;
             try {
                 const paymentData = {
-                    user_id: this.user['_id'],
+                    user_id: this.user._id ?? this.user.id,
                     user_email: this.user.email,
                     event_id: this.eventId,
                     event_date_id: this.selectedDateId,
-                    event_name: this.eventDetails.Name,
-                    event_date: this.eventDetails.Date,
+                    eventName: this.eventDetails.Name,
+                    eventDate: this.selectedDate.date,
                     venue: this.eventDetails.Venue,
                     payment_token: this.paymentToken,
-                    ticket_arr: this.selectedTickets,
+                    ticket_arr: this.selectedTickets.map(ticket => ({
+                        catId: ticket.catId,
+                        quantity: ticket.quantity,
+                        price: ticket.price
+                    }))
                 };
 
                 const response = await axios.post(`http://localhost:8080/process_ticket_order`, paymentData, {
@@ -620,9 +622,9 @@ export default {
                 });
 
                 console.log("Payment Response:", response.data);
-                this.currentStep=3;
+                this.currentStep = 3;
             } catch (error) {
-                this.currentStep=0;
+                this.currentStep = 0;
                 this.remainingSeconds = this.secondsThreshold;
                 this.cancelReservation(true);
                 this.error = "Payment declined. Please try again.";
@@ -706,7 +708,7 @@ export default {
                         selected_tickets: this.selectedTickets,
                         event_date_id: this.selectedDateId,
                         event_id: this.eventId,
-                        user_id: this.user["_id"],
+                        user_id: this.user._id ?? this.user.id,
                         event_category: this.eventDetails.Category,
                     };
 
@@ -718,7 +720,7 @@ export default {
                         'http://localhost:8006/reserve_ticket',
                         ticketsData,
                         {
-                            signal: this.abortController.signal, // Attach abort signal
+                            signal: this.abortController.signal,
                             headers: { 'Content-Type': 'application/json' }
                         }
                     );

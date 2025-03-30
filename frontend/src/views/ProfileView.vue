@@ -40,17 +40,25 @@
                         <hr class="divider" />
 
                         <div class="notifications-section">
-                            <!-- Notifications Label -->
                             <span class="notifications-label">Notifications:</span>
-
+                            
+                            <!-- Debug info -->
+                            <div v-if="pendingTransferTickets.length === 0" class="debug-info">
+                                No pending transfers found
+                            </div>
+                            
                             <!-- Notifications List -->
                             <div class="notifications-list">
                                 <div
-                                    v-for="(notification, index) in notifications"
-                                    :key="index"
+                                    v-for="ticket in pendingTransferTickets"
+                                    :key="ticket._id"
                                     class="notification-item"
-                                    @click="showExpandedNotification(notification)">
-                                    {{ notification.message.substring(0, 30) }}
+                                    @click="showExpandedNotification(ticket)">
+                                    <div class="notification-content">
+                                        <strong>Pending Ticket Transfer</strong>
+                                        <p>Ticket ID: {{ ticket._id }}</p>
+                                        <p>Seat: {{ ticket.seat_info }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -61,7 +69,17 @@
                                 <span class="close-button" @click="closeModal">&times;</span>
                                 <h3>Pending Transfer</h3>
                                 <br>
-                                <p>{{ selectedNotification.message }}</p> <!-- Display full message -->
+                                <div v-if="selectedNotification">
+                                    <p><strong>Ticket ID:</strong> #{{ selectedNotification._id }}</p>
+                                    <p><strong>Category:</strong> Category {{ selectedNotification.cat_id }}</p>
+                                    <p><strong>Seat:</strong> {{ selectedNotification.seat_info }}</p>
+                                    <p><strong>From:</strong> {{ selectedNotification.owner_email }}</p>
+                                    
+                                    <div class="button-group">
+                                        <button @click="handleTransferResponse(true)" class="accept-button">Accept</button>
+                                        <button @click="handleTransferResponse(false)" class="reject-button">Reject</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -79,8 +97,9 @@
                         <!-- UPCOMING TAB -->
                         <div id="Upcoming" class="tabcontent active order-card">
                             <hr>
-                            <div v-if="upcomingOrders.length === 0">No orders available</div>
-                            <div v-else>
+                            <div v-if="loadingMsg">Your orders are loading please hold on ...</div>
+                            <div v-if="upcomingOrders.length === 0 && loadingMsg == false">No orders available</div>
+                            <div v-if="loadingMsg == false">
                                 <div v-for="order in upcomingOrders" :key="order.OrderId" class="order-item">
                                     <div class="order-header" @click="toggleExpand(order)">
                                         <div>
@@ -125,7 +144,7 @@
                                                     </div>
                                                     <!--QR code image -->
                                                     <div>
-                                                        <img src="../assets/images/dummy QR code.png" class="qr-image">
+                                                        <img :src="ticket.qrCode" class="qr-image">
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
                                                     <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
@@ -268,7 +287,8 @@ export default {
             ticketList: [],
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             openMenus: [],
-            
+            loadingMsg: true,
+            pendingTransferTickets: [],
         }
     },
     mounted() {
@@ -288,6 +308,8 @@ export default {
     this.fetchUserData()
         .then(() => this.fetchOrders())
         .catch(error => console.error("Error in fetching process:", error));
+
+    this.fetchPendingTransfers();
 },
 
     methods: {
@@ -301,7 +323,7 @@ export default {
                 console.error('No user ID available');
                 return;
                 }
-
+                // const userId = "67d44330971f398f904f8c34";
                 const userId = this.user._id || this.user.id;
                 console.log("Fetching orders for user:", userId);
                 
@@ -437,6 +459,7 @@ export default {
             }));
             
             console.log('Orders with complete details:', this.orderList);
+            this.loadingMsg = false;
         } catch (error) {
             console.error('Error fetching order details:', error);
         }
@@ -460,7 +483,7 @@ export default {
         },
         async updateMobileNumber() {
             try {
-                let userId = this.user?._id || auth.getUser()?._id; // Fallback check
+                let userId = this.user?._id || this.user?.id || auth.getUser()?._id; // Fallback check
 
                 if (!userId) {
                     console.error("User ID is missing! Cannot update mobile number.");
@@ -489,7 +512,7 @@ export default {
         },
         async fetchUserData() {
             try {
-                let userId = this.user?._id || auth.getUser()?._id; // Double-check user ID
+                let userId = this.user?._id|| this.user?.id || auth.getUser()?._id; // Double-check user ID
 
                 if (!userId) {
                     console.error("User ID is missing! Cannot fetch user data.");
@@ -534,15 +557,20 @@ export default {
                 this.showTransferPopup = true;
             }
             this.selectedTicket = ticket;
-            this.disabledMenus = { ...this.disabledMenus, [ticket.ticketId]: true };
         },
         confirmResale() {
             if (this.isAgreed && this.selectedTicket) {
-                this.ticketStatuses[this.selectedTicket.ticketId] = {
+                const ticketId = this.selectedTicket.ticketId;
+                const resaleCount = 1;
+                const catId = this.selectedTicket.catId;
+                this.ticketStatuses[ticketId] = {
                 isQrVisible: false,
                 status: "TICKET IS BEING RESOLD"
                 };
+                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
+                this.resellTicket(ticketId, catId, resaleCount);
                 this.closePopup();
+                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
             } else {
                 console.log('Agreement not checked or no ticket selected');
             }
@@ -562,8 +590,10 @@ export default {
                 isQrVisible: false,
                 status: "TICKET IS BEING TRANSFERRED"
                 };
+                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
                 this.validateTicket();
                 this.closePopup();
+                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
             } else {
                 console.log('Please fill in all the details');
             }
@@ -574,9 +604,7 @@ export default {
                     recipientEmail: this.email,
                     senderEmail: this.user.email,
                 };
-
                 const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
-
                 console.log("Validate Response:", response.data);
             } catch (error) {
                 console.error("Payment Error:", error.response?.data || error.message);
@@ -598,16 +626,97 @@ export default {
                 console.error("Payment Error:", error.response?.data || error.message);
             }
         },
-        showExpandedNotification(notification) {
-            this.selectedNotification = notification; // Set the clicked notification
-            this.isModalOpen = true; // Open the modal
+        async resellTicket(ticketId, catId, resaleCount) {
+            console.log("resell ticket called");
+            try {
+                const resaleData = {
+                    ticket_id: ticketId,
+                    cat_id: catId,
+                    resale_count: resaleCount
+                };
+
+                const response = await axios.post("http://localhost:5005/resale/list", resaleData);
+
+                console.log("Resale Response:", response.data);
+                return response.data;
+            } catch (error) {
+                console.error("Resale Error:", error.response?.data || error.message);
+                throw error;
+            }
+        },
+        showExpandedNotification(ticket) {
+            this.selectedNotification = ticket;
+            this.isModalOpen = true;
         },
         
         closeModal() {
-            this.isModalOpen = false; // Close the modal
-            this.selectedNotification = null; // Reset selected notification
-        }
+            this.isModalOpen = false;
+            this.selectedNotification = null;
+        },
 
+        async fetchPendingTransfers() {
+            try {
+                const response = await axios.get(
+                    `${this.apiGatewayUrl}/tickets/pending/${this.user.email}`
+                );
+                
+                // Get pending transfers
+                this.pendingTransferTickets = response.data;
+
+                // Fetch owner (sender) email for each ticket
+                for (let ticket of this.pendingTransferTickets) {
+                    try {
+                        // Assuming you have an endpoint to get user details by ID
+                        const userResponse = await axios.get(`${this.apiGatewayUrl}/user/${ticket.owner_id}`);
+                        ticket.owner_email = userResponse.data.email;
+                    } catch (error) {
+                        console.error(`Error fetching owner email for ticket ${ticket._id}:`, error);
+                        ticket.owner_email = 'Unknown sender';
+                    }
+                }
+
+                console.log("Pending transfers with owner emails:", this.pendingTransferTickets);
+            } catch (error) {
+                console.error("Error fetching pending transfers:", error);
+            }
+        },
+
+        async handleTransferResponse(accepted) {
+            try {
+                const transferData = {
+                    accepted: accepted,
+                    recipient_email: this.user.email,
+                    sender_id: this.selectedNotification.owner_id,
+                    sender_email: this.selectedNotification.owner_email
+                };
+
+                const response = await axios.post(
+                    `${this.apiGatewayUrl}/transfer/${this.selectedNotification._id}`,
+                    transferData
+                );
+
+                if (response.data.success) {
+                    // Refresh the pending transfers list
+                    await this.fetchPendingTransfers();
+                    
+                    // If accepted, refresh orders to show the new ticket
+                    if (accepted) {
+                        await this.fetchOrders();
+                        
+                        // Remove the "ON HOLD" status for this ticket
+                        const ticketId = this.selectedNotification._id;
+                        if (this.ticketStatuses[ticketId]) {
+                            delete this.ticketStatuses[ticketId];
+                            localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
+                        }
+                    }
+                    
+                    this.closeModal();
+                }
+            } catch (error) {
+                console.error("Error processing transfer response:", error);
+            }
+        },
     },
     computed: {
         upcomingOrders() {
@@ -617,6 +726,12 @@ export default {
         pastOrders() {
             const now = new Date();
             return this.orderList.filter(order => new Date(order.EventDate) <= now);
+        },
+    },
+    created () {
+        const storedStatuses = localStorage.getItem("ticketStatuses");
+        if (storedStatuses) {
+            this.ticketStatuses = JSON.parse(storedStatuses);
         }
     }
 }
@@ -776,6 +891,7 @@ button {
 }
 
 .qr-image {
+    margin-top: 20px;
     display: block;
     /* Makes the image a block element */
     margin-left: auto;
@@ -1025,5 +1141,43 @@ button {
     max-height: 80vh; /* Limits height to prevent overflow outside viewport */
 }
 
+.button-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.accept-button {
+    background-color: #2A68E1; /* Changed to match theme blue */
+    color: white;
+    padding: 10px 30px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.reject-button {
+    background-color: white;
+    color: #2A68E1; /* Theme blue */
+    padding: 10px 30px;
+    border: 2px solid #2A68E1; /* Theme blue border */
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.accept-button:hover {
+    background-color: #1d4ba8; /* Darker shade of theme blue */
+}
+
+.reject-button:hover {
+    background-color: #f8f9fa;
+    color: #1d4ba8; /* Darker shade of theme blue */
+    border-color: #1d4ba8;
+}
 
 </style>

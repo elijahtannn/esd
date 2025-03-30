@@ -201,6 +201,7 @@ def get_ticket(ticket_id):
 def update_ticket(ticket_id):
     """ Update a ticket's status, owner, is_transferable, or pending_transfer_to """
     data = request.json
+    print(f"Updating ticket {ticket_id} with data:", data)  # Debug log
     update_data = {}
 
     if "status" in data:
@@ -236,6 +237,7 @@ def update_ticket(ticket_id):
             {"_id": ObjectId(ticket_id)}, 
             {"$set": update_data}
         )
+        print(f"Update result: matched={result.matched_count}, modified={result.modified_count}")  # Debug log
 
     if result.matched_count == 0:
         return jsonify({"error": "Ticket not found"}), 404
@@ -308,12 +310,17 @@ def get_pending_transfers(recipient_email):
     """Get all tickets pending transfer to a specific email"""
     try:
         tickets = list(get_ticket_collection().find({
-            "status": "pending_transfer",
+            "status": "PENDING_TRANSFER",
             "pending_transfer_to": recipient_email
         }))
+        
+        # Debug log
+        print(f"Found {len(tickets)} pending transfers for {recipient_email}")
+        
         serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
         return jsonify(serialized_tickets), 200
     except Exception as e:
+        print(f"Error in get_pending_transfers: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 

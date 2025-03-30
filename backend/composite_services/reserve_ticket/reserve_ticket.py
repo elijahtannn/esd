@@ -15,10 +15,10 @@ CORS(app)
 
 load_dotenv()
 # Service URLs
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://127.0.0.1:5001")
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
 USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
-REFUND_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:5004")
+REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-service:5004")
 
 
 def getAllCatTickets(cat_id):
@@ -227,6 +227,22 @@ logging.basicConfig(level=logging.INFO)
 
 @app.route("/reserve_ticket", methods=["POST"])
 def process_ticket_reserve():
+    """
+    Reserve ticket for user for a fixed period of time
+    Required request body:
+    {
+        "userId": "abcd1234",
+        "selectedEventId": 10,
+        "selectedDateId": 33,
+        "eventCategory": "abcd",
+        "selectedTickets": [{
+            "selectedType": "abcd",
+            "quantity": 1,
+            "price": 300,
+            "catId": 12
+        }]
+    }
+    """
     try:
         data = request.json
         user_id = data["user_id"]
@@ -276,7 +292,7 @@ def process_ticket_reserve():
         if purchaseStatus:
             return jsonify({
                 "status": True,
-                "statement": "successfully reserved tickets",
+                "message": "successfully reserved tickets",
                 "user_id": user_id,
                 "event_id": event_id,
                 "event_date_id": event_date_id,
@@ -287,7 +303,7 @@ def process_ticket_reserve():
             revertTicketQuantity(event_date_id, selected_tickets)
             return jsonify({
                 "status": False,
-                "statement": "User did not purchase the tickets within the time frame",
+                "message": "User did not purchase the tickets within the time frame",
                 "user_id": user_id,
                 "event_id": event_id,
                 "event_date_id": event_date_id,

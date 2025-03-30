@@ -1,7 +1,7 @@
 const amqp = require('amqplib');
 require('dotenv').config();
 
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
+const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672';
 const EXCHANGE_NAME = 'ticketing.exchange';
 const EXCHANGE_TYPE = 'topic';
 const QUEUE_NAME = 'notification.queue';

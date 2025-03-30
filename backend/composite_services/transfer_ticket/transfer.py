@@ -43,7 +43,7 @@ def transfer_ticket(ticket_id):
             ticket_response = requests.put(
                 f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
                 json={
-                    "status": "sold",
+                    "status": "SOLD",
                     "pending_transfer_to": None  # Remove pending transfer
                 }
             )
@@ -79,7 +79,8 @@ def transfer_ticket(ticket_id):
             f"{VALIDATE_SERVICE_URL}/validateTransfer/{ticket_id}",
             json={
                 "senderEmail": data.get("sender_email"),
-                "recipientEmail": recipient_email
+                "recipientEmail": recipient_email,
+                "is_revalidation": True
             }
         ).json()
         
@@ -170,16 +171,16 @@ def transfer_ticket(ticket_id):
             f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
             json={
                 "owner_id": recipient_id,
-                "status": "TRANSFERRED",
-                "pending_transfer_to": None  # Remove pending transfer after successful transfer
+                "status": "SOLD",
+                "pending_transfer_to": None,
+                "is_transferable": True
             }
         ).json()
 
-        # After successful ticket update, get event name from validation response
-        # Get event name from ticket details or validation response
-        event_name = ticket_details.get("event_name", "Event")  # Use ticket details for event name
+        # Get event name from ticket details
+        event_name = ticket_details.get("event_name", "Event")
 
-        # Send success notifications
+        # Send success notifications with correct event name
         notification_sent = send_transfer_success_notification(
             sender_email=data.get("sender_email"),
             recipient_email=data.get("recipient_email"),
@@ -223,7 +224,7 @@ def send_transfer_success_notification(sender_email, recipient_email, ticket_id,
     try:
         credentials = pika.PlainCredentials('guest', 'guest')
         parameters = pika.ConnectionParameters(
-            host='host.docker.internal',  # Make sure this is correct for your setup
+            host='host.docker.internal', 
             port=5672,
             credentials=credentials
         )

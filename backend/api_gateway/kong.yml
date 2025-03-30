@@ -2,7 +2,9 @@ _format_version: "2.1"
 _transform: true
 
 services:
-  # Event Service (External on Outsystems)
+
+  # -------------- ATOMIC MICROSERVICES --------------
+  # Event Microservice (External on Outsystems)
   - name: event-service
     url: https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
     routes:
@@ -22,7 +24,7 @@ services:
           - /events/dates/categories/(.*)/inventory/resale
         strip_path: false
 
-  # User Service
+  # User Microservice
   - name: user-service
     url: http://user-service:5003
     routes:
@@ -33,7 +35,7 @@ services:
           - /user/(.*)
         strip_path: false
 
-  # Ticket Service
+  # Ticket Microservice
   - name: ticket-service
     url: http://ticket-service:5001
     routes:
@@ -46,7 +48,7 @@ services:
           - /tickets/check_transfer_eligibility
         strip_path: false
 
-  # Order Service
+  # Order Microservice
   - name: order-service
     url: http://order-service:8003
     routes:
@@ -58,7 +60,7 @@ services:
           - /orders/(\d+)
         strip_path: false
 
-  # Payment Service
+  # Payment Microservice
   - name: payment-service
     url: http://payment-service:8002
     routes:
@@ -69,25 +71,20 @@ services:
           - /health
         strip_path: false
 
-  # Transfer Service
-  - name: transfer-service
-    url: http://transfer-service:8011
+
+  # -------------- COMPOSITE MICROSERVICES --------------
+
+  # User scenario 1 - User Purchases a ticket for an event
+  # Reserve Ticket Microservice
+  - name: reserve-ticket
+    url: http://reserve-ticket:8006
     routes:
-      - name: transfer-route
+      - name: reserve-route
         paths:
-          - /transfer/(.*)
+          - /reserve_ticket
         strip_path: false
 
-  # Validate Service
-  - name: validate-service
-    url: http://validate-service:8004
-    routes:
-      - name: validate-route
-        paths:
-          - /validateTransfer/(.*)
-        strip_path: false
-
-  # Process Ticket Order
+  # Process Ticket Order Microservice
   - name: process-ticket-order
     url: http://process-ticket-order:8080
     routes:
@@ -96,11 +93,43 @@ services:
           - /process_ticket_order
         strip_path: false
 
-  # Reserve Ticket 
-  - name: reserve-ticket
-    url: http://reserve-ticket:8006
+
+  # User scenario 2 - User resells their event ticket
+  # Resell Ticket Microservice
+  - name: resell-ticket-service
+    url: http://resell-ticket-service:5005
     routes:
-      - name: reserve-route
+      - name: resell-route
         paths:
-          - /reserve_ticket
+          - /resale/list
         strip_path: false
+
+  # Refund Ticket Microservice
+  - name: refund-service
+    url: http://refund-service:5004
+    routes:
+      - name: refund-route
+        paths:
+          - /refund
+        strip_path: false
+
+  # User scenario 3 - User transfer a ticket to another user
+  # Validate Ticket Microservice
+  - name: validate-service
+    url: http://validate-service:8004
+    routes:
+      - name: validate-route
+        paths:
+          - /validateTransfer/(.*)
+        strip_path: false
+
+  # Transfer Ticket Microservice
+  - name: transfer-service
+    url: http://transfer-service:8011
+    routes:
+      - name: transfer-route
+        paths:
+          - /transfer/(.*)
+        strip_path: false
+
+
