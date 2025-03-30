@@ -14,6 +14,40 @@ def get_ticket_details(ticket_id):
 
     return response_data, response.status_code
 
+def get_event_details(event_id):
+    """Fetch event details from Event Service"""
+    url = f"{Config.OUTSYSTEMS_EVENT_API_URL}/events/{event_id}"
+    
+    headers = {
+        "Content-Type": "application/json",
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    try:
+        response_data = response.json()
+    except ValueError:
+        response_data = {"error": "Invalid JSON response from Event Service"}
+        
+    return response_data, response.status_code
+
+def get_category_details(cat_id):
+    """Fetch ticket category details from Event Service"""
+    url = f"{Config.OUTSYSTEMS_EVENT_API_URL}/events/dates/categories/{cat_id}"
+    
+    headers = {
+        "Content-Type": "application/json",
+    }
+    
+    response = requests.get(url, headers=headers)
+    
+    try:
+        response_data = response.json()
+    except ValueError:
+        response_data = {"error": "Invalid JSON response from Event Service"}
+        
+    return response_data, response.status_code
+
 def update_ticket_status(ticket_id):
     """Update ticket status to 'RESALE' in Ticket Service"""
     url = f"{Config.TICKET_SERVICE_URL}/tickets/{ticket_id}"
