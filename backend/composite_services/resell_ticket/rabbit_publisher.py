@@ -11,7 +11,7 @@ class RabbitMQPublisher:
         self.rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672")
         self.exchange_name = os.getenv("EXCHANGE_NAME", "ticketing.exchange")
         self.exchange_type = os.getenv("EXCHANGE_TYPE", "topic")
-        
+
         # Print the actual URL for debugging
         print(f"Initialized RabbitMQ publisher with URL: {self.rabbitmq_url}")
     
@@ -80,13 +80,9 @@ class RabbitMQPublisher:
             
             # Add any additional ticket details if provided
             if ticket_details and isinstance(ticket_details, dict):
-                safe_keys = [
-                    "ticketPrice", "ticketQuantity", "eventDate", 
-                    "eventLocation", "eventVenue", "categoryName"
-                ]
-                for key in safe_keys:
-                    if key in ticket_details:
-                        message[key] = ticket_details[key]
+                # Include all event details
+                for key, value in ticket_details.items():
+                    message[key] = value
             
             # Convert message to JSON and publish
             message_body = json.dumps(message)

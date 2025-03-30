@@ -123,7 +123,15 @@ async function sendResaleNotifications(eventId, eventDetails) {
             return;
         }
         
-        const { eventName, ticketPrice, ticketQuantity, eventDate, eventLocation } = eventDetails;
+        const { 
+            eventName, 
+            ticketPrice, 
+            ticketQuantity, 
+            eventDate, 
+            eventLocation,
+            eventVenue,
+            categoryName
+          } = eventDetails;
         
         for (const user of interestedUsers) {
             const subject = `🎟 Resale Tickets Available for ${eventName}`;
