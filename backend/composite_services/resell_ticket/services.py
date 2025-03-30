@@ -29,10 +29,6 @@ def update_event_inventory(cat_id, resale_count):
     headers = {
         "Content-Type": "application/json",
     }
-    
-    # Add authentication if required
-    # if Config.OUTSYSTEMS_API_KEY:
-    #     headers["Authorization"] = f"Bearer {Config.OUTSYSTEMS_API_KEY}"
 
     payload = {"Count": resale_count}
 
