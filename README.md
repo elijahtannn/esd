@@ -1,9 +1,9 @@
 <h1 align="center" id="title">EVENTIVA</h1>
 
 <p id="description">Purchasing your favourite event with ease</p>
-1. [Project report & API documentation](https://docs.google.com/document/d/1guzZgE9IGnuUP1E8EiU6zEAK6GQ3gVN0mYiIknzofn0/edit?tab=t.0)
-<p>  2. Project slides</p>
-<p>  3. Project demo video</p>
+1. Project report & API Documentation
+2. Project slides
+3. Project Demo video
 
 <h2>🛠️ Installation Steps:</h2>
 
