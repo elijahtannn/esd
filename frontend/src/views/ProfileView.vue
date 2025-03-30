@@ -125,7 +125,7 @@
                                                     </div>
                                                     <!--QR code image -->
                                                     <div>
-                                                        <img src="../assets/images/dummy QR code.png" class="qr-image">
+                                                        <img :src="ticket.qrCode" class="qr-image">
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
                                                     <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
@@ -301,7 +301,7 @@ export default {
                 console.error('No user ID available');
                 return;
                 }
-
+                // const userId = "67d44330971f398f904f8c34";
                 const userId = this.user._id || this.user.id;
                 console.log("Fetching orders for user:", userId);
                 
@@ -538,10 +538,14 @@ export default {
         },
         confirmResale() {
             if (this.isAgreed && this.selectedTicket) {
-                this.ticketStatuses[this.selectedTicket.ticketId] = {
+                const ticketId = this.selectedTicket.ticketId;
+                const resaleCount = 1;
+                const catId = this.selectedTicket.catId;
+                this.ticketStatuses[ticketId] = {
                 isQrVisible: false,
                 status: "TICKET IS BEING RESOLD"
                 };
+                this.resellTicket(ticketId, catId, resaleCount);
                 this.closePopup();
             } else {
                 console.log('Agreement not checked or no ticket selected');
@@ -596,6 +600,24 @@ export default {
                 console.log("Transfer Response:", response.data);
             } catch (error) {
                 console.error("Payment Error:", error.response?.data || error.message);
+            }
+        },
+        async resellTicket(ticketId, catId, resaleCount) {
+            console.log("resell ticket called");
+            try {
+                const resaleData = {
+                    ticket_id: ticketId,
+                    cat_id: catId,
+                    resale_count: resaleCount
+                };
+
+                const response = await axios.post(`http://localhost:5005/resale/list`, resaleData);
+
+                console.log("Resale Response:", response.data);
+                return response.data;
+            } catch (error) {
+                console.error("Resale Error:", error.response?.data || error.message);
+                throw error;
             }
         },
         showExpandedNotification(notification) {
@@ -776,6 +798,7 @@ button {
 }
 
 .qr-image {
+    margin-top: 20px;
     display: block;
     /* Makes the image a block element */
     margin-left: auto;
