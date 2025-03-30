@@ -73,33 +73,30 @@ def process_ticket_order():
         if not all([user_id, event_id, event_date_id, ticket_arr, payment_token]):
             return jsonify({"error": "Missing required fields"}), 400
 
+        # Calculate total amount first
+        total_amount = sum(item.get("price", 0) * item.get("quantity", 0) for item in ticket_arr)
+
         # Process payment for the total amount
         payment_data = {
             "user_id": user_id,
             "amount": total_amount,
             "payment_token": payment_token
         }
+        
         payment_resp = requests.post(f"{PAYMENT_SERVICE_URL}/payments/process", json=payment_data)
         if payment_resp.status_code != 201:
             return jsonify({"error": "Payment failed", "details": payment_resp.text}), 400
 
         payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
 
-        # Fetch user email
-        # user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
-        # if user_resp.status_code != 200:
-        #     return jsonify({"error": "User not found"}), 404
-
         # Instead of a flat list, we build a dictionary to group ticket IDs by catId
         tickets_by_cat = {}
-        total_amount = 0
 
         # Loop through each ticket category to gather reserved ticket IDs
         for item in ticket_arr:
             cat_id = item.get("catId")
             quantity = item.get("quantity")
-            price = item.get("price")
-
+            
             query_params = {
                 "owner_id": user_id,
                 "cat_id": cat_id,
@@ -123,7 +120,11 @@ def process_ticket_order():
             else:
                 tickets_by_cat[cat_id] = selected_ids
             print("DEBUG: selected_ids for cat", cat_id, "=", selected_ids)
-            total_amount += price * quantity
+
+        # Fetch user email
+        # user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
+        # if user_resp.status_code != 200:
+        #     return jsonify({"error": "User not found"}), 404
 
         # Flatten all ticket IDs if needed for other purposes:
         all_ticket_ids = []
@@ -143,19 +144,20 @@ def process_ticket_order():
         # Create a single order with the nested ticket IDs and the total amount
         order_data = {
             "userId": user_id,
-            "ticketIds": all_ticket_ids,  # Optionally include the flat list as well
-            "tickets": nested_ticket_ids, # Nested array of ticket IDs by category
+            "tickets": nested_ticket_ids,  # Only send the nested structure
             "eventId": event_id,
             "eventDateId": event_date_id,
             "orderType": "PURCHASE",
             "totalAmount": total_amount,
             "paymentId": payment_id,
-            "eventName": data.get("eventName", ""),
+            "eventName": data.get("eventName", ""),  # Changed to match frontend
             "venue": data.get("venue", "")
         }
 
         order_resp = requests.post(f"{ORDER_SERVICE_URL}/orders", json=order_data)
         if order_resp.status_code != 201:
+            # Log the error response for debugging
+            logging.error(f"Order creation failed. Response: {order_resp.text}")
             return jsonify({"error": "Order creation failed", "details": order_resp.text}), 400
 
         created_order = order_resp.json()
@@ -171,9 +173,9 @@ def process_ticket_order():
             message = {
                 "email": user_email,
                 "eventType": "ticket.purchase",
-                "event_name": data.get("eventName", ""),
+                "eventName": data.get("eventName", ""),  
                 "order_id": created_order.get("orderId", "N/A"),
-                "eventDate": data.get("eventDate", ""),
+                "eventDate": data.get("eventDate", ""),     
                 "ticketNumber": ",".join(all_ticket_ids)
             }
             channel.basic_publish(

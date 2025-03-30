@@ -40,17 +40,25 @@
                         <hr class="divider" />
 
                         <div class="notifications-section">
-                            <!-- Notifications Label -->
                             <span class="notifications-label">Notifications:</span>
-
+                            
+                            <!-- Debug info -->
+                            <div v-if="pendingTransferTickets.length === 0" class="debug-info">
+                                No pending transfers found
+                            </div>
+                            
                             <!-- Notifications List -->
                             <div class="notifications-list">
                                 <div
-                                    v-for="(notification, index) in notifications"
-                                    :key="index"
+                                    v-for="ticket in pendingTransferTickets"
+                                    :key="ticket._id"
                                     class="notification-item"
-                                    @click="showExpandedNotification(notification)">
-                                    {{ notification.message.substring(0, 30) }}
+                                    @click="showExpandedNotification(ticket)">
+                                    <div class="notification-content">
+                                        <strong>Pending Ticket Transfer</strong>
+                                        <p>Ticket ID: {{ ticket._id }}</p>
+                                        <p>Seat: {{ ticket.seat_info }}</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -61,7 +69,17 @@
                                 <span class="close-button" @click="closeModal">&times;</span>
                                 <h3>Pending Transfer</h3>
                                 <br>
-                                <p>{{ selectedNotification.message }}</p> <!-- Display full message -->
+                                <div v-if="selectedNotification">
+                                    <p><strong>Ticket ID:</strong> #{{ selectedNotification._id }}</p>
+                                    <p><strong>Category:</strong> Category {{ selectedNotification.cat_id }}</p>
+                                    <p><strong>Seat:</strong> {{ selectedNotification.seat_info }}</p>
+                                    <p><strong>From:</strong> {{ selectedNotification.owner_email }}</p>
+                                    
+                                    <div class="button-group">
+                                        <button @click="handleTransferResponse(true)" class="accept-button">Accept</button>
+                                        <button @click="handleTransferResponse(false)" class="reject-button">Reject</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -270,7 +288,7 @@ export default {
             apiGatewayUrl: import.meta.env.VITE_API_GATEWAY_URL,
             openMenus: [],
             loadingMsg: true,
-            
+            pendingTransferTickets: [],
         }
     },
     mounted() {
@@ -290,6 +308,8 @@ export default {
     this.fetchUserData()
         .then(() => this.fetchOrders())
         .catch(error => console.error("Error in fetching process:", error));
+
+    this.fetchPendingTransfers();
 },
 
     methods: {
@@ -584,9 +604,7 @@ export default {
                     recipientEmail: this.email,
                     senderEmail: this.user.email,
                 };
-
                 const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
-
                 console.log("Validate Response:", response.data);
             } catch (error) {
                 console.error("Payment Error:", error.response?.data || error.message);
@@ -626,16 +644,79 @@ export default {
                 throw error;
             }
         },
-        showExpandedNotification(notification) {
-            this.selectedNotification = notification; // Set the clicked notification
-            this.isModalOpen = true; // Open the modal
+        showExpandedNotification(ticket) {
+            this.selectedNotification = ticket;
+            this.isModalOpen = true;
         },
         
         closeModal() {
-            this.isModalOpen = false; // Close the modal
-            this.selectedNotification = null; // Reset selected notification
-        }
+            this.isModalOpen = false;
+            this.selectedNotification = null;
+        },
 
+        async fetchPendingTransfers() {
+            try {
+                const response = await axios.get(
+                    `${this.apiGatewayUrl}/tickets/pending/${this.user.email}`
+                );
+                
+                // Get pending transfers
+                this.pendingTransferTickets = response.data;
+
+                // Fetch owner (sender) email for each ticket
+                for (let ticket of this.pendingTransferTickets) {
+                    try {
+                        // Assuming you have an endpoint to get user details by ID
+                        const userResponse = await axios.get(`${this.apiGatewayUrl}/user/${ticket.owner_id}`);
+                        ticket.owner_email = userResponse.data.email;
+                    } catch (error) {
+                        console.error(`Error fetching owner email for ticket ${ticket._id}:`, error);
+                        ticket.owner_email = 'Unknown sender';
+                    }
+                }
+
+                console.log("Pending transfers with owner emails:", this.pendingTransferTickets);
+            } catch (error) {
+                console.error("Error fetching pending transfers:", error);
+            }
+        },
+
+        async handleTransferResponse(accepted) {
+            try {
+                const transferData = {
+                    accepted: accepted,
+                    recipient_email: this.user.email,
+                    sender_id: this.selectedNotification.owner_id,
+                    sender_email: this.selectedNotification.owner_email
+                };
+
+                const response = await axios.post(
+                    `${this.apiGatewayUrl}/transfer/${this.selectedNotification._id}`,
+                    transferData
+                );
+
+                if (response.data.success) {
+                    // Refresh the pending transfers list
+                    await this.fetchPendingTransfers();
+                    
+                    // If accepted, refresh orders to show the new ticket
+                    if (accepted) {
+                        await this.fetchOrders();
+                        
+                        // Remove the "ON HOLD" status for this ticket
+                        const ticketId = this.selectedNotification._id;
+                        if (this.ticketStatuses[ticketId]) {
+                            delete this.ticketStatuses[ticketId];
+                            localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
+                        }
+                    }
+                    
+                    this.closeModal();
+                }
+            } catch (error) {
+                console.error("Error processing transfer response:", error);
+            }
+        },
     },
     computed: {
         upcomingOrders() {
@@ -1060,5 +1141,43 @@ button {
     max-height: 80vh; /* Limits height to prevent overflow outside viewport */
 }
 
+.button-group {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.accept-button {
+    background-color: #2A68E1; /* Changed to match theme blue */
+    color: white;
+    padding: 10px 30px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: background-color 0.3s ease;
+}
+
+.reject-button {
+    background-color: white;
+    color: #2A68E1; /* Theme blue */
+    padding: 10px 30px;
+    border: 2px solid #2A68E1; /* Theme blue border */
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.accept-button:hover {
+    background-color: #1d4ba8; /* Darker shade of theme blue */
+}
+
+.reject-button:hover {
+    background-color: #f8f9fa;
+    color: #1d4ba8; /* Darker shade of theme blue */
+    border-color: #1d4ba8;
+}
 
 </style>
