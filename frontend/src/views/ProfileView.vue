@@ -547,6 +547,7 @@ export default {
                 isQrVisible: false,
                 status: "TICKET IS BEING RESOLD"
                 };
+                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
                 this.resellTicket(ticketId, catId, resaleCount);
                 this.closePopup();
                 this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
@@ -569,6 +570,7 @@ export default {
                 isQrVisible: false,
                 status: "TICKET IS BEING TRANSFERRED"
                 };
+                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
                 this.validateTicket();
                 this.closePopup();
                 this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
@@ -644,6 +646,12 @@ export default {
             const now = new Date();
             return this.orderList.filter(order => new Date(order.EventDate) <= now);
         },
+    },
+    created () {
+        const storedStatuses = localStorage.getItem("ticketStatuses");
+        if (storedStatuses) {
+            this.ticketStatuses = JSON.parse(storedStatuses);
+        }
     }
 }
 </script>
