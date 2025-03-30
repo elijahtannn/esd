@@ -73,10 +73,22 @@ def process_ticket_order():
         if not all([user_id, event_id, event_date_id, ticket_arr, payment_token]):
             return jsonify({"error": "Missing required fields"}), 400
 
+        # Process payment for the total amount
+        payment_data = {
+            "user_id": user_id,
+            "amount": total_amount,
+            "payment_token": payment_token
+        }
+        payment_resp = requests.post(f"{PAYMENT_SERVICE_URL}/payments/process", json=payment_data)
+        if payment_resp.status_code != 201:
+            return jsonify({"error": "Payment failed", "details": payment_resp.text}), 400
+
+        payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
+
         # Fetch user email
-        user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
-        if user_resp.status_code != 200:
-            return jsonify({"error": "User not found"}), 404
+        # user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
+        # if user_resp.status_code != 200:
+        #     return jsonify({"error": "User not found"}), 404
 
         # Instead of a flat list, we build a dictionary to group ticket IDs by catId
         tickets_by_cat = {}
@@ -121,20 +133,9 @@ def process_ticket_order():
         # Confirm all reserved tickets at once (mark them as sold)
         confirm_data = {"ticket_ids": all_ticket_ids}
         confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json=confirm_data)
+        
         if confirm_resp.status_code != 200:
             return jsonify({"error": "Ticket confirmation failed", "details": confirm_resp.text}), 400
-
-        # Process payment for the total amount
-        payment_data = {
-            "user_id": user_id,
-            "amount": total_amount,
-            "payment_token": payment_token
-        }
-        payment_resp = requests.post(f"{PAYMENT_SERVICE_URL}/payments/process", json=payment_data)
-        if payment_resp.status_code != 201:
-            return jsonify({"error": "Payment failed", "details": payment_resp.text}), 400
-
-        payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
 
         # Build the nested structure for tickets
         nested_ticket_ids = [{"catId": cat, "ticketIds": ids} for cat, ids in tickets_by_cat.items()]
@@ -152,6 +153,7 @@ def process_ticket_order():
             "eventName": data.get("eventName", ""),
             "venue": data.get("venue", "")
         }
+
         order_resp = requests.post(f"{ORDER_SERVICE_URL}/orders", json=order_data)
         if order_resp.status_code != 201:
             return jsonify({"error": "Order creation failed", "details": order_resp.text}), 400
