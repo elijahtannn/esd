@@ -194,23 +194,18 @@ export default {
             console.log('Checking interest status for user:', userId); // Debug log
             
             try {
+                // Use the correct endpoint to check if user is interested in this event
                 const response = await axios.get(
-                    `${this.apiGatewayUrl || 'http://localhost:5003'}/user/event_interests/${userId}`
+                    `${this.apiGatewayUrl || 'http://localhost:5003'}/user/${userId}/interested-events/${this.id}`
                 );
                 
-                console.log('User interests response:', response.data); // Debug log
+                console.log('User interest check response:', response.data);
                 
-                if (response.data && response.data.event_interests) {
-                    // Check if this event ID is in the user's interests
-                    // Handle both string and number comparisons
-                    const eventId = parseInt(this.id);
-                    this.isInterestedInResale = response.data.event_interests.some(id => 
-                        parseInt(id) === eventId || id === this.id
-                    );
-                }
+                // Update status based on API response
+                this.isInterestedInResale = response.data.is_interested;
             } catch (error) {
                 console.error('Failed to check user interest status:', error);
-                // Don't change the interest status on error
+                this.isInterestedInResale = false;
             }
         },
         async openResaleNotificationModal() {
@@ -223,14 +218,15 @@ export default {
                     this.$router.push('/login');
                     return;
                 }
+                const userId = userData.id || userData._id;
+                console.log('User ID from auth store:', userId); // Debug log
                 
-                console.log('User data from auth store:', userData); // Debug log
-                
-                // Use the correct endpoint URL
-                const response = await axios.post(`${this.apiGatewayUrl || 'http://localhost:5003'}/user/add_event_interest`, {
-                    user_id: userData.id || userData._id, // Handle both formats
-                    event_id: this.id
-                });
+                const response = await axios.post(
+                    `${this.apiGatewayUrl || 'http://localhost:5003'}/user/${userId}/interested-events`, 
+                    {
+                        event_id: this.id
+                    }
+                );
 
                 // Update UI to show user is now interested
                 this.isInterestedInResale = true;
