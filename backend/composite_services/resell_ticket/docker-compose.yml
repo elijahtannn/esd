@@ -10,6 +10,10 @@ services:
       - FLASK_ENV=development
       - TICKET_SERVICE_URL=http://ticket-service:5001
       - OUTSYSTEMS_EVENT_API_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
+      - USER_SERVICE_URL=http://user-service:5003
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - EXCHANGE_NAME=ticketing.exchange
+      - EXCHANGE_TYPE=topic
     ports:
       - "5005:5005"
     volumes:
