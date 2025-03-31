@@ -357,27 +357,68 @@ export default {
             showInterestedEventsModal: false,
         }
     },
+    computed: {
+        upcomingOrders() {
+            const now = new Date();
+            return this.orderList.filter(order => new Date(order.EventDate) > now);
+        },
+        pastOrders() {
+            const now = new Date();
+            return this.orderList.filter(order => new Date(order.EventDate) <= now);
+        },
+        // Add this new computed property
+        ticketsInResaleProcess() {
+            const statuses = this.ticketStatuses;
+            return Object.keys(statuses).filter(ticketId => 
+                statuses[ticketId] && 
+                !statuses[ticketId].isQrVisible && 
+                statuses[ticketId].status === "TICKET IS BEING RESOLD"
+            );
+        }
+    },
     mounted() {
-    const userData = auth.getUser();
+        const userData = auth.getUser();
 
-    if (!userData || (!userData._id && !userData.id)) { // Check for both _id and id
-        console.error("User ID is missing from auth.getUser()!", userData);
-        return;
-    }
+        if (!userData || (!userData._id && !userData.id)) {
+            console.error("User ID is missing from auth.getUser()!", userData);
+            return;
+        }
 
-    // Normalize the user object: map id to _id if _id is missing
-    this.user = { ...userData, _id: userData._id || userData.id };
+        // Normalize the user object: map id to _id if _id is missing
+        this.user = { ...userData, _id: userData._id || userData.id };
 
-    console.log("Fetched User from auth:", this.user);
+        console.log("Fetched User from auth:", this.user);
 
-    // Fetch the latest user data
-    this.fetchUserData()
-        .then(() => this.fetchOrders())
-        .catch(error => console.error("Error in fetching process:", error));
+        // Load ticket statuses from localStorage
+        const storedStatuses = localStorage.getItem("ticketStatuses");
+        if (storedStatuses) {
+            try {
+                this.ticketStatuses = JSON.parse(storedStatuses);
+                console.log("Loaded ticket statuses from localStorage:", this.ticketStatuses);
+            } catch (e) {
+                console.error("Error parsing ticket statuses from localStorage:", e);
+                this.ticketStatuses = {};
+            }
+        }
 
-    this.fetchPendingTransfers();
-    this.fetchInterestedEvents();
-},
+        const storedDisabledMenus = localStorage.getItem("disabledMenus");
+        if (storedDisabledMenus) {
+            try {
+                this.disabledMenus = JSON.parse(storedDisabledMenus);
+            } catch (e) {
+                console.error("Error parsing disabled menus:", e);
+                this.disabledMenus = {};
+            }
+        }
+
+        // Fetch the latest user data
+        this.fetchUserData()
+            .then(() => this.fetchOrders())
+            .catch(error => console.error("Error in fetching process:", error));
+
+        this.fetchPendingTransfers();
+        this.fetchInterestedEvents();
+    },
 
 watch: {
     // Add this to your existing watchers
@@ -648,32 +689,60 @@ watch: {
                 this.openMenus.splice(index, 1);
             }
         },
-        handleOption(action, ticket) {
-            this.selectedTicket = ticket;
-            if (action === 'resale') {
-                this.showResalePopup = true; // Show the resale confirmation modal
-                console.log('Resell Ticket clicked');
-            } else if (action === 'transfer') {
-                console.log("Transfer Ticket clicked");
-                this.showTransferPopup = true;
-            }
-            this.selectedTicket = ticket;
-        },
         confirmResale() {
             if (this.isAgreed && this.selectedTicket) {
                 const ticketId = this.selectedTicket.ticketId;
-                const resaleCount = 1;
                 const catId = this.selectedTicket.catId;
+                
                 this.ticketStatuses[ticketId] = {
-                isQrVisible: false,
-                status: "TICKET IS BEING RESOLD"
+                    isQrVisible: false,
+                    status: "TICKET IS BEING RESOLD"
                 };
+
+                // Find the order that contains this ticket
+                const orderWithTicket = this.orderList.find(order => 
+                    order.tickets.some(ticket => ticket.ticketId === ticketId)
+                );
+                
+                let eventId = null;
+                if (orderWithTicket) {
+                    eventId = orderWithTicket.eventId;
+                }
+                
+                console.log("Confirming resale with params:", { ticketId, catId, eventId });
+                
+                // Update UI status immediately
+                this.ticketStatuses[ticketId] = {
+                    isQrVisible: false,
+                    status: "TICKET IS BEING RESOLD"
+                };
+                
+                // Save the updated statuses
                 localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
-                this.resellTicket(ticketId, catId, resaleCount);
+                
+                // Call resell API
+                this.resellTicket(ticketId, catId, eventId);
+                
+                // Close the popup and disable the menu
                 this.closePopup();
                 this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
+                localStorage.setItem("disabledMenus", JSON.stringify(this.disabledMenus));
             } else {
                 console.log('Agreement not checked or no ticket selected');
+            }
+        },
+        handleOption(action, ticket) {
+            console.log('Handle option called:', action, ticket);
+            
+            // Make sure we store the full ticket object with all necessary properties
+            this.selectedTicket = ticket;
+            
+            if (action === 'resale') {
+                this.showResalePopup = true;
+                console.log('Resell Ticket clicked, selected ticket:', this.selectedTicket);
+            } else if (action === 'transfer') {
+                console.log("Transfer Ticket clicked, selected ticket:", this.selectedTicket);
+                this.showTransferPopup = true;
             }
         },
         closePopup() {
@@ -729,18 +798,58 @@ watch: {
                 console.error("Payment Error:", error.response?.data || error.message);
             }
         },
-        async resellTicket(ticketId, catId, resaleCount) {
-            console.log("resell ticket called");
+        async resellTicket(ticketId, catId, eventId) {
+            console.log("resell ticket called with params:", { ticketId, catId, eventId });
             try {
+                // Check if we have all required parameters
+                if (!ticketId || !catId) {
+                    console.error("Missing required parameters for resell", { ticketId, catId });
+                    return;
+                }
+                
+                // Extract eventId from the current order if not provided
+                let eventIdToUse = eventId;
+                if (!eventIdToUse) {
+                    // Find the order containing this ticket
+                    const orderWithTicket = this.orderList.find(order => 
+                        order.tickets.some(ticket => ticket.ticketId === ticketId)
+                    );
+                    
+                    if (orderWithTicket) {
+                        eventIdToUse = orderWithTicket.eventId;
+                    } else {
+                        console.error("Could not find order with ticket:", ticketId);
+                        return;
+                    }
+                }
+                
+                // Prepare data for API call
                 const resaleData = {
                     ticket_id: ticketId,
                     cat_id: catId,
-                    resale_count: resaleCount
+                    eventId: eventIdToUse
                 };
 
-                const response = await axios.post("http://localhost:5005/resale/list", resaleData);
+                // Make sure we're using the correct URL (from environment or API gateway)
+                const resaleUrl = `${this.apiGatewayUrl}/resale/list`;
+                console.log("Sending resale request to:", resaleUrl, resaleData);
+
+                const response = await axios.post(resaleUrl, resaleData);
 
                 console.log("Resale Response:", response.data);
+                
+                // Update the ticket status in UI
+                this.ticketStatuses[ticketId] = {
+                    isQrVisible: false,
+                    status: "TICKET IS BEING RESOLD"
+                };
+                
+                // Save the updated statuses to localStorage
+                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
+                
+                // Disable the menu for this ticket
+                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
+                
                 return response.data;
             } catch (error) {
                 console.error("Resale Error:", error.response?.data || error.message);
