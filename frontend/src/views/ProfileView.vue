@@ -81,8 +81,8 @@
                             </div>
                             <div v-else class="no-interested-events">
                                 <p>No interested events</p>
-                            </div>
                         </div>
+                    </div>
                     </div>
                     
                     <!-- order box -->
@@ -207,8 +207,18 @@
                             <p><strong>From:</strong> {{ selectedNotification.owner_email }}</p>
                             
                             <div class="button-group">
-                                <button @click="handleTransferResponse(true)" class="accept-button">Accept</button>
-                                <button @click="handleTransferResponse(false)" class="reject-button">Reject</button>
+                                <button 
+                                    @click="handleTransferResponse(true)" 
+                                    class="accept-button"
+                                >
+                                    Accept
+                                </button>
+                                <button 
+                                    @click="handleTransferResponse(false)" 
+                                    class="reject-button"
+                                >
+                                    Reject
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -252,61 +262,74 @@
                         </div>
                     </div>
                 </div>
+
+                                                    <!-- Resale Confirmation Modal -->
+                                                    <div v-if="showResalePopup" class="modal-overlay">
+                                                        <div class="modal-content">
+                                                            <!-- Close (X) Button -->
+                                                            <span class="close-button" @click="closePopup">&times;</span>
+
+                                                            <h3>Are you sure you want to resell your ticket?</h3>
+                                                            <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
+                                                            <p><strong>Type:</strong>{{ selectedTicket.categoryName }}</p>
+                                                            <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
+                                                            <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
+                                                            <hr>
+                                                            <!-- Mandatory Checkbox for Agreement -->
+                                                            <div class="checkbox-container">
+                                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                                                <label for="agreeCheckbox">
+                                                                    I agree that a refund will only be issued once the resale process is
+                                                                    complete and the transaction is finalized.
+                                                                </label>
+                                                            </div>
+
+                                                            <button @click="confirmResale" class="confirm-button">CONFIRM</button>
+                                                        </div>
+                                                    </div>
                 
-                <!-- Resale Confirmation Modal -->
-                <div v-if="showResalePopup" class="modal-overlay">
-                    <div class="modal-content">
-                        <!-- Close (X) Button -->
-                        <span class="close-button" @click="closePopup">&times;</span>
+                                                    <!-- Transfer Ticket Modal -->
+                                                    <div v-if="showTransferPopup" class="modal-overlay">
+                                                        <div class="modal-content">
+                                                            <!-- Close (X) Button -->
+                                                            <span class="close-button" @click="closePopup">&times;</span>
 
-                        <h3>Are you sure you want to resell your ticket?</h3>
-                        <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
-                        <p><strong>Type:</strong>{{ selectedTicket.categoryName }}</p>
-                        <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
-                        <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
-                        <hr>
-                        <!-- Mandatory Checkbox for Agreement -->
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                            <label for="agreeCheckbox">
-                                I agree that a refund will only be issued once the resale process is
-                                complete and the transaction is finalized.
-                            </label>
+                                                            <h3>Transfer your ticket</h3>
+                                                            <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
+                                                            <p><strong>Type:</strong> {{ selectedTicket.categoryName }}</p>
+                                                            <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
+                                                            <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
+                                                            <hr>
+
+                                                            <!-- Input Form for Recipient's Information -->
+                                                            <div class="form-group">
+                                                                <label for="email">Recipient's Email:</label>
+                                                                <input type="text" id="email" v-model="email"
+                                                                    placeholder="Enter email" />
+                                                            </div>
+
+                                                            <!-- Mandatory Checkbox for Agreement -->
+                                                            <div class="checkbox-container">
+                                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                                                                <label for="agreeCheckbox" style="font-size: 14px;">
+                                                                    I agree that transfer will only be completed once both parties has
+                                                                    accepted the transfer. Once the transfer is complete, it cannot be
+                                                                    undone or transferred back to me. </label>
+                                                            </div>
+                                                            <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
+                            </div>
                         </div>
 
-                        <button @click="confirmResale" class="confirm-button">CONFIRM</button>
-                    </div>
-                </div>
-                
-                <!-- Transfer Ticket Modal -->
-                <div v-if="showTransferPopup" class="modal-overlay">
-                    <div class="modal-content">
-                        <!-- Close (X) Button -->
-                        <span class="close-button" @click="closePopup">&times;</span>
-
-                        <h3>Transfer your ticket</h3>
-                        <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
-                        <p><strong>Type:</strong> {{ selectedTicket.categoryName }}</p>
-                        <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
-                        <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
-                        <hr>
-
-                        <!-- Input Form for Recipient's Information -->
-                        <div class="form-group">
-                            <label for="email">Recipient's Email:</label>
-                            <input type="text" id="email" v-model="email"
-                                placeholder="Enter email" />
+                <!-- Error Popup Modal -->
+                <div v-if="showErrorPopup" class="modal-overlay" @click.self="closeErrorPopup">
+                    <div class="modal-content error-popup">
+                        <span class="close-button" @click="closeErrorPopup">&times;</span>
+                        <div class="error-content">
+                            <i class="fas fa-exclamation-circle error-icon"></i>
+                            <h3>Transfer Validation Failed</h3>
+                            <p>{{ errorMessage }}</p>
+                            <button @click="closeErrorPopup" class="confirm-button">OK</button>
                         </div>
-
-                        <!-- Mandatory Checkbox for Agreement -->
-                        <div class="checkbox-container">
-                            <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                            <label for="agreeCheckbox" style="font-size: 14px;">
-                                I agree that transfer will only be completed once both parties has
-                                accepted the transfer. Once the transfer is complete, it cannot be
-                                undone or transferred back to me. </label>
-                        </div>
-                        <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
                     </div>
                 </div>
             </div>
@@ -355,6 +378,28 @@ export default {
             pendingTransferTickets: [],
             interestedEvents: [],
             showInterestedEventsModal: false,
+            showErrorPopup: false,
+            errorMessage: '',
+            pollingInterval: null,
+        }
+    },
+    computed: {
+        upcomingOrders() {
+            const now = new Date();
+            return this.orderList.filter(order => new Date(order.EventDate) > now);
+        },
+        pastOrders() {
+            const now = new Date();
+            return this.orderList.filter(order => new Date(order.EventDate) <= now);
+        },
+        // Add this new computed property
+        ticketsInResaleProcess() {
+            const statuses = this.ticketStatuses;
+            return Object.keys(statuses).filter(ticketId => 
+                statuses[ticketId] && 
+                !statuses[ticketId].isQrVisible && 
+                statuses[ticketId].status === "TICKET IS BEING RESOLD"
+            );
         }
     },
     computed: {
@@ -418,6 +463,7 @@ export default {
 
         this.fetchPendingTransfers();
         this.fetchInterestedEvents();
+    this.startTicketStatusPolling();
     },
 
 watch: {
@@ -756,16 +802,9 @@ watch: {
         },
         confirmTransfer() {
             if ( this.email && this.isAgreed && this.selectedTicket) {
-                this.ticketStatuses[this.selectedTicket.ticketId] = {
-                isQrVisible: false,
-                status: "TICKET IS BEING TRANSFERRED"
-                };
-                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
                 this.validateTicket();
-                this.closePopup();
-                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
             } else {
-                console.log('Please fill in all the details');
+                alert('Please fill in all the details');
             }
         },
         async validateTicket() {
@@ -774,12 +813,32 @@ watch: {
                     recipientEmail: this.email,
                     senderEmail: this.user.email,
                 };
-                const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
+                const response = await axios.post(
+                    `http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, 
+                    validateData
+                );
+                
                 console.log("Validate Response:", response.data);
+                
+                if (response.data.can_transfer) {
+                    this.ticketStatuses[this.selectedTicket.ticketId] = {
+                        isQrVisible: false,
+                        status: "TICKET IS BEING TRANSFERRED"
+                    };
+                    localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
+                    this.closePopup();
+                    this.disabledMenus = { ...this.disabledMenus, [this.selectedTicket.ticketId]: true };
+                } else {
+                    // Show error popup instead of alert
+                    this.errorMessage = response.data.message;
+                    this.showErrorPopup = true;
+                    this.closePopup(); // Close the transfer popup
+                }
             } catch (error) {
-                // Handle validation errors
-                const errorMessage = error.response?.data?.message || "An error occurred during validation";
-                alert(errorMessage);
+                // Handle validation errors with popup
+                this.errorMessage = error.response?.data?.message || "An error occurred during validation";
+                this.showErrorPopup = true;
+                this.closePopup(); // Close the transfer popup
                 console.error("Validation Error:", error.response?.data || error.message);
             }
         },
@@ -849,6 +908,7 @@ watch: {
             }
         },
         showExpandedNotification(ticket) {
+            console.log('Opening notification for ticket:', ticket); // Debug log
             this.selectedNotification = ticket;
             this.isModalOpen = true;
         },
@@ -887,44 +947,84 @@ watch: {
 
         async handleTransferResponse(accepted) {
             try {
-                const transferData = {
-                    accepted: accepted,
-                    recipient_email: this.user.email,
-                    sender_id: this.selectedNotification.owner_id,
-                    sender_email: this.selectedNotification.owner_email
+                if (!this.selectedNotification) {
+                    console.error('No notification selected');
+                    return;
+                }
+
+                // Store necessary data before closing modal
+                const notificationData = {
+                    _id: this.selectedNotification._id,
+                    owner_id: this.selectedNotification.owner_id,
+                    owner_email: this.selectedNotification.owner_email
                 };
 
+                // For rejections, we want a simpler flow
+                if (!accepted) {
+                    // Close modal first
+                    this.closeModal();
+                    
+                    // Make the API call
+                    await axios.post(
+                        `${this.apiGatewayUrl}/transfer/${notificationData._id}`,
+                        {
+                            accepted: false,
+                            recipient_email: this.user.email,
+                            sender_id: notificationData.owner_id,
+                            sender_email: notificationData.owner_email
+                        }
+                    );
+
+                    // Remove from pending transfers list
+                    this.pendingTransferTickets = this.pendingTransferTickets.filter(
+                        ticket => ticket._id !== notificationData._id
+                    );
+                    
+                    return;
+                }
+
+                // For acceptances, keep the existing logic
+                console.log('Processing transfer for ticket:', notificationData);
+
+                const transferData = {
+                    accepted: true,
+                    recipient_email: this.user.email,
+                    sender_id: notificationData.owner_id,
+                    sender_email: notificationData.owner_email
+                };
+
+                // Close modal
+                this.closeModal();
+
                 const response = await axios.post(
-                    `${this.apiGatewayUrl}/transfer/${this.selectedNotification._id}`,
+                    `${this.apiGatewayUrl}/transfer/${notificationData._id}`,
                     transferData
                 );
 
+                console.log('Transfer response:', response.data);
+            
                 if (response.data.success) {
-                    // Remove notification by refreshing the pending transfers list
-                    await this.fetchPendingTransfers();
-                    
-                    if (accepted) {
-                        // Only refresh orders and update ticket status if transfer was accepted
-                        await this.fetchOrders();
-                        
-                        // Remove the "ON HOLD" status for this ticket
-                        const ticketId = this.selectedNotification._id;
-                        if (this.ticketStatuses[ticketId]) {
-                            delete this.ticketStatuses[ticketId];
-                            localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
-                        }
-                    }
-                    
-                    // Show appropriate success message
-                    const message = accepted ? "Transfer accepted successfully!" : "Transfer rejected successfully!";
-                    alert(message);
-                    
-                    // Close the modal
-                    this.closeModal();
+                    // Remove the "ON HOLD" status for this ticket
+                    const updatedStatuses = { ...this.ticketStatuses };
+                    delete updatedStatuses[notificationData._id];
+                    this.ticketStatuses = updatedStatuses;
+                    localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
+
+                    // Immediately remove the notification from the list
+                    this.pendingTransferTickets = this.pendingTransferTickets.filter(
+                        ticket => ticket._id !== notificationData._id
+                    );
+
+                    // Fetch updated orders to show the new ticket
+                    await this.fetchOrders();
+                } else {
+                    this.errorMessage = "Failed to process transfer response. Please try again.";
+                    this.showErrorPopup = true;
                 }
             } catch (error) {
                 console.error("Error processing transfer response:", error);
-                alert("An error occurred while processing your response. Please try again.");
+                this.errorMessage = error.response?.data?.message || "An error occurred while processing your response. Please try again.";
+                this.showErrorPopup = true;
             }
         },
 
@@ -971,8 +1071,8 @@ watch: {
                             venue: firstEventData.Venue,
                             description: firstEventData.Description
                         };
-                    }
-                } catch (error) {
+                }
+            } catch (error) {
                     console.error(`Error fetching event ${eventId} details:`, error);
                     return null;
                 }
@@ -1016,6 +1116,46 @@ watch: {
             }
         },
 
+        closeErrorPopup() {
+            this.showErrorPopup = false;
+            this.errorMessage = "";
+        },
+
+        // Modify the startTicketStatusPolling method to only show "TICKET IS BEING TRANSFERRED" 
+        // for tickets that the user is sending, not receiving
+        async startTicketStatusPolling() {
+            this.pollingInterval = setInterval(async () => {
+                if (this.orderList.length > 0) {
+                    await this.fetchOrders();
+                    
+                    // Update local storage based on current ticket statuses
+                    const updatedStatuses = {};
+                    this.orderList.forEach(order => {
+                        order.tickets.forEach(ticket => {
+                            // Only show transfer status if the user is the sender AND ticket is still pending
+                            if (ticket.status === "PENDING_TRANSFER" && 
+                                ticket.owner_id === (this.user._id || this.user.id)) {
+                                updatedStatuses[ticket.ticketId] = {
+                                    isQrVisible: false,
+                                    status: "TICKET IS BEING TRANSFERRED"
+                                };
+                            }
+                        });
+                    });
+                    
+                    // Update local storage only if there are changes
+                    if (Object.keys(updatedStatuses).length > 0) {
+                        this.ticketStatuses = updatedStatuses;
+                        localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
+                    } else {
+                        // Clear the statuses if no pending transfers
+                        this.ticketStatuses = {};
+                        localStorage.removeItem("ticketStatuses");
+                    }
+                }
+            }, 30000); // 30 seconds
+        },
+
     },
     computed: {
         upcomingOrders() {
@@ -1031,6 +1171,11 @@ watch: {
         const storedStatuses = localStorage.getItem("ticketStatuses");
         if (storedStatuses) {
             this.ticketStatuses = JSON.parse(storedStatuses);
+        }
+    },
+    beforeDestroy() {
+        if (this.pollingInterval) {
+            clearInterval(this.pollingInterval);
         }
     }
 }
@@ -1443,41 +1588,19 @@ button {
 
 .button-group {
     display: flex;
-    gap: 10px;
+    gap: 20px;
     justify-content: center;
-    margin-top: 20px;
+    margin-top: 30px;
 }
 
-.accept-button {
-    background-color: #2A68E1; /* Changed to match theme blue */
-    color: white;
-    padding: 10px 30px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: background-color 0.3s ease;
-}
-
-.reject-button {
-    background-color: white;
-    color: #2A68E1; /* Theme blue */
-    padding: 10px 30px;
-    border: 2px solid #2A68E1; /* Theme blue border */
-    border-radius: 5px;
-    cursor: pointer;
-    font-weight: bold;
+.button-group button {
+    min-width: 120px;
+    font-weight: 500;
     transition: all 0.3s ease;
 }
 
-.accept-button:hover {
-    background-color: #1d4ba8; /* Darker shade of theme blue */
-}
-
-.reject-button:hover {
-    background-color: #f8f9fa;
-    color: #1d4ba8; /* Darker shade of theme blue */
-    border-color: #1d4ba8;
+.button-group button:hover {
+    opacity: 0.9;
 }
 
 /* Interested Events Styling */
@@ -1558,6 +1681,88 @@ button {
 
 .event-date-row p {
   margin: 5px 0;
+}
+
+.error-popup {
+    max-width: 400px !important;
+    padding: 30px !important;
+}
+
+.error-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.error-icon {
+    color: #ff4d4d;
+    font-size: 48px;
+    margin-bottom: 20px;
+}
+
+.error-content h3 {
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.error-content p {
+    color: #666;
+    margin-bottom: 20px;
+}
+
+.error-content .confirm-button {
+    background-color: #2A68E1;  /* Changed from #ff4d4d to theme blue */
+    width: auto;
+    min-width: 100px;
+    padding: 10px 20px;
+}
+
+.error-content .confirm-button:hover {
+    background-color: #1d4ba8;  /* Changed from #ff3333 to darker theme blue */
+}
+
+/* Remove the general button style that's overriding our specific button styles */
+button {
+    font-size: 16px;
+}
+
+/* Update the accept and reject button styles */
+.accept-button {
+    background-color: #2A68E1;
+    color: white;
+    border: none;
+    padding: 10px 40px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.reject-button {
+    background-color: white;
+    color: #2A68E1;
+    border: 2px solid #2A68E1;
+    padding: 10px 40px;
+    border-radius: 5px;
+    font-size: 16px;
+    cursor: pointer;
+    min-width: 120px;
+}
+
+.button-group {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin-top: 30px;
+}
+
+.accept-button:hover {
+    background-color: #1d4ba8;
+}
+
+.reject-button:hover {
+    background-color: #f8f9fa;
 }
 
 </style>
