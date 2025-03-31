@@ -1443,4 +1443,14 @@ button {
     padding: 8px 16px;
 }
 
+.event-date-row {
+  margin-bottom: 5px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.event-date-row p {
+  margin: 5px 0;
+}
+
 </style>
