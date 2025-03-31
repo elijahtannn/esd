@@ -6,8 +6,9 @@
             style="cursor: pointer;"
         >
             <div class="position-relative">
-                <img src="../assets/carousel/eventiva_carousel1.png" class="card-img-top rounded-0"
-                style="object-fit: cover; height: 35vh;">
+                <img :src="image || '../assets/carousel/eventiva_carousel1.png'" 
+                    class="card-img-top rounded-0"
+                    style="object-fit: cover; height: 35vh;">
                 <!-- Sold Out Overlay -->
                 <div v-if="isSoldOut" class="sold-out-overlay">
                     <span class="sold-out-badge">SOLD OUT</span>

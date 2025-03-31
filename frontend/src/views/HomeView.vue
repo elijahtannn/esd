@@ -56,7 +56,7 @@
             :venue="event.Venue"
             :capacity="event.Capacity" 
             :category="event.Category" 
-            :image="event.Image" 
+            :image="event.Img" 
             :description="event.Description"
             @notify-resale="handleResaleNotification" />
         </div>
@@ -91,7 +91,9 @@ export default {
       try {
         const response = await axios.get(`${this.apiGatewayUrl}/events`);
         
-        var rawData = response.data.Events
+        var rawData = response.data.Events;
+        console.log("Raw API data received:", rawData);
+        
         this.processEvents(rawData);
         
       } catch (error) {
@@ -102,6 +104,9 @@ export default {
       const processedEvents = [];
 
       rawData.forEach((event) => {
+        // Log the original image URL from API
+        console.log(`Original event ${event.Id} image URL:`, event.Img);
+        
         const existingEvent = processedEvents.find((e) => e.Id === event.Id);
 
         if (existingEvent) {
@@ -117,24 +122,35 @@ export default {
             Category: event.Category,
             Capacity: event.Capacity,
             CreatedAt: event.CreatedAt,
-            Image: event.Image,
+            Img: event.Img,  // Keep the original field name as it comes from API
             StartTime: event.StartTime,
             EndTime: event.EndTime,
             Dates: [event.Date],
+            AvailableTickets: event.AvailableTickets || 0
           });
         }
       });
 
       this.eventList = processedEvents;
-      console.log(this.eventList);
+      
+      // Log the processed events with their image URLs
+      console.log("Processed events with image URLs:");
+      this.eventList.forEach(event => {
+        console.log(`Event ${event.Id} - ${event.Name}: Image URL = ${event.Img}`);
+      });
     },
     handleResaleNotification(eventDetails) {
       // Open a modal or trigger notification signup process
       // For example:
-      this.$refs.resaleNotificationModal.open(eventDetails);
+      if (this.$refs.resaleNotificationModal) {
+        this.$refs.resaleNotificationModal.open(eventDetails);
+      } else {
+        console.log("Received resale notification for event:", eventDetails);
+      }
     }
   },
   mounted() {
+    console.log("HomeView component mounted");
     this.fetchEvents();
   },
   setup() {
