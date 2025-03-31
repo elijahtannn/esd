@@ -7,10 +7,6 @@ from services import (
     get_category_details
 )
 from rabbit_publisher import RabbitMQPublisher
-import os
-
-# Force the correct URL for local testing
-os.environ["RABBITMQ_URL"] = "amqp://guest:guest@localhost:5672"
 
 resale_bp = Blueprint("resale_bp", __name__)
 rabbitmq_publisher = RabbitMQPublisher()
@@ -68,53 +64,52 @@ def list_resale_ticket():
     print(f"DEBUG: Starting to gather event details for event_id: {event_id}")
     event_name = None
     event_details = {}
-    
+
     # If we have event_id, get event details
     if event_id:
         event_info, event_status = get_event_details(event_id)
         print(f"DEBUG: Event details status: {event_status}")
-        
-        if event_status == 200 and "Result" in event_info and event_info["Result"].get("Success", False):
-            # Check if the "Event" field exists and has items
-            if "Event" in event_info["Result"] and event_info["Result"]["Event"]:
-                # Get the first event in the list
-                event_data = event_info["Result"]["Event"][0]
+        print(f"DEBUG: Full event response: {event_info}")
+
+        # Check if the request was successful
+        if event_status == 200:
+            # The response now has "Event" key instead of "Events"
+            events_data = event_info.get("Event", [])
+            
+            if events_data:
+                # Prefer events with matching EventId or Id
+                matched_event = next((event for event in events_data 
+                                      if str(event.get("EventId")) == str(event_id) or 
+                                         str(event.get("Id")) == str(event_id)), 
+                                     events_data[0])
                 
                 # Extract event details
-                event_name = event_data.get("Name", "Event")
-                event_details["eventDate"] = event_data.get("Date", "")
-                event_details["eventLocation"] = event_data.get("Venue", "")
-                event_details["eventVenue"] = event_data.get("Venue", "")
-                event_details["categoryName"] = event_data.get("Category", "")
+                event_name = matched_event.get("Name", "Event")
+                event_details = {
+                    "eventId": event_id,
+                    "eventName": event_name,
+                    "eventDate": matched_event.get("Date", ""),
+                    "eventLocation": matched_event.get("Venue", ""),
+                    "eventVenue": matched_event.get("Venue", ""),
+                    "categoryName": matched_event.get("Category", ""),
+                }
                 
-                print(f"DEBUG: Extracted event data: {event_name}, {event_details}")
-    
-    # If we couldn't get event name, use a default or fallback to what we know
-    if not event_name:
-        event_name = ticket_details.get("event_name", "TAEYEON CONCERT - The TENSE in SINGAPORE")
-    
-    # Default values for missing fields to ensure good notification experience
-    if not event_details.get("eventDate"):
-        event_details["eventDate"] = "2025-05-03"
-    
-    if not event_details.get("eventLocation"):
-        event_details["eventLocation"] = "Singapore Indoor Stadium"
-        
-    if not event_details.get("eventVenue"):
-        event_details["eventVenue"] = "Singapore Indoor Stadium"
-        
-    print(f"DEBUG: Final event name: {event_name}")
-    print(f"DEBUG: Final event details: {event_details}")
+                print(f"DEBUG: Extracted Event Details: {event_details}")
+            else:
+                print("DEBUG: No events found in the response")
+        else:
+            print(f"DEBUG: Failed to retrieve event details. Status: {event_status}")
+            print(f"DEBUG: Response: {event_info}")
     
     # Step 6: Publish message to notify interested users
-    if event_id:
+    if event_id and event_details:
         print(f"DEBUG: Publishing notification for event {event_id}")
         print(f"DEBUG: RabbitMQ URL: {rabbitmq_publisher.rabbitmq_url}")
         
         # Try to publish notification
         notification_sent = rabbitmq_publisher.publish_resale_availability(
             event_id=event_id,
-            event_name=event_name,
+            event_name=event_details.get("eventName"),
             ticket_details=event_details
         )
         
@@ -122,6 +117,9 @@ def list_resale_ticket():
         
         # Add notification status to response
         ticket_response["notification_sent"] = notification_sent
+    else:
+        print("DEBUG: Cannot publish notification - missing event ID or details")
+        ticket_response["notification_sent"] = False
     
     return jsonify({
         "message": "Ticket listed for resale successfully",

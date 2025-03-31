@@ -340,9 +340,20 @@ async function consumeMessages() {
                         channel.ack(msg);
                         return;
                     }
+
+                    const eventDetails = {
+                        eventId: resaleEventId,
+                        eventName: eventData.eventName || eventData.Name,
+                        eventLocation: eventData.eventLocation || eventData.Venue,
+                        eventVenue: eventData.eventVenue || eventData.Venue,
+                        ticketPrice: eventData.ticketPrice,
+                        ticketQuantity: eventData.ticketQuantity || eventData.AvailableTickets,
+                        eventDate: eventData.eventDate || eventData.Date,
+                        categoryName: eventData.categoryName || eventData.Category
+                    };
                     
                     // Send notifications to all interested users
-                    await sendResaleNotifications(resaleEventId, eventData);
+                    await sendResaleNotifications(resaleEventId, eventDetails);
                 } else {
                     console.log(`📥 Received ${eventType} message, but handling is not yet implemented.`);
                 }
