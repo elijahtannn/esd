@@ -144,7 +144,8 @@
                                                     </div>
                                                     <!--QR code image -->
                                                     <div>
-                                                        <img :src="ticket.qrCode" class="qr-image">
+                                                        <img v-if="ticket.qrCode" :src="ticket.qrCode" alt="QR Code" class="qr-image"/>
+                                                        <img v-else src="../assets/images/dummy QR code.png" alt="Fallback QR Code" class="qr-image"/>
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
                                                     <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
@@ -323,7 +324,7 @@ export default {
                 console.error('No user ID available');
                 return;
                 }
-                // const userId = "67d44330971f398f904f8c34";
+                // const userId = "67e112f67621910c18c99249";
                 const userId = this.user._id || this.user.id;
                 console.log("Fetching orders for user:", userId);
                 
