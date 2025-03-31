@@ -763,8 +763,6 @@ watch: {
                 localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
                 this.validateTicket();
                 this.closePopup();
-                // Fix: ticketId was not defined in this scope, use this.selectedTicket.ticketId instead
-                const ticketId = this.selectedTicket.ticketId;
                 this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
             } else {
                 console.log('Please fill in all the details');
@@ -779,23 +777,17 @@ watch: {
                 const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
                 console.log("Validate Response:", response.data);
             } catch (error) {
-                console.error("Payment Error:", error.response?.data || error.message);
+                // Handle validation errors
+                const errorMessage = error.response?.data?.message || "An error occurred during validation";
+                alert(errorMessage);
+                console.error("Validation Error:", error.response?.data || error.message);
             }
         },
-        async transferTicket(acceptedChoice) {
-            try {
-                const transferData = {
-                    accepted: acceptedChoice, // change "true" to correct variable
-                    recipient_email: true, // change "true" to correct variable
-                    sender_id: true, // change "true" to correct variable
-                    sender_email: true, // change "true" to correct variable
-                };
-                const ticketId = this.selectedTicket.ticketId; // Get ticket ID from selected ticket
-                const response = await axios.post(`http://localhost:8011/transfer/${ticketId}`, transferData); // change "ticketId" to correct variable
-
-                console.log("Transfer Response:", response.data);
-            } catch (error) {
-                console.error("Payment Error:", error.response?.data || error.message);
+        confirmTransfer() {
+            if (this.email && this.isAgreed && this.selectedTicket) {
+                this.validateTicket();
+            } else {
+                alert('Please fill in all the details and agree to the terms');
             }
         },
         async resellTicket(ticketId, catId, eventId) {
@@ -908,11 +900,11 @@ watch: {
                 );
 
                 if (response.data.success) {
-                    // Refresh the pending transfers list
+                    // Remove notification by refreshing the pending transfers list
                     await this.fetchPendingTransfers();
                     
-                    // If accepted, refresh orders to show the new ticket
                     if (accepted) {
+                        // Only refresh orders and update ticket status if transfer was accepted
                         await this.fetchOrders();
                         
                         // Remove the "ON HOLD" status for this ticket
@@ -923,10 +915,16 @@ watch: {
                         }
                     }
                     
+                    // Show appropriate success message
+                    const message = accepted ? "Transfer accepted successfully!" : "Transfer rejected successfully!";
+                    alert(message);
+                    
+                    // Close the modal
                     this.closeModal();
                 }
             } catch (error) {
                 console.error("Error processing transfer response:", error);
+                alert("An error occurred while processing your response. Please try again.");
             }
         },
 
