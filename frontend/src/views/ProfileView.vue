@@ -63,27 +63,28 @@
                             </div>
                         </div>
 
-                        <!-- Expanded Notification Modal -->
-                        <div v-if="isModalOpen" class="notification-modal" @click.self="closeModal">
-                            <div class="modal-content">
-                                <span class="close-button" @click="closeModal">&times;</span>
-                                <h3>Pending Transfer</h3>
-                                <br>
-                                <div v-if="selectedNotification">
-                                    <p><strong>Ticket ID:</strong> #{{ selectedNotification._id }}</p>
-                                    <p><strong>Category:</strong> Category {{ selectedNotification.cat_id }}</p>
-                                    <p><strong>Seat:</strong> {{ selectedNotification.seat_info }}</p>
-                                    <p><strong>From:</strong> {{ selectedNotification.owner_email }}</p>
-                                    
-                                    <div class="button-group">
-                                        <button @click="handleTransferResponse(true)" class="accept-button">Accept</button>
-                                        <button @click="handleTransferResponse(false)" class="reject-button">Reject</button>
+                        <!-- Divider Line Between Notifications and Interested Events -->
+                        <hr class="divider" />
+
+                        <div class="interested-events-section">
+                            
+                            <div v-if="interestedEvents.length > 0" class="interested-event-list">
+                                <div 
+                                    class="interested-event-item interested-event"
+                                    @click="showInterestedEventsModal = true"
+                                >
+                                    <div class="interested-event-content">
+                                        <strong>Interested Events</strong>
+                                        <p>You're interested in {{ interestedEvents.length }} event(s).</p>
                                     </div>
                                 </div>
                             </div>
+                            <div v-else class="no-interested-events">
+                                <p>No interested events</p>
+                            </div>
                         </div>
-
                     </div>
+                    
                     <!-- order box -->
                     <div class="orders-box">
                         <h3 class="event-heading">EVENT ORDERS</h3>
@@ -144,7 +145,8 @@
                                                     </div>
                                                     <!--QR code image -->
                                                     <div>
-                                                        <img :src="ticket.qrCode" class="qr-image">
+                                                        <img v-if="ticket.qrCode" :src="ticket.qrCode" alt="QR Code" class="qr-image"/>
+                                                        <img v-else src="../assets/images/dummy QR code.png" alt="Fallback QR Code" class="qr-image"/>
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
                                                     <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
@@ -157,62 +159,6 @@
                                                     <p>Type: {{ ticket.categoryName }}</p>
                                                     <p>Seat: {{ ticket.seatInfo }}</p>
                                                     <p v-if="ticket.price !== undefined">Price: ${{ ticket.price }}</p>
-
-                                                    <!-- Resale Confirmation Modal -->
-                                                    <div v-if="showResalePopup" class="modal-overlay">
-                                                        <div class="modal-content">
-                                                            <!-- Close (X) Button -->
-                                                            <span class="close-button" @click="closePopup">&times;</span>
-
-                                                            <h3>Are you sure you want to resell your ticket?</h3>
-                                                            <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
-                                                            <p><strong>Type:</strong>{{ selectedTicket.categoryName }}</p>
-                                                            <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
-                                                            <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
-                                                            <hr>
-                                                            <!-- Mandatory Checkbox for Agreement -->
-                                                            <div class="checkbox-container">
-                                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                                                                <label for="agreeCheckbox">
-                                                                    I agree that a refund will only be issued once the resale process is
-                                                                    complete and the transaction is finalized.
-                                                                </label>
-                                                            </div>
-
-                                                            <button @click="confirmResale" class="confirm-button">CONFIRM</button>
-                                                        </div>
-                                                    </div>
-                                                    <!-- Transfer Ticket Modal -->
-                                                    <div v-if="showTransferPopup" class="modal-overlay">
-                                                        <div class="modal-content">
-                                                            <!-- Close (X) Button -->
-                                                            <span class="close-button" @click="closePopup">&times;</span>
-
-                                                            <h3>Transfer your ticket</h3>
-                                                            <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
-                                                            <p><strong>Type:</strong> {{ selectedTicket.categoryName }}</p>
-                                                            <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
-                                                            <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
-                                                            <hr>
-
-                                                            <!-- Input Form for Recipient's Information -->
-                                                            <div class="form-group">
-                                                                <label for="email">Recipient's Email:</label>
-                                                                <input type="text" id="email" v-model="email"
-                                                                    placeholder="Enter email" />
-                                                            </div>
-
-                                                            <!-- Mandatory Checkbox for Agreement -->
-                                                            <div class="checkbox-container">
-                                                                <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
-                                                                <label for="agreeCheckbox" style="font-size: 14px;">
-                                                                    I agree that transfer will only be completed once both parties has
-                                                                    accepted the transfer. Once the transfer is complete, it cannot be
-                                                                    undone or transferred back to me. </label>
-                                                            </div>
-                                                            <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
@@ -243,6 +189,124 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- MOVED MODALS TO MAIN CONTAINER LEVEL -->
+                
+                <!-- Expanded Notification Modal -->
+                <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+                    <div class="modal-content">
+                        <span class="close-button" @click="closeModal">&times;</span>
+                        <h3>Pending Transfer</h3>
+                        <br>
+                        <div v-if="selectedNotification">
+                            <p><strong>Ticket ID:</strong> #{{ selectedNotification._id }}</p>
+                            <p><strong>Category:</strong> Category {{ selectedNotification.cat_id }}</p>
+                            <p><strong>Seat:</strong> {{ selectedNotification.seat_info }}</p>
+                            <p><strong>From:</strong> {{ selectedNotification.owner_email }}</p>
+                            
+                            <div class="button-group">
+                                <button @click="handleTransferResponse(true)" class="accept-button">Accept</button>
+                                <button @click="handleTransferResponse(false)" class="reject-button">Reject</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Interested Events Modal -->
+                <div v-if="showInterestedEventsModal" class="modal-overlay" @click.self="showInterestedEventsModal = false">
+                    <div class="modal-content">
+                        <span class="close-button" @click="showInterestedEventsModal = false">&times;</span>
+                        <h3>Interested Events</h3>
+                        <br>
+                        <div v-if="interestedEvents.length === 0" class="no-events">
+                            <p>No interested events found.</p>
+                        </div>
+                        <div v-else class="interested-events-list">
+                            <div 
+                                v-for="event in interestedEvents" 
+                                :key="event.id" 
+                                class="interested-event-item"
+                            >
+                                <div class="event-details">
+                                    <strong>{{ event.name }}</strong>
+                                    <div v-if="event.dates && event.dates.length > 0">
+                                        <div v-for="(dateInfo, index) in event.dates" :key="index" class="event-date-row">
+                                            <p>
+                                                {{ formatDates(dateInfo.date) }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div v-else>
+                                        <p>No dates available</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    class="remove-event-btn" 
+                                    @click="removeInterestedEvent(event.id)"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resale Confirmation Modal -->
+                <div v-if="showResalePopup" class="modal-overlay">
+                    <div class="modal-content">
+                        <!-- Close (X) Button -->
+                        <span class="close-button" @click="closePopup">&times;</span>
+
+                        <h3>Are you sure you want to resell your ticket?</h3>
+                        <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
+                        <p><strong>Type:</strong>{{ selectedTicket.categoryName }}</p>
+                        <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
+                        <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
+                        <hr>
+                        <!-- Mandatory Checkbox for Agreement -->
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                            <label for="agreeCheckbox">
+                                I agree that a refund will only be issued once the resale process is
+                                complete and the transaction is finalized.
+                            </label>
+                        </div>
+
+                        <button @click="confirmResale" class="confirm-button">CONFIRM</button>
+                    </div>
+                </div>
+                
+                <!-- Transfer Ticket Modal -->
+                <div v-if="showTransferPopup" class="modal-overlay">
+                    <div class="modal-content">
+                        <!-- Close (X) Button -->
+                        <span class="close-button" @click="closePopup">&times;</span>
+
+                        <h3>Transfer your ticket</h3>
+                        <p><strong>Ticket ID:</strong> #{{ selectedTicket.ticketId }}</p>
+                        <p><strong>Type:</strong> {{ selectedTicket.categoryName }}</p>
+                        <p><strong>Price:</strong> ${{ selectedTicket.price }}</p>
+                        <p><strong>Seat:</strong> #{{ selectedTicket.seatInfo }}</p>
+                        <hr>
+
+                        <!-- Input Form for Recipient's Information -->
+                        <div class="form-group">
+                            <label for="email">Recipient's Email:</label>
+                            <input type="text" id="email" v-model="email"
+                                placeholder="Enter email" />
+                        </div>
+
+                        <!-- Mandatory Checkbox for Agreement -->
+                        <div class="checkbox-container">
+                            <input type="checkbox" id="agreeCheckbox" v-model="isAgreed" />
+                            <label for="agreeCheckbox" style="font-size: 14px;">
+                                I agree that transfer will only be completed once both parties has
+                                accepted the transfer. Once the transfer is complete, it cannot be
+                                undone or transferred back to me. </label>
+                        </div>
+                        <button @click="confirmTransfer" class="confirm-button">CONFIRM</button>
                     </div>
                 </div>
             </div>
@@ -289,6 +353,8 @@ export default {
             openMenus: [],
             loadingMsg: true,
             pendingTransferTickets: [],
+            interestedEvents: [],
+            showInterestedEventsModal: false,
         }
     },
     mounted() {
@@ -310,6 +376,16 @@ export default {
         .catch(error => console.error("Error in fetching process:", error));
 
     this.fetchPendingTransfers();
+    this.fetchInterestedEvents();
+},
+
+watch: {
+    // Add this to your existing watchers
+    user(newUser) {
+        if (newUser) {
+            this.fetchInterestedEvents();
+        }
+    }
 },
 
     methods: {
@@ -323,7 +399,7 @@ export default {
                 console.error('No user ID available');
                 return;
                 }
-                // const userId = "67d44330971f398f904f8c34";
+                // const userId = "67e112f67621910c18c99249";
                 const userId = this.user._id || this.user.id;
                 console.log("Fetching orders for user:", userId);
                 
@@ -473,6 +549,31 @@ export default {
                 day: 'numeric'
             });
         },
+        formatTime(timeString) {
+            if (!timeString) return '';
+            
+            // Handle ISO time string format (HH:MM:SS)
+            const timeParts = timeString.split(':');
+            if (timeParts.length >= 2) {
+                let hours = parseInt(timeParts[0]);
+                const minutes = timeParts[1];
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                
+                // Convert to 12-hour format
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                
+                return `${hours}:${minutes} ${ampm}`;
+            }
+            
+            return timeString; // Return as-is if parsing fails
+        },
+        
+        truncateText(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        },
         // FRONTEND METHODS
         async toggleEdit() {
             if (this.isEditing) {
@@ -584,32 +685,28 @@ export default {
             // this.isMenuOpen = false;
             this.openMenus= [];
         },
+        confirmTransfer() {
+            if ( this.email && this.isAgreed && this.selectedTicket) {
+                this.ticketStatuses[this.selectedTicket.ticketId] = {
+                isQrVisible: false,
+                status: "TICKET IS BEING TRANSFERRED"
+                };
+                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
+                this.validateTicket();
+                this.closePopup();
+                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
+            } else {
+                console.log('Please fill in all the details');
+            }
+        },
         async validateTicket() {
             try {
                 const validateData = {
                     recipientEmail: this.email,
                     senderEmail: this.user.email,
                 };
-                const response = await axios.post(
-                    `http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, 
-                    validateData
-                );
-                
+                const response = await axios.post(`http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, validateData);
                 console.log("Validate Response:", response.data);
-                
-                // If validation successful, update ticket status
-                if (response.data.can_transfer) {
-                    this.ticketStatuses[this.selectedTicket.ticketId] = {
-                        isQrVisible: false,
-                        status: "TICKET IS BEING TRANSFERRED"
-                    };
-                    localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
-                    this.closePopup();
-                    this.disabledMenus = { ...this.disabledMenus, [this.selectedTicket.ticketId]: true };
-                } else {
-                    // Show error message to user
-                    alert(response.data.message);
-                }
             } catch (error) {
                 // Handle validation errors
                 const errorMessage = error.response?.data?.message || "An error occurred during validation";
@@ -721,6 +818,95 @@ export default {
                 alert("An error occurred while processing your response. Please try again.");
             }
         },
+
+        async fetchInterestedEvents() {
+        try {
+            const userId = this.user?._id || this.user?.id;
+            if (!userId) {
+                console.error('No user ID available');
+                return;
+            }
+
+            const response = await axios.get(
+                `${this.apiGatewayUrl}/user/${userId}/interested-events`
+            );
+
+            // Fetch detailed event information for each interested event
+            const eventDetailsPromises = response.data.interested_events.map(async (eventId) => {
+                try {
+                    const eventResponse = await axios.get(
+                        `https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/${eventId}`
+                    );
+
+                    // Process the response data according to the actual API structure
+                    if (eventResponse.data && eventResponse.data.Event && eventResponse.data.Event.length > 0) {
+                        // The API actually returns multiple date objects in the Event array
+                        // Each with the same event info but different dates
+                        const eventItems = eventResponse.data.Event;
+                        
+                        // Extract event info from the first item (common info)
+                        const firstEventData = eventItems[0];
+                        
+                        // Extract all dates from all returned event objects
+                        const allDates = eventItems.map(event => ({
+                            date: event.Date,
+                            startTime: event.StartTime,
+                            endTime: event.EndTime,
+                            eventDateId: event.EventDateId
+                        }));
+                        
+                        return {
+                            id: eventId,
+                            name: firstEventData.Name,
+                            dates: allDates,
+                            venue: firstEventData.Venue,
+                            description: firstEventData.Description
+                        };
+                    }
+                } catch (error) {
+                    console.error(`Error fetching event ${eventId} details:`, error);
+                    return null;
+                }
+            });
+
+            // Wait for all event details to be fetched
+            const detailedEvents = await Promise.all(eventDetailsPromises);
+            
+            // Filter out any null results
+            this.interestedEvents = detailedEvents.filter(event => event !== null);
+        } catch (error) {
+            console.error('Error fetching interested events:', error);
+        }
+        },
+
+        async removeInterestedEvent(eventId) {
+            try {
+                const userId = this.user?._id || this.user?.id;
+                if (!userId) {
+                    console.error('No user ID available');
+                    return;
+                }
+
+                const response = await axios.delete(
+                    `${this.apiGatewayUrl}/user/${userId}/interested-events/${eventId}`
+                );
+
+                if (response.status === 200) {
+                    // Remove the event from local state
+                    this.interestedEvents = this.interestedEvents.filter(
+                        event => event.id !== eventId
+                    );
+
+                    // If no more interested events, close the modal
+                    if (this.interestedEvents.length === 0) {
+                        this.showInterestedEventsModal = false;
+                    }
+                }
+            } catch (error) {
+                console.error('Error removing interested event:', error);
+            }
+        },
+
     },
     computed: {
         upcomingOrders() {
@@ -983,8 +1169,9 @@ button {
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     text-align: center;
-    width: 500px;
+    width: 90%;
     position: relative;
+    max-width: 800px;
     /* Keep the close button (X) positioned */
 }
 
@@ -1182,6 +1369,86 @@ button {
     background-color: #f8f9fa;
     color: #1d4ba8; /* Darker shade of theme blue */
     border-color: #1d4ba8;
+}
+
+/* Interested Events Styling */
+.interested-events-section {
+    margin-top: 10px;
+}
+
+.interested-events-label {
+    font-size: 1em;
+    color: #808080;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.interested-event {
+    background-color: #f0f4ff;
+    cursor: pointer;
+}
+
+.interested-event:hover {
+    background-color: #e6edf8;
+}
+
+.no-interested-events {
+    color: #808080;
+    font-size: 0.9em;
+}
+
+/* Interested Events Modal Styles */
+.interested-events-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.interested-event-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.remove-event-btn {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.remove-event-btn:hover {
+    background-color: #ff3333;
+}
+
+.no-events {
+    text-align: center;
+    color: #888;
+    padding: 20px;
+}
+
+.remove-event-btn {
+    margin-left: 20px;
+    min-width: 100px;
+    white-space: nowrap;
+    font-size: 14px;
+    align-self: flex-start;
+    margin-top: 15px;
+    padding: 8px 16px;
+}
+
+.event-date-row {
+  margin-bottom: 5px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.event-date-row p {
+  margin: 5px 0;
 }
 
 </style>

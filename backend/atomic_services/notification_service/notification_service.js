@@ -2,6 +2,7 @@ const amqp = require('amqplib');
 const nodemailer = require('nodemailer');
 const { google } = require('googleapis');
 const Mailgen = require('mailgen');
+const axios = require('axios');
 require('dotenv').config();
 
 const EXCHANGE_NAME = 'ticketing.exchange';
@@ -21,6 +22,8 @@ const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const EMAIL_USER = process.env.EMAIL_USER;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672';
+// Change this line in notification_service.js
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:5003';
 
 // Setup OAuth2 client for Gmail
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -35,7 +38,6 @@ const mailGenerator = new Mailgen({
         copyright: 'Copyright © 2025 EVENTIVA. All rights reserved.',
         // Add custom styles for the header
         styles: {
-            
             theme: {
                 link: '#2563EB',
                 head: {
@@ -92,6 +94,86 @@ async function sendEmail(to, subject, message) {
 }
 
 /**
+ * Function to fetch users interested in a specific event
+ * @param {string} eventId - The event ID to look up
+ * @returns {Array} - Array of users interested in the event
+ */
+async function getInterestedUsers(eventId) {
+    try {
+        const response = await axios.get(`${USER_SERVICE_URL}/events/${eventId}/interested-users`);
+        return response.data.users || [];
+    } catch (error) {
+        console.error(`Error fetching interested users for event ${eventId}: ${error.message}`);
+        return [];
+    }
+}
+
+/**
+ * Function to send resale availability notifications to interested users
+ * @param {string} eventId - The event ID with available resale tickets
+ * @param {object} eventDetails - Details about the event
+ */
+async function sendResaleNotifications(eventId, eventDetails) {
+    try {
+        const interestedUsers = await getInterestedUsers(eventId);
+        console.log(`📧 Sending resale notifications to ${interestedUsers.length} users for event ${eventId}`);
+        
+        if (interestedUsers.length === 0) {
+            console.log(`ℹ️ No users are interested in resale tickets for event ${eventId}`);
+            return;
+        }
+        
+        const { 
+            eventName, 
+            ticketPrice, 
+            ticketQuantity, 
+            eventDate, 
+            eventLocation,
+            eventVenue,
+            categoryName
+          } = eventDetails;
+        
+        for (const user of interestedUsers) {
+            const subject = `🎟 Resale Tickets Available for ${eventName}`;
+            
+            // Generate email body using Mailgen
+            const emailBody = {
+                body: {
+                    name: user.name || user.email.split('@')[0],
+                    intro: `Great news! Resale tickets are now available for ${eventName}.`,
+                    dictionary: {
+                        'Event': eventName,
+                        'Date': eventDate || 'See event details',
+                        'Location': eventLocation || 'See event details',
+                        'Available Tickets': ticketQuantity || 'Limited quantity',
+                        'Price': ticketPrice ? `$${ticketPrice}` : 'See event details'
+                    },
+                    action: {
+                        instructions: 'Act quickly! Resale tickets are typically sold on a first-come, first-served basis.',
+                        button: {
+                            color: '#2563EB',
+                            text: 'Buy Tickets Now',
+                            link: `${FRONTEND_URL}/events/${eventId}`
+                        }
+                    },
+                    outro: 'If you no longer wish to receive resale notifications for this event, you can unsubscribe from your profile page.'
+                }
+            };
+
+            // Generate HTML email
+            const message = mailGenerator.generate(emailBody);
+
+            // Send email
+            await sendEmail(user.email, subject, message);
+        }
+        
+        console.log(`Resale notifications sent to all interested users for event ${eventId}`);
+    } catch (error) {
+        console.error(`Error sending resale notifications: ${error.message}`);
+    }
+}
+
+/**
  * Function to process incoming messages and send email notifications.
  */
 async function consumeMessages() {
@@ -117,7 +199,7 @@ async function consumeMessages() {
                 const eventData = JSON.parse(msg.content.toString());
                 console.log('📨 Received Message:', eventData);
 
-                const { email, eventName, ticketNumber, eventType, sender_email, recipient_email, role, amount, message } = eventData;
+                const { email, eventName, ticketNumber, eventType, sender_email, recipient_email, role, amount, message, eventId } = eventData;
 
                 if (eventType === 'ticket.purchase') {
                     const subject = `🎟 Your Ticket for ${eventName}`;
@@ -244,10 +326,38 @@ async function consumeMessages() {
                 
                     // Send email
                     await sendEmail(email, subject, emailMessage);
-                    console.log(`✅ Refund notification email sent to ${email}`);
+                    console.log(`Refund notification email sent to ${email}`);
+                } else if (eventType === 'ticket.resale.available') {
+                    // This handles resale tickets becoming available
+                    // The event data should include details about the resale
+                    console.log(`🎫 Resale tickets available for event ID: ${eventId || eventData.eventId}`);
+                    
+                    // Extract the event ID
+                    const resaleEventId = eventId || eventData.eventId;
+                    
+                    if (!resaleEventId) {
+                        console.error('No event ID provided for resale notification');
+                        channel.ack(msg);
+                        return;
+                    }
+
+                    const eventDetails = {
+                        eventId: resaleEventId,
+                        eventName: eventData.eventName || eventData.Name,
+                        eventLocation: eventData.eventLocation || eventData.Venue,
+                        eventVenue: eventData.eventVenue || eventData.Venue,
+                        ticketPrice: eventData.ticketPrice,
+                        ticketQuantity: eventData.ticketQuantity || eventData.AvailableTickets,
+                        eventDate: eventData.eventDate || eventData.Date,
+                        categoryName: eventData.categoryName || eventData.Category
+                    };
+                    
+                    // Send notifications to all interested users
+                    await sendResaleNotifications(resaleEventId, eventDetails);
                 } else {
                     console.log(`📥 Received ${eventType} message, but handling is not yet implemented.`);
-                }        
+                }
+                
                 // Acknowledge message after processing
                 channel.ack(msg);
             }
