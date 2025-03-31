@@ -231,7 +231,16 @@
                             >
                                 <div class="event-details">
                                     <strong>{{ event.name }}</strong>
-                                    <p>{{ formatDates(event.date) }} | {{ event.venue }}</p>
+                                    <div v-if="event.dates && event.dates.length > 0">
+                                        <div v-for="(dateInfo, index) in event.dates" :key="index" class="event-date-row">
+                                            <p>
+                                                {{ formatDates(dateInfo.date) }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div v-else>
+                                        <p>No dates available</p>
+                                    </div>
                                 </div>
                                 <button 
                                     class="remove-event-btn" 
@@ -540,6 +549,31 @@ watch: {
                 day: 'numeric'
             });
         },
+        formatTime(timeString) {
+            if (!timeString) return '';
+            
+            // Handle ISO time string format (HH:MM:SS)
+            const timeParts = timeString.split(':');
+            if (timeParts.length >= 2) {
+                let hours = parseInt(timeParts[0]);
+                const minutes = timeParts[1];
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                
+                // Convert to 12-hour format
+                hours = hours % 12;
+                hours = hours ? hours : 12; // the hour '0' should be '12'
+                
+                return `${hours}:${minutes} ${ampm}`;
+            }
+            
+            return timeString; // Return as-is if parsing fails
+        },
+        
+        truncateText(text, maxLength) {
+            if (!text) return '';
+            if (text.length <= maxLength) return text;
+            return text.substring(0, maxLength) + '...';
+        },
         // FRONTEND METHODS
         async toggleEdit() {
             if (this.isEditing) {
@@ -806,14 +840,29 @@ watch: {
                         `https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/${eventId}`
                     );
 
-                    // Assuming the response structure matches your previous API responses
+                    // Process the response data according to the actual API structure
                     if (eventResponse.data && eventResponse.data.Event && eventResponse.data.Event.length > 0) {
-                        const eventData = eventResponse.data.Event[0];
+                        // The API actually returns multiple date objects in the Event array
+                        // Each with the same event info but different dates
+                        const eventItems = eventResponse.data.Event;
+                        
+                        // Extract event info from the first item (common info)
+                        const firstEventData = eventItems[0];
+                        
+                        // Extract all dates from all returned event objects
+                        const allDates = eventItems.map(event => ({
+                            date: event.Date,
+                            startTime: event.StartTime,
+                            endTime: event.EndTime,
+                            eventDateId: event.EventDateId
+                        }));
+                        
                         return {
                             id: eventId,
-                            name: eventData.Name,
-                            date: eventData.Date,
-                            venue: eventData.Venue
+                            name: firstEventData.Name,
+                            dates: allDates,
+                            venue: firstEventData.Venue,
+                            description: firstEventData.Description
                         };
                     }
                 } catch (error) {
@@ -1122,8 +1171,9 @@ button {
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     text-align: center;
-    width: 500px;
+    width: 90%;
     position: relative;
+    max-width: 800px;
     /* Keep the close button (X) positioned */
 }
 
@@ -1381,6 +1431,16 @@ button {
     text-align: center;
     color: #888;
     padding: 20px;
+}
+
+.remove-event-btn {
+    margin-left: 20px;
+    min-width: 100px;
+    white-space: nowrap;
+    font-size: 14px;
+    align-self: flex-start;
+    margin-top: 15px;
+    padding: 8px 16px;
 }
 
 </style>
