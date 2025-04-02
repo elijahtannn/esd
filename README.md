@@ -2,8 +2,8 @@
 
 <p id="description">Purchasing your favourite event with ease</p>
 <ol>
-  <li><a href="https://docs.google.com/document/d/1guzZgE9IGnuUP1E8EiU6zEAK6GQ3gVN0mYiIknzofn0/edit?usp=sharing">1. Project report & API documentation</a></li>
-  <li><a href="https://www.canva.com/design/DAGgvwbA2D0/PEQJZt8Uccf0Y7b3NDOrGQ/edit">2. Project slides</a></li>
+  <li><a href="https://docs.google.com/document/d/1guzZgE9IGnuUP1E8EiU6zEAK6GQ3gVN0mYiIknzofn0/edit?usp=sharing">Project report & API documentation</a></li>
+  <li><a href="https://www.canva.com/design/DAGgvwbA2D0/PEQJZt8Uccf0Y7b3NDOrGQ/edit">Project slides</a></li>
   <li>Project Demo video </li>
 </ol>
 
