@@ -1,5 +1,9 @@
 <h1 align="center" id="title">EVENTIVA</h1>
 
+<p align="center">
+  <img src="https://i.imgur.com/o5KFNIh.png" alt="Centered Image"/>
+</p>
+
 <p id="description">Purchasing your favourite event with ease</p>
 <ol>
   <li><a href="https://docs.google.com/document/d/1guzZgE9IGnuUP1E8EiU6zEAK6GQ3gVN0mYiIknzofn0/edit?usp=sharing">Project report & API documentation</a></li>
