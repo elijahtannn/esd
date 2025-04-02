@@ -16,10 +16,13 @@ CORS(app)
 load_dotenv()
 
 # Service URLs
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
-REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-service:5004")
+# TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://localhost:5001")
+# USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:5003")
+# REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-ticket:5004")
+REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://localhost:5004")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -31,19 +34,13 @@ def getAllCatTickets(cat_id):
         
         if isinstance(responseData, list):
             # It's an array of tickets
-            print("Received an array of tickets")
             return responseData
-        elif isinstance(responseData, dict) and 'message' in responseData:
-            # It's a dictionary with a 'message' key
-            print(f"Message received: {responseData['message']}")
-            return []
         else:
             # Unexpected response format
-            print("Unexpected response format")
-            return None
+            return []
         
     except Exception as e:
-        return None
+        return []
     
 
 
@@ -64,7 +61,7 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
         resale_tickets = []
         sorted_ticketed = sorted(all_cat_tickets, key=lambda x: datetime.fromisoformat(x["created_at"]))
         for ticket in sorted_ticketed:
-            if ticket['status'] == 'RESALE':
+            if ticket['status'] == 'RESALE' and ticket['owner_id'] != user_id:
                 resale_tickets.append(ticket)
 
         for num in range(quantity):
@@ -98,7 +95,6 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                 reserve_result = reserve_resp.json()
                 ticketId = reserve_result['ticket_ids'][0]
                 ticketIds.append(ticketId)
-                print("There is NO existing resale: ", ticketId)
 
                 # generate QR code and update db
                 qr_url = generate_qr_code_url(ticketId)
@@ -108,7 +104,6 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                 # If there are resale tickets listed 
                 # update owner id and status
                 ticketId = resale_tickets[0]['_id']
-                print("There is existing resale: ", ticketId)
 
                 used_resale_tickets.append(resale_tickets[0])
                 ticketIds.append(ticketId)
@@ -169,26 +164,21 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
     try:
         purchaseStatus = False
         for ticketId in all_reserved_ticket_ids:
-            print("current ticket", ticketId)
             try:
                 # ticket_id_object = ObjectId(ticketId)
                 response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
                 responseData = json.loads(response.content.decode("utf-8-sig"))
 
                 ticketStatus = responseData['status']
-                print("Status:", ticketStatus)
 
                 if ticketStatus != 'SOLD':
                     # it its a resale ticket, dont delete but revert owner id and status
-                    print("ALL RESALE:",all_used_resale_tickets)
                     for ticket in all_used_resale_tickets:
                         if ticket["_id"] == ticketId:
-                            print("FOUND IN RESALE:",ticket)    
                             updateTicket(ticketId, ticket["owner_id"], "RESALE")
                             break
                     else:
                         # Delete ticket if user did not buy the ticket within the time. Leave it untouched if user bought the ticket
-                        print("delete:", ticketId)
                         response = requests.delete(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
                 else:
                     # If one ticket has the sold status, all ticket will have the same status as it is in the same order
@@ -198,7 +188,6 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
                     for ticket in all_used_resale_tickets:
                         catTicket = next((ticketTemp for ticketTemp in selected_tickets if ticketTemp['catId'] == ticket['cat_id']), None)
                         catPrice = catTicket['price'] if catTicket else None
-                        print(catPrice)
 
                         refund_data = {
                             "ticket_id": ticket['_id'],
@@ -208,7 +197,7 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
                         response = requests.post(f"{REFUND_SERVICE_URL}/refund", json=refund_data)
 
             except Exception as e:
-                print("Error:", str(e))
+                logging.exception("Error checking ticket status")
                 return False
         
         return purchaseStatus
@@ -225,7 +214,6 @@ def updateTicket(ticketId, owner_id, status):
             "status": status,
         }
         response = requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticketId}", json=updated_data)
-        print(response)
         return True
     except Exception as e:
         logging.exception("Error updating ticket status and owner id")
@@ -243,11 +231,11 @@ def revertTicketQuantity(event_date_id, selected_tickets):
             try:
                 response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/categories/{ticket['catId']}/inventory/resale", json={"Count": ticket['quantity']})
             except Exception as e:
-                print("Error updating available tickets:", str(e))
+                logging.exception("Error updating available tickets")
         try:
             response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/inventory/resale", json={"Count": total_quantity})
         except Exception as e:
-            print("Error updating available tickets:", str(e))   
+            logging.exception("Error updating available tickets")
         
         return True
     
@@ -308,18 +296,13 @@ def process_ticket_reserve():
         # Update event total available tickets
         decrease_event_available_tickets(event_date_id, total_quantity)
 
-        print("all:" , all_reserved_ticket_ids)
-        print("resale: ", all_used_resale_tickets)
-        print("Reserved ticket while waiting for user to complete order purchase")
 
         # Wait for 3 minutes for user to complete order purchase
-        time.sleep(60) #will update this to 3 minutes: 180
+        time.sleep(90) #will update this to 3 minutes: 180
 
         purchaseStatus = checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets)
         # purchaseStatus = True #for testing
-
-        print(purchaseStatus)
-                
+        
         if purchaseStatus:
             return jsonify({
                 "status": True,
