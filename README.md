@@ -6,6 +6,7 @@
   <li><a href="https://www.canva.com/design/DAGgvwbA2D0/PEQJZt8Uccf0Y7b3NDOrGQ/edit">Project slides</a></li>
   <li>Project Demo video </li>
 </ol>
+<br/>
 
 ## Tech Stack
 
@@ -47,7 +48,7 @@
 
 
 
-
+<br/>
 
 <h2>🛠️ Installation Steps:</h2>
 
