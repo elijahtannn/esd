@@ -17,12 +17,12 @@ load_dotenv()
 
 # Service URLs
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
-# TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
-TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://localhost:5001")
-# USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:5003")
-# REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-ticket:5004")
-REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://localhost:5004")
+TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
+# TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://localhost:5001")
+USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
+# USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:5003")
+REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-ticket:5004")
+# REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://localhost:5004")
 
 logging.basicConfig(level=logging.INFO)
 
