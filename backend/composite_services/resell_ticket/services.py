@@ -74,3 +74,16 @@ def update_event_inventory(cat_id, resale_count):
         response_data = {"error": "Invalid JSON response from OutSystems"}
 
     return response_data, response.status_code
+
+def get_interested_users(event_id):
+    """Fetch users interested in an event from User Service"""
+    url = f"{Config.USER_SERVICE_URL}/events/{event_id}/interested-users"
+    
+    response = requests.get(url)
+    
+    try:
+        response_data = response.json()
+    except ValueError:
+        response_data = {"error": "Invalid JSON response from User Service"}
+        
+    return response_data.get("users", []), response.status_code

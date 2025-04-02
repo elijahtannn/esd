@@ -4,7 +4,8 @@ from services import (
     update_event_inventory, 
     get_ticket_details, 
     get_event_details,
-    get_category_details
+    get_category_details,
+    get_interested_users
 )
 from rabbit_publisher import RabbitMQPublisher
 
@@ -60,30 +61,25 @@ def list_resale_ticket():
     if ticket_status != 200:
         return jsonify({"error": "Failed to update ticket status", "details": ticket_response}), ticket_status
 
-    # Step 5: Gather event information for notification
+    # Step 5: Gather event information and notify interested users
     print(f"DEBUG: Starting to gather event details for event_id: {event_id}")
     event_name = None
     event_details = {}
 
-    # If we have event_id, get event details
     if event_id:
         event_info, event_status = get_event_details(event_id)
         print(f"DEBUG: Event details status: {event_status}")
         print(f"DEBUG: Full event response: {event_info}")
 
-        # Check if the request was successful
         if event_status == 200:
-            # The response now has "Event" key instead of "Events"
             events_data = event_info.get("Event", [])
             
             if events_data:
-                # Prefer events with matching EventId or Id
                 matched_event = next((event for event in events_data 
-                                      if str(event.get("EventId")) == str(event_id) or 
-                                         str(event.get("Id")) == str(event_id)), 
-                                     events_data[0])
+                                    if str(event.get("EventId")) == str(event_id) or 
+                                       str(event.get("Id")) == str(event_id)), 
+                                   events_data[0])
                 
-                # Extract event details
                 event_name = matched_event.get("Name", "Event")
                 event_details = {
                     "eventId": event_id,
@@ -94,32 +90,28 @@ def list_resale_ticket():
                     "categoryName": matched_event.get("Category", ""),
                 }
                 
-                print(f"DEBUG: Extracted Event Details: {event_details}")
+                # Get interested users and send notifications
+                interested_users, users_status = get_interested_users(event_id)
+                if users_status == 200 and interested_users:
+                    # Publish notification for each interested user
+                    for user in interested_users:
+                        notification_data = {
+                            "eventType": "ticket.resale.available",
+                            "email": user["email"],
+                            "eventId": event_id,
+                            "eventName": event_name,
+                            **event_details
+                        }
+                        rabbitmq_publisher.publish_message(
+                            routing_key="ticket.resale.available",
+                            message=notification_data
+                        )
+                        print(f"DEBUG: Notification sent to user {user['email']}")
             else:
                 print("DEBUG: No events found in the response")
         else:
             print(f"DEBUG: Failed to retrieve event details. Status: {event_status}")
             print(f"DEBUG: Response: {event_info}")
-    
-    # Step 6: Publish message to notify interested users
-    if event_id and event_details:
-        print(f"DEBUG: Publishing notification for event {event_id}")
-        print(f"DEBUG: RabbitMQ URL: {rabbitmq_publisher.rabbitmq_url}")
-        
-        # Try to publish notification
-        notification_sent = rabbitmq_publisher.publish_resale_availability(
-            event_id=event_id,
-            event_name=event_details.get("eventName"),
-            ticket_details=event_details
-        )
-        
-        print(f"DEBUG: Notification published: {notification_sent}")
-        
-        # Add notification status to response
-        ticket_response["notification_sent"] = notification_sent
-    else:
-        print("DEBUG: Cannot publish notification - missing event ID or details")
-        ticket_response["notification_sent"] = False
     
     return jsonify({
         "message": "Ticket listed for resale successfully",

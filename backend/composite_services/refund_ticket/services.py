@@ -12,6 +12,9 @@ ROUTING_KEY = "ticket.refund.complete"
 # Service URLs (for use in this file)
 PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://127.0.0.1:8002")
 
+# At the top of the file, add:
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672")
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,36 +22,18 @@ logger = logging.getLogger(__name__)
 def send_transfer_notification(user_email, message, event_type, ticket_number=None, amount=None, event_name=None):
     """Send notification via RabbitMQ with improved connection handling"""
     try:
-        # Try multiple hostnames to improve reliability
-        hosts_to_try = ['localhost', '127.0.0.1', 'host.docker.internal', 'rabbitmq']
-        connected = False
-        connection = None
-        
-        for host in hosts_to_try:
-            try:
-                logger.info(f"Attempting to connect to RabbitMQ at {host}:5672")
-                credentials = pika.PlainCredentials('guest', 'guest')
-                parameters = pika.ConnectionParameters(
-                    host=host,
-                    port=5672,
-                    credentials=credentials,
-                    connection_attempts=1,
-                    socket_timeout=2,
-                    blocked_connection_timeout=2
-                )
-                connection = pika.BlockingConnection(parameters)
-                connected = True
-                logger.info(f"Successfully connected to RabbitMQ at {host}")
-                break
-            except Exception as e:
-                logger.warning(f"Failed to connect to RabbitMQ at {host}: {str(e)}")
-                continue
-        
-        if not connected or not connection:
-            logger.error("Failed to connect to RabbitMQ after trying all hosts")
-            return False
+        # Instead of trying multiple hosts, use the Docker service name
+        logger.info(f"Attempting to connect to RabbitMQ using URL: {RABBITMQ_URL}")
         
         try:
+            parameters = pika.URLParameters(RABBITMQ_URL)
+            parameters.connection_attempts = 3
+            parameters.retry_delay = 2
+            parameters.socket_timeout = 3
+            
+            connection = pika.BlockingConnection(parameters)
+            logger.info("Successfully connected to RabbitMQ")
+            
             # Create channel
             channel = connection.channel()
             

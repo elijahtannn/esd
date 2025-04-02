@@ -6,7 +6,7 @@ services:
       dockerfile: Dockerfile
     container_name: resell-ticket
     environment:
-      - FLASK_APP=app.py
+      - FLASK_APP=resell_ticket.py
       - FLASK_ENV=development
       - TICKET_SERVICE_URL=http://ticket-service:5001
       - OUTSYSTEMS_EVENT_API_URL=https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI
