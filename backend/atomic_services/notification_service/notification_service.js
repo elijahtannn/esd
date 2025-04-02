@@ -22,8 +22,7 @@ const REDIRECT_URI = 'https://developers.google.com/oauthplayground';
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 const EMAIL_USER = process.env.EMAIL_USER;
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@rabbitmq:5672';
-// Change this line in notification_service.js
-const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://localhost:5003';
+const USER_SERVICE_URL = process.env.USER_SERVICE_URL || 'http://user-service:5003';
 
 // Setup OAuth2 client for Gmail
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI);
@@ -36,7 +35,6 @@ const mailGenerator = new Mailgen({
         name: 'EVENTIVA',
         link: 'http://localhost:5173',
         copyright: 'Copyright © 2025 EVENTIVA. All rights reserved.',
-        // Add custom styles for the header
         styles: {
             theme: {
                 link: '#2563EB',

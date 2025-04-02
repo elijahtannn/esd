@@ -64,7 +64,7 @@ def callback():
             "code": auth_code,
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
-            "redirect_uri": f"{KONG_URL}/login/callback",  # Use Kong URL here too
+            "redirect_uri": f"{KONG_URL}/login/callback",  
             "grant_type": "authorization_code",
         },
         headers={"Content-Type": "application/x-www-form-urlencoded"},

@@ -1537,16 +1537,16 @@ button {
 
 /* Individual Notification Item */
 .notification-item {
-    background-color: #f9f9f9; /* Light background for each notification */
-    padding: 10px; /* Adds spacing inside each notification */
-    border-radius: 8px; /* Rounded corners for a modern look */
+    background-color: #f9f9f9;
+    padding: 10px; 
+    border-radius: 8px; 
     font-size: 14px;
     color: #333;
-    margin-bottom: 10px; /* Adds spacing between notifications */
+    margin-bottom: 10px; 
 }
 
 .notification-item:hover {
-    background-color: #e6e6e6; /* Slightly darker background on hover */
+    background-color: #e6e6e6; 
 }
 
 /* Notifications Label */
@@ -1554,36 +1554,36 @@ button {
     font-size: 1em;
     color: #808080;
     margin-bottom: 10px;
-    display: block; /* Ensures the label stays on its own line */
+    display: block; 
 }
 
 /* Notification Modal */
 .notification-modal {
-    position: fixed; /* Keeps the modal fixed in place */
-    top: 50%; /* Centers vertically */
-    left: 50%; /* Centers horizontally */
-    transform: translate(-50%, -50%); /* Adjusts for modal's own dimensions */
-    z-index: 3; /* Ensures it appears above other elements */
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-    width: 100vw; /* Full viewport width for the overlay */
-    height: 100vh; /* Full viewport height for the overlay */
-    display: flex; /* Flexbox for centering content */
-    justify-content: center; /* Centers horizontally */
-    align-items: center; /* Centers vertically */
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    transform: translate(-50%, -50%); 
+    z-index: 3; 
+    background-color: rgba(0, 0, 0, 0.5); 
+    width: 100vw; 
+    height: 100vh; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
 }
 /* Modal Content Box */
 /* Modal Content Box */
 .modal-content {
-    background-color: white; /* Modal box background color */
-    padding: 20px; /* Adds spacing inside the modal box */
-    border-radius: 8px; /* Rounded corners for a modern look */
-    width: 80%; /* Width of the modal box (adjustable) */
-    max-width: 400px; /* Maximum width for larger screens */
-    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3); /* Adds a shadow for depth */
-    overflow-wrap: break-word; /* Ensures long words break to fit within the container */
-    word-wrap: break-word; /* Legacy support for word wrapping */
-    overflow-y: auto; /* Adds scroll if content exceeds modal height */
-    max-height: 80vh; /* Limits height to prevent overflow outside viewport */
+    background-color: white; 
+    padding: 20px; 
+    border-radius: 8px; 
+    width: 80%; 
+    max-width: 400px; 
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3); 
+    overflow-wrap: break-word; 
+    word-wrap: break-word; 
+    overflow-y: auto; 
+    max-height: 80vh; 
 }
 
 .button-group {

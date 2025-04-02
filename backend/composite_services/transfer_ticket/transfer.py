@@ -212,7 +212,7 @@ def transfer_ticket(ticket_id):
                 }
             )
         except:
-            pass  # Ignore errors in cleanup
+            pass  
             
         return jsonify({
             "error": "Transfer service error",
