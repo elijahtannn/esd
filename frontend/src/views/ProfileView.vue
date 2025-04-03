@@ -115,8 +115,15 @@
                                                     order.OrderId }}</span><br>
                                                 <span style="font-size: 15px; color: grey;">Ticket Quantity: {{
                                                     order.TicketQuantity }}</span><br>
-                                                <span style="font-size: 15px; color: grey;">Total Cost: ${{
-                                                    order.TotalCost.toFixed(2) }}</span>
+
+                                                <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2) }}</span><br>
+                                                    
+                                                    <span v-if="hasRefundedTickets(order)" class="resold-ticket-info">
+                                                    <i class="fas fa-check-circle" style="color: #4CAF50;"></i> 
+                                                    <span style="color: #4CAF50; font-weight: 500;">
+                                                        {{ getRefundedTicketsCount(order) }} ticket(s) successfully resold and refunded
+                                                    </span>
+                                                </span>
                                             </div>
                                         </div>
                                         <button class="toggle-button">
@@ -476,17 +483,34 @@ watch: {
 },
 
     methods: {
+        hasRefundedTickets(order) {
+            return order.hasRefundedTickets || 
+         (order.refundedTicketIds && order.refundedTicketIds.length > 0);
+        },
+        
+        getRefundedTicketsCount(order) {
+            if (order.refundedTicketsCount !== undefined) {
+                return order.refundedTicketsCount;
+            }
+            
+            if (!order.refundedTicketIds) {
+                return 0;
+            }
+            
+            return order.refundedTicketIds.length;
+        },
+        
         toggleExpand(order) {
             order.isExpanded = !order.isExpanded;
         },
-        // BACKEND METHODS
+
         async fetchOrders() {
             try {
                 if (!this.user || (!this.user._id && !this.user.id)) {
                 console.error('No user ID available');
                 return;
                 }
-                // const userId = "67e112f67621910c18c99249";
+                
                 const userId = this.user._id || this.user.id;
                 console.log("Fetching orders for user:", userId);
                 
@@ -496,7 +520,6 @@ watch: {
                 
                 this.processOrders(rawOrders);
                 
-                // After processing orders, fetch additional details
                 await this.fetchOrderDetails();
             } catch (error) {
                 console.error('Error fetching orders:', error);
@@ -504,12 +527,12 @@ watch: {
         },
 
         processOrders(rawOrders) {
-            console.log("Processing Order", rawOrders);
+            console.log("Processing Orders", rawOrders);
             this.orderList = rawOrders.map(order => {
-                // Extract all ticket IDs from the nested structure
+                
                 let allTicketIds = [];
                 if (order.tickets && Array.isArray(order.tickets)) {
-                // Flatten the nested ticketIds arrays from all category objects
+               
                 order.tickets.forEach(category => {
                     if (category.ticketIds && Array.isArray(category.ticketIds)) {
                     allTicketIds = [...allTicketIds, ...category.ticketIds];
@@ -517,12 +540,24 @@ watch: {
                 });
                 }
                 
+                let allRefundedTicketIds = [];
+                if (order.refunded_ticket_ids && Array.isArray(order.refunded_ticket_ids)) {
+                order.refunded_ticket_ids.forEach(category => {
+                    if (category.ticketIds && Array.isArray(category.ticketIds)) {
+                    allRefundedTicketIds = [...allRefundedTicketIds, ...category.ticketIds];
+                    }
+                });
+                }
+                
                 return {
                 OrderId: order.orderId,
-                TicketQuantity: allTicketIds.length,
+                TicketQuantity: allTicketIds.length + allRefundedTicketIds.length,
                 TotalCost: order.totalAmount,
                 Status: order.status,
                 ticketIds: allTicketIds,
+                refundedTicketIds: allRefundedTicketIds,
+                hasRefundedTickets: allRefundedTicketIds.length > 0,
+                refundedTicketsCount: allRefundedTicketIds.length,
                 eventId: order.eventId,
                 eventDateId: order.eventDateId,
                 tickets: [],
@@ -1182,6 +1217,14 @@ watch: {
 </script>
 
 <style scoped>
+
+.resold-ticket-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+  font-size: 15px;
+}
 /* ARROW CHEVRON RELATED */
 .toggle-button {
     background: none;
