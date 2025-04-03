@@ -51,7 +51,7 @@ def release_tickets():
 @ticket_bp.route('/tickets/reserve', methods=['POST'])
 def create_tickets():
     data = request.json
-    required_fields = ["event_id", "event_date_id", "cat_id", "owner_id", "seat_info"]
+    required_fields = ["event_id", "event_date_id", "cat_id", "owner_id", "seat_info", "qr_code"]
     if not all(field in data for field in required_fields):
         return jsonify({"error": "Missing required fields"}), 400
 
@@ -81,7 +81,7 @@ def create_tickets():
         inserted_ids = [str(ticket_id) for ticket_id in result.inserted_ids]
 
         # Set timer to release if not confirmed in 3 minutes
-        release_ticket_after_delay(inserted_ids)
+        # release_ticket_after_delay(inserted_ids)
 
         return jsonify({
             "message": f"{num_tickets} ticket(s) reserved successfully",

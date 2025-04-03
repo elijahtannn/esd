@@ -79,9 +79,9 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                 else:
                     seat_info = "Not Applicable"
                 
-                # generate QR code
-                qr_url = generate_qr_code_url(ticketId)
-
+                # generate QR code and update db
+                qr_url = generate_qr_code_url(cat_id, seat_info)
+                # print(qr_url)
                 reserve_data = {
                     "event_date_id": event_date_id,
                     "cat_id": cat_id,
@@ -91,7 +91,7 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                     "is_transferable": True,
                     "status": "RESERVED",
                     "event_id": event_id,
-                    "qr_code": qr_url,
+                    "qr_code": qr_url
                 }
                 reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
                 reserve_result = reserve_resp.json()
@@ -137,10 +137,10 @@ def decrease_cat_available_tickets(cat_id, total_quantity):
         return False
 
 # Generate QR code for seat
-def generate_qr_code_url(ticket_id):
+def generate_qr_code_url(cat_id, seat_info):
     try:
         base_url = "http://api.qrserver.com/v1/create-qr-code/"
-        qr_content = f"ticket:{ticket_id}"
+        qr_content = f"ticket:{cat_id}{seat_info}"
         qr_url = f"{base_url}?data={requests.utils.quote(qr_content)}&size=200x200"
         return qr_url
     except Exception as e:
