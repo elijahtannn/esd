@@ -22,12 +22,23 @@ class Config:
 def get_ticket_details(ticket_id):
     """Fetch ticket details from Ticket Service"""
     url = f"{Config.TICKET_SERVICE_URL}/tickets/{ticket_id}"
-    response = requests.get(url)
+    print(f"GET TICKET DETAILS: Calling {url}")
+    
     try:
-        response_data = response.json()
-    except ValueError:
-        response_data = {"error": "Invalid JSON response from Ticket Service"}
-    return response_data, response.status_code
+        response = requests.get(url)
+        print(f"GET TICKET DETAILS RESPONSE: Status: {response.status_code}")
+        
+        try:
+            response_data = response.json()
+            print(f"GET TICKET DETAILS PARSED JSON: {response_data}")
+        except ValueError:
+            response_data = {"error": "Invalid JSON response from Ticket Service"}
+            print(f"GET TICKET DETAILS ERROR: Invalid JSON in response")
+        
+        return response_data, response.status_code
+    except Exception as e:
+        print(f"GET TICKET DETAILS EXCEPTION: {e}")
+        return {"error": f"Exception: {str(e)}"}, 500
 
 def get_event_details(event_id):
     """Fetch event details from Event Service"""
@@ -44,8 +55,15 @@ def update_ticket_status(ticket_id):
     """Update ticket status to 'RESALE' in Ticket Service"""
     url = f"{Config.TICKET_SERVICE_URL}/tickets/{ticket_id}"
     payload = {"status": "RESALE"}
-    response = requests.put(url, json=payload)
-    return response.json(), response.status_code
+    print(f"UPDATING TICKET STATUS: Calling {url} with payload {payload}")
+    
+    try:
+        response = requests.put(url, json=payload)
+        print(f"UPDATE TICKET RESPONSE: Status: {response.status_code}, Body: {response.text}")
+        return response.json(), response.status_code
+    except Exception as e:
+        print(f"ERROR IN UPDATE_TICKET_STATUS: {e}")
+        raise
 
 def update_event_inventory(cat_id, resale_count):
     """Update event inventory in OutSystems Event Service"""
@@ -183,9 +201,18 @@ def list_resale_ticket():
         return jsonify({"error": "Failed to update event inventory", "details": error_message}), 400
     
     # Step 4: Only update ticket status if inventory update was successful
+    print(f"BEFORE UPDATE: Getting current ticket details for {ticket_id}")
+    before_ticket, _ = get_ticket_details(ticket_id)
+    print(f"BEFORE UPDATE: Ticket details: {before_ticket}")
+    
     ticket_response, ticket_status = update_ticket_status(ticket_id)
     if ticket_status != 200:
         return jsonify({"error": "Failed to update ticket status", "details": ticket_response}), ticket_status
+        
+    # Check if ticket is still in DB after status update
+    print(f"AFTER UPDATE: Getting current ticket details for {ticket_id}")
+    after_ticket, after_status = get_ticket_details(ticket_id)
+    print(f"AFTER UPDATE: Status: {after_status}, Ticket: {after_ticket}")
 
     # Step 5: Gather event information and notify interested users
     print(f"DEBUG: Starting to gather event details for event_id: {event_id}")
