@@ -409,25 +409,6 @@ export default {
             );
         }
     },
-    computed: {
-        upcomingOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) > now);
-        },
-        pastOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) <= now);
-        },
-        // Add this new computed property
-        ticketsInResaleProcess() {
-            const statuses = this.ticketStatuses;
-            return Object.keys(statuses).filter(ticketId => 
-                statuses[ticketId] && 
-                !statuses[ticketId].isQrVisible && 
-                statuses[ticketId].status === "TICKET IS BEING RESOLD"
-            );
-        }
-    },
     mounted() {
         const userData = auth.getUser();
 
@@ -485,7 +466,7 @@ watch: {
     methods: {
         hasRefundedTickets(order) {
             return order.hasRefundedTickets || 
-         (order.refundedTicketIds && order.refundedTicketIds.length > 0);
+            (order.refundedTicketIds && order.refundedTicketIds.length > 0);
         },
         
         getRefundedTicketsCount(order) {
@@ -774,11 +755,6 @@ watch: {
             if (this.isAgreed && this.selectedTicket) {
                 const ticketId = this.selectedTicket.ticketId;
                 const catId = this.selectedTicket.catId;
-                
-                this.ticketStatuses[ticketId] = {
-                    isQrVisible: false,
-                    status: "TICKET IS BEING RESOLD"
-                };
 
                 // Find the order that contains this ticket
                 const orderWithTicket = this.orderList.find(order => 
@@ -1184,23 +1160,13 @@ watch: {
                         localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
                     } else {
                         // Clear the statuses if no pending transfers
-                        this.ticketStatuses = {};
-                        localStorage.removeItem("ticketStatuses");
+                        // this.ticketStatuses = {};
+                        // localStorage.removeItem("ticketStatuses");
                     }
                 }
-            }, 30000); // 30 seconds
+            }, 60000); // Changed from 30000 (30seconds) to 60000 (60 seconds)
         },
 
-    },
-    computed: {
-        upcomingOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) > now);
-        },
-        pastOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) <= now);
-        },
     },
     created () {
         const storedStatuses = localStorage.getItem("ticketStatuses");
