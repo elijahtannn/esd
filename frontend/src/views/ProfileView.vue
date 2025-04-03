@@ -115,8 +115,15 @@
                                                     order.OrderId }}</span><br>
                                                 <span style="font-size: 15px; color: grey;">Ticket Quantity: {{
                                                     order.TicketQuantity }}</span><br>
-                                                <span style="font-size: 15px; color: grey;">Total Cost: ${{
-                                                    order.TotalCost.toFixed(2) }}</span>
+
+                                                <span style="font-size: 15px; color: grey;">Total Cost: ${{ order.TotalCost.toFixed(2) }}</span><br>
+                                                    
+                                                    <span v-if="hasRefundedTickets(order)" class="resold-ticket-info">
+                                                    <i class="fas fa-check-circle" style="color: #4CAF50;"></i> 
+                                                    <span style="color: #4CAF50; font-weight: 500;">
+                                                        {{ getRefundedTicketsCount(order) }} ticket(s) successfully resold and refunded
+                                                    </span>
+                                                </span>
                                             </div>
                                         </div>
                                         <button class="toggle-button">
@@ -402,25 +409,6 @@ export default {
             );
         }
     },
-    computed: {
-        upcomingOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) > now);
-        },
-        pastOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) <= now);
-        },
-        // Add this new computed property
-        ticketsInResaleProcess() {
-            const statuses = this.ticketStatuses;
-            return Object.keys(statuses).filter(ticketId => 
-                statuses[ticketId] && 
-                !statuses[ticketId].isQrVisible && 
-                statuses[ticketId].status === "TICKET IS BEING RESOLD"
-            );
-        }
-    },
     mounted() {
         const userData = auth.getUser();
 
@@ -476,17 +464,34 @@ watch: {
 },
 
     methods: {
+        hasRefundedTickets(order) {
+            return order.hasRefundedTickets || 
+            (order.refundedTicketIds && order.refundedTicketIds.length > 0);
+        },
+        
+        getRefundedTicketsCount(order) {
+            if (order.refundedTicketsCount !== undefined) {
+                return order.refundedTicketsCount;
+            }
+            
+            if (!order.refundedTicketIds) {
+                return 0;
+            }
+            
+            return order.refundedTicketIds.length;
+        },
+        
         toggleExpand(order) {
             order.isExpanded = !order.isExpanded;
         },
-        // BACKEND METHODS
+
         async fetchOrders() {
             try {
                 if (!this.user || (!this.user._id && !this.user.id)) {
                 console.error('No user ID available');
                 return;
                 }
-                // const userId = "67e112f67621910c18c99249";
+                
                 const userId = this.user._id || this.user.id;
                 console.log("Fetching orders for user:", userId);
                 
@@ -496,7 +501,6 @@ watch: {
                 
                 this.processOrders(rawOrders);
                 
-                // After processing orders, fetch additional details
                 await this.fetchOrderDetails();
             } catch (error) {
                 console.error('Error fetching orders:', error);
@@ -504,12 +508,12 @@ watch: {
         },
 
         processOrders(rawOrders) {
-            console.log("Processing Order", rawOrders);
+            console.log("Processing Orders", rawOrders);
             this.orderList = rawOrders.map(order => {
-                // Extract all ticket IDs from the nested structure
+                
                 let allTicketIds = [];
                 if (order.tickets && Array.isArray(order.tickets)) {
-                // Flatten the nested ticketIds arrays from all category objects
+               
                 order.tickets.forEach(category => {
                     if (category.ticketIds && Array.isArray(category.ticketIds)) {
                     allTicketIds = [...allTicketIds, ...category.ticketIds];
@@ -517,12 +521,24 @@ watch: {
                 });
                 }
                 
+                let allRefundedTicketIds = [];
+                if (order.refunded_ticket_ids && Array.isArray(order.refunded_ticket_ids)) {
+                order.refunded_ticket_ids.forEach(category => {
+                    if (category.ticketIds && Array.isArray(category.ticketIds)) {
+                    allRefundedTicketIds = [...allRefundedTicketIds, ...category.ticketIds];
+                    }
+                });
+                }
+                
                 return {
                 OrderId: order.orderId,
-                TicketQuantity: allTicketIds.length,
+                TicketQuantity: allTicketIds.length + allRefundedTicketIds.length,
                 TotalCost: order.totalAmount,
                 Status: order.status,
                 ticketIds: allTicketIds,
+                refundedTicketIds: allRefundedTicketIds,
+                hasRefundedTickets: allRefundedTicketIds.length > 0,
+                refundedTicketsCount: allRefundedTicketIds.length,
                 eventId: order.eventId,
                 eventDateId: order.eventDateId,
                 tickets: [],
@@ -739,11 +755,6 @@ watch: {
             if (this.isAgreed && this.selectedTicket) {
                 const ticketId = this.selectedTicket.ticketId;
                 const catId = this.selectedTicket.catId;
-                
-                this.ticketStatuses[ticketId] = {
-                    isQrVisible: false,
-                    status: "TICKET IS BEING RESOLD"
-                };
 
                 // Find the order that contains this ticket
                 const orderWithTicket = this.orderList.find(order => 
@@ -1149,23 +1160,13 @@ watch: {
                         localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
                     } else {
                         // Clear the statuses if no pending transfers
-                        this.ticketStatuses = {};
-                        localStorage.removeItem("ticketStatuses");
+                        // this.ticketStatuses = {};
+                        // localStorage.removeItem("ticketStatuses");
                     }
                 }
-            }, 30000); // 30 seconds
+            }, 60000); // Changed from 30000 (30seconds) to 60000 (60 seconds)
         },
 
-    },
-    computed: {
-        upcomingOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) > now);
-        },
-        pastOrders() {
-            const now = new Date();
-            return this.orderList.filter(order => new Date(order.EventDate) <= now);
-        },
     },
     created () {
         const storedStatuses = localStorage.getItem("ticketStatuses");
@@ -1182,6 +1183,14 @@ watch: {
 </script>
 
 <style scoped>
+
+.resold-ticket-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 0;
+  font-size: 15px;
+}
 /* ARROW CHEVRON RELATED */
 .toggle-button {
     background: none;
