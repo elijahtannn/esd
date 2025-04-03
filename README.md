@@ -66,6 +66,14 @@
 ```
 ## Backend
 Make sure Docker desktop is running
+
+### Pre-requisites:
+``` Python
+1. Set up exchanges, queues and routing keys on rabbitMQ (cd backend/atomic_service/notification_service)
+2. Node amqp_setup.js
+```
+
+### To run backend:
 ``` Python
 1. cd backend
 2. python docker_manage.py start (To start all docker containers)
