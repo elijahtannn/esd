@@ -19,8 +19,6 @@ load_dotenv()
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
 TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
 # TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://localhost:5001")
-USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://user-service:5003")
-# USER_SERVICE_URL = os.getenv("USER_SERVICE_URL", "http://localhost:5003")
 REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-ticket:5004")
 # REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://localhost:5004")
 
@@ -81,6 +79,9 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                 else:
                     seat_info = "Not Applicable"
                 
+                # generate QR code
+                qr_url = generate_qr_code_url(ticketId)
+
                 reserve_data = {
                     "event_date_id": event_date_id,
                     "cat_id": cat_id,
@@ -90,15 +91,14 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                     "is_transferable": True,
                     "status": "RESERVED",
                     "event_id": event_id,
+                    "qr_code": qr_url,
                 }
                 reserve_resp = requests.post(f"{TICKET_SERVICE_URL}/tickets/reserve", json=reserve_data)
                 reserve_result = reserve_resp.json()
                 ticketId = reserve_result['ticket_ids'][0]
                 ticketIds.append(ticketId)
 
-                # generate QR code and update db
-                qr_url = generate_qr_code_url(ticketId)
-                requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticketId}/update_qr", json={"qr_code": qr_url})    
+                # requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticketId}/update_qr", json={"qr_code": qr_url})    
 
             else:
                 # If there are resale tickets listed 
@@ -171,7 +171,7 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
 
                 ticketStatus = responseData['status']
 
-                if ticketStatus != 'SOLD':
+                if ticketStatus == 'RESERVED':
                     # it its a resale ticket, dont delete but revert owner id and status
                     for ticket in all_used_resale_tickets:
                         if ticket["_id"] == ticketId:
