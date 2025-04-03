@@ -5,6 +5,8 @@ from flask_cors import CORS
 import logging
 import requests
 from services import refund_payment, send_transfer_notification
+import pika
+from urllib.parse import urlparse
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -59,6 +61,19 @@ def get_user_email(user_id):
         logger.error(f"Error getting user email: {str(e)}")
         # Return the user ID as a fallback (it might be an email in some cases)
         return user_id
+
+def check_rabbitmq_connection():
+    """Check if RabbitMQ is accessible"""
+    try:
+        # Parse RABBITMQ_URL
+        rabbitmq_url = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672")
+        parameters = pika.URLParameters(rabbitmq_url)
+        connection = pika.BlockingConnection(parameters)
+        connection.close()
+        return True
+    except Exception as e:
+        logger.error(f"RabbitMQ connection check failed: {str(e)}")
+        return False
 
 @app.route("/refund", methods=["POST"])
 def refund_user_ticket():
@@ -278,19 +293,26 @@ def refund_user_ticket():
             }), order_update_response.status_code
 
         # Step 6: Send notification to seller
-        logger.info(f"Sending notification to seller {seller_id}")
+        logger.info(f"Starting notification process for seller {seller_id}")
         seller_email = get_user_email(seller_id)
+        logger.info(f"Retrieved seller email: {seller_email}")
+
         if seller_email:
-            notification_sent = send_transfer_notification(
-                user_email=seller_email,
-                message=f"Your refund of ${refund_amount:.2f} for ticket {ticket_id} has been processed",
-                event_type="ticket.refund.complete",
-                ticket_number=ticket_id,
-                amount=refund_amount,
-                event_name="Ticket Refund"
-            )
+            # Log the notification payload for debugging
+            notification_payload = {
+                "user_email": seller_email,
+                "message": f"Your refund of ${refund_amount:.2f} for ticket {ticket_id} has been processed",
+                "event_type": "ticket.refund.complete",
+                "ticket_number": ticket_id,
+                "amount": refund_amount,
+                "event_name": "Ticket Refund"
+            }
+            logger.info(f"Attempting to send notification with payload: {notification_payload}")
+            
+            notification_sent = send_transfer_notification(**notification_payload)
+            logger.info(f"Notification send result: {notification_sent}")
         else:
-            logger.warning(f"Could not send notification: email not found for user {seller_id}")
+            logger.error(f"Could not send notification: email not found for user {seller_id}")
             notification_sent = False
         
         # Step 7: Return success response
@@ -313,7 +335,12 @@ def refund_user_ticket():
 # Route for health check
 @app.route("/health", methods=["GET"])
 def health_check():
-    return jsonify({"status": "healthy", "service": "refund_user"}), 200
+    rabbitmq_status = "connected" if check_rabbitmq_connection() else "disconnected"
+    return jsonify({
+        "status": "healthy",
+        "service": "refund_user",
+        "rabbitmq": rabbitmq_status
+    }), 200
 
 # Main entry point
 if __name__ == "__main__":

@@ -12,9 +12,6 @@ ROUTING_KEY = "ticket.refund.complete"
 # Service URLs (for use in this file)
 PAYMENT_SERVICE_URL = os.getenv("PAYMENT_SERVICE_URL", "http://127.0.0.1:8002")
 
-# At the top of the file, add:
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672")
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,20 +19,29 @@ logger = logging.getLogger(__name__)
 def send_transfer_notification(user_email, message, event_type, ticket_number=None, amount=None, event_name=None):
     """Send notification via RabbitMQ with improved connection handling"""
     try:
-        # Instead of trying multiple hosts, use the Docker service name
-        logger.info(f"Attempting to connect to RabbitMQ using URL: {RABBITMQ_URL}")
+        # Log notification details
+        notification = {
+            "email": user_email,
+            "eventType": event_type,
+            "message": message,
+            "ticketNumber": ticket_number or "",
+            "amount": amount or 0,
+            "eventName": event_name or "Ticket Refund"
+        }
+        logger.info(f"Attempting to send notification with routing key: {ROUTING_KEY}")
+        logger.info(f"Notification payload: {json.dumps(notification)}")
+        
+        parameters = pika.URLParameters(os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672"))
+        parameters.connection_attempts = 1  # Only try once
+        parameters.socket_timeout = 2  # Short timeout
+        
+        connection = pika.BlockingConnection(parameters)
+        logger.info("Successfully connected to RabbitMQ")
         
         try:
-            parameters = pika.URLParameters(RABBITMQ_URL)
-            parameters.connection_attempts = 3
-            parameters.retry_delay = 2
-            parameters.socket_timeout = 3
-            
-            connection = pika.BlockingConnection(parameters)
-            logger.info("Successfully connected to RabbitMQ")
-            
             # Create channel
             channel = connection.channel()
+            logger.info("Created RabbitMQ channel")
             
             # Declare exchange
             channel.exchange_declare(
@@ -43,44 +49,31 @@ def send_transfer_notification(user_email, message, event_type, ticket_number=No
                 exchange_type='topic',
                 durable=True
             )
+            logger.info(f"Declared exchange: {EXCHANGE_NAME}")
             
-            # Format notification message for the notification service
-            notification = {
-                "email": user_email,
-                "eventType": event_type,
-                "message": message,
-                "ticketNumber": ticket_number or "",
-                "amount": amount or 0,
-                "eventName": event_name or "Ticket Refund"
-            }
-                    
             # Publish message
             channel.basic_publish(
                 exchange=EXCHANGE_NAME,
                 routing_key=ROUTING_KEY,
                 body=json.dumps(notification),
                 properties=pika.BasicProperties(
-                    delivery_mode=2  # Make message persistent
+                    delivery_mode=2
                 )
             )
+            logger.info("Message published successfully")
             
-            # Close connection properly
             connection.close()
             logger.info(f"Successfully sent notification to {user_email}")
             return True
             
         except Exception as e:
-            # Handle errors during messaging
             logger.error(f"Error sending message to RabbitMQ: {str(e)}")
             if connection and connection.is_open:
-                try:
-                    connection.close()
-                except:
-                    pass
+                connection.close()
             return False
             
     except Exception as e:
-        logger.error(f"Unexpected error in notification service: {str(e)}")
+        logger.error(f"Could not connect to RabbitMQ: {str(e)}")
         return False
 
 def refund_payment(payment_id, amount):
