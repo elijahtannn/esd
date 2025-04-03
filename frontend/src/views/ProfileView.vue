@@ -893,7 +893,7 @@ watch: {
                 };
 
                 // Make sure we're using the correct URL (from environment or API gateway)
-                const resaleUrl = `${this.apiGatewayUrl}/resale/list`;
+                const resaleUrl = `${this.apiGatewayUrl}/resell-ticket`;
                 console.log("Sending resale request to:", resaleUrl, resaleData);
 
                 const response = await axios.post(resaleUrl, resaleData);

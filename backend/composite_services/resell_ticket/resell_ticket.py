@@ -139,7 +139,7 @@ CORS(app, resources={r"/*": {
 resale_bp = Blueprint("resale_bp", __name__)
 rabbitmq_publisher = RabbitMQPublisher()
 
-@resale_bp.route("/resale/list", methods=["POST"])
+@resale_bp.route("/resell-ticket", methods=["POST"])
 def list_resale_ticket():
     """List a single ticket for resale"""
     data = request.json
