@@ -74,11 +74,15 @@ def validate_transfer(ticket_id):
     2. Event date validation (not within 3 days of event)
     3. Recipient email validation (must exist in user service)
     """
-    try:
+    try:        
         data = request.json
         recipient_email = data.get("recipientEmail")
         sender_email = data.get("senderEmail")
         is_revalidation = data.get("is_revalidation", False)
+
+        print(f"Recipient email: {recipient_email}")
+        print(f"Sender email: {sender_email}")
+        print(f"Is revalidation: {is_revalidation}")
 
         if not recipient_email or not sender_email:
             return jsonify({
@@ -89,10 +93,12 @@ def validate_transfer(ticket_id):
         # Step 1: Check ticket transferability
         ticket_validation = validate_ticket(ticket_id)
         if not ticket_validation["is_valid"]:
+            print(f"Ticket validation failed: {ticket_validation['messages'][0]}")
             return jsonify({
                 "can_transfer": False,
                 "message": ticket_validation["messages"][0]
             }), 400
+        print("Ticket is transferable")
 
         # Step 2: Check event date (only if ticket is transferable)
         event_validation = validate_event(
@@ -100,18 +106,22 @@ def validate_transfer(ticket_id):
             ticket_validation["event_date_id"]
         )
         if not event_validation["is_valid"]:
+            print(f"Event validation failed: {event_validation['messages'][0]}")
             return jsonify({
                 "can_transfer": False,
                 "message": event_validation["messages"][0]
             }), 400
+        print("Event date is valid")
 
         # Step 3: Validate recipient email
         recipient_validation = validate_recipient(recipient_email)
         if not recipient_validation["is_valid"]:
+            print(f"Recipient validation failed: {recipient_validation['messages'][0]}")
             return jsonify({
                 "can_transfer": False,
                 "message": recipient_validation["messages"][0]
             }), 400
+        print("Recipient email is valid")
 
         # After all validations pass but before sending notification, update ticket status
         ticket_update_response = requests.put(
@@ -123,23 +133,37 @@ def validate_transfer(ticket_id):
         )
 
         if ticket_update_response.status_code != 200:
+            print(f"Failed to update ticket status. Response: {ticket_update_response.text}")
             return jsonify({
                 "error": "Failed to update ticket status",
                 "message": "Could not mark ticket as pending transfer"
             }), 500
+        print("Ticket status updated successfully")
+
+        # Verify the ticket was updated correctly
+        verify_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
+        if verify_response.status_code == 200:
+            updated_ticket = verify_response.json()
+            print(f"Verified ticket status: {updated_ticket.get('status')}")
+            print(f"Verified pending_transfer_to: {updated_ticket.get('pending_transfer_to')}")
+        else:
+            print("Warning: Could not verify ticket update")
 
         # Extract event name from validation message
         event_name = event_validation["messages"][0].split("'")[1] 
 
         # Only send notification if it's not a revalidation
         if not is_revalidation:
+            print("\nSending transfer notification...")
             notification_sent = send_transfer_notification(
                 sender_email=sender_email,
                 recipient_email=recipient_email,
                 ticket_id=ticket_id,
                 event_name=event_name
             )
+            print(f"Notification sent: {notification_sent}")
 
+        print("=== End Validate Transfer Debug ===\n")
         return jsonify({
             "can_transfer": True,
             "message": "Ticket is eligible for transfer",
@@ -149,6 +173,7 @@ def validate_transfer(ticket_id):
         })
 
     except Exception as e:
+        print(f"Error in validate_transfer: {str(e)}")
         return jsonify({
             "error": "Validation service error",
             "message": str(e)
