@@ -6,6 +6,8 @@ import os
 from flask_cors import CORS
 import pika
 import json
+import time
+from requests.exceptions import RequestException
 
 app = Flask(__name__)
 CORS(app)
@@ -22,6 +24,19 @@ USER_SERVICE_URL = "http://user-service:5003"
 EXCHANGE_NAME = "ticketing.exchange"
 ROUTING_KEY = "ticket.transfer.success"
 
+def retry_with_backoff(func, max_retries=3, initial_delay=1):
+    """Retry a function with exponential backoff"""
+    delay = initial_delay
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except RequestException as e:
+            if attempt == max_retries - 1:
+                raise
+            print(f"Attempt {attempt + 1} failed: {str(e)}")
+            time.sleep(delay)
+            delay *= 2
+
 @app.route("/transfer/<ticket_id>", methods=["POST"])
 def transfer_ticket(ticket_id):
     """
@@ -35,18 +50,27 @@ def transfer_ticket(ticket_id):
     }
     """
     try:
+        print(f"\n=== Transfer Completion Debug ===")
+        print(f"Processing transfer for ticket {ticket_id}")
+        print(f"Current timestamp: {datetime.utcnow()}")
+        
         data = request.json
+        print(f"Request data: {data}")
         
         # Check if transfer was accepted by recipient
         if not data.get("accepted", False):
+            print("Transfer was rejected by recipient")
             # If rejected, update ticket status back to "sold" and remove pending_transfer_to
-            ticket_response = requests.put(
-                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
-                json={
-                    "status": "SOLD",
-                    "pending_transfer_to": None  # Remove pending transfer
-                }
-            )
+            def reject_transfer():
+                return requests.put(
+                    f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                    json={
+                        "status": "SOLD",
+                        "pending_transfer_to": None  # Remove pending transfer
+                    }
+                )
+            
+            retry_with_backoff(reject_transfer)
             
             return jsonify({
                 "success": False,
@@ -55,11 +79,15 @@ def transfer_ticket(ticket_id):
 
         # Get recipient's user ID from email
         recipient_email = data.get('recipient_email')
-        recipient_response = requests.get(
-            f"{USER_SERVICE_URL}/user/email/{recipient_email}"
-        )
+        print(f"Getting recipient ID for email: {recipient_email}")
+        
+        def get_recipient():
+            return requests.get(f"{USER_SERVICE_URL}/user/email/{recipient_email}")
+            
+        recipient_response = retry_with_backoff(get_recipient)
         
         if recipient_response.status_code != 200:
+            print(f"Failed to get recipient ID. Status: {recipient_response.status_code}")
             return jsonify({
                 "error": "Invalid recipient",
                 "message": f"Could not find user with email {recipient_email}"
@@ -67,52 +95,71 @@ def transfer_ticket(ticket_id):
             
         recipient_data = recipient_response.json()
         recipient_id = recipient_data.get("user_id")
+        print(f"Recipient ID: {recipient_id}")
 
         if not recipient_id:
+            print("No recipient ID found in response")
             return jsonify({
                 "error": "User data error",
                 "message": "Could not get user ID from response"
             }), 400
 
         # Revalidate the transfer to ensure conditions are still valid
-        validation_response = requests.post(
-            f"{VALIDATE_SERVICE_URL}/validateTransfer/{ticket_id}",
-            json={
-                "senderEmail": data.get("sender_email"),
-                "recipientEmail": recipient_email,
-                "is_revalidation": True
-            }
-        ).json()
-        
-        if not validation_response.get("can_transfer", False):
-            # Reset ticket status back to "sold" if validation fails
-            ticket_response = requests.put(
-                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+        print("\nRevalidating transfer...")
+        def revalidate():
+            return requests.post(
+                f"{VALIDATE_SERVICE_URL}/validateTransfer/{ticket_id}",
                 json={
-                    "status": "SOLD"
+                    "senderEmail": data.get("sender_email"),
+                    "recipientEmail": recipient_email,
+                    "is_revalidation": True
                 }
             )
+            
+        validation_response = retry_with_backoff(revalidate).json()
+        
+        if not validation_response.get("can_transfer", False):
+            print(f"Revalidation failed: {validation_response.get('message')}")
+            # Reset ticket status back to "sold" if validation fails
+            def reset_ticket():
+                return requests.put(
+                    f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                    json={
+                        "status": "SOLD"
+                    }
+                )
+                
+            retry_with_backoff(reset_ticket)
             
             return jsonify({
                 "error": "Validation failed",
                 "message": validation_response.get("message", "Transfer conditions are no longer valid")
             }), 400
+        print("Revalidation successful")
 
         # Get ticket details for event information
-        ticket_details_response = requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
+        print("\nGetting ticket details...")
+        def get_ticket_details():
+            return requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
+            
+        ticket_details_response = retry_with_backoff(get_ticket_details)
+        
         if ticket_details_response.status_code != 200:
+            print(f"Failed to get ticket details. Status: {ticket_details_response.status_code}")
             return jsonify({
                 "error": "Failed to get ticket details",
                 "message": "Could not retrieve ticket information"
             }), 400
             
         ticket_details = ticket_details_response.json()
+        print(f"Ticket details: {ticket_details}")
         
         # Validate required fields exist
         required_fields = ["event_id", "event_date_id", "cat_id"]
         missing_fields = [field for field in required_fields if not ticket_details.get(field)]
         
         if missing_fields:
+            print(f"Missing required fields: {missing_fields}")
             return jsonify({
                 "error": "Missing ticket details",
                 "message": f"Ticket is missing required fields: {', '.join(missing_fields)}"
@@ -128,66 +175,77 @@ def transfer_ticket(ticket_id):
             "catId": int(ticket_details["cat_id"])
         }
         
-        # Debug logging
-        print("\n=== Transfer Debug Information ===")
-        print("Ticket Details:", json.dumps(ticket_details, indent=2, default=str))
-        print("\nOrder Request Data:", json.dumps(order_request_data, indent=2))
-        print("\nMaking request to:", f"{ORDER_SERVICE_URL}/orders/transfer")
-        print("=================================\n")
+        print("\nCreating transfer order...")
+        print(f"Order request data: {order_request_data}")
         
-        try:
-            # Add more detailed request debugging
-            print("Request Headers:", {'Content-Type': 'application/json'})
-            print("Request Body:", json.dumps(order_request_data, indent=2))
-            
-            order_response = requests.post(
+        def create_order():
+            return requests.post(
                 f"{ORDER_SERVICE_URL}/orders/transfer",
                 json=order_request_data,
                 headers={'Content-Type': 'application/json'}
             )
             
-            # Detailed response debugging
-            print("Order Response Status:", order_response.status_code)
-            print("Order Response Headers:", order_response.headers)
-            print("Order Response Content:", order_response.text)
-            
-        except requests.exceptions.RequestException as e:
-            print("Request Exception:", str(e))
-            return jsonify({
-                "error": "Connection error to order service",
-                "message": str(e)
-            }), 500
-
+        order_response = retry_with_backoff(create_order)
+        
         if order_response.status_code != 201:
+            print(f"Failed to create transfer order. Status: {order_response.status_code}")
             return jsonify({
                 "error": "Failed to create transfer order",
                 "message": f"Order service error: {order_response.text}"
             }), 500
 
         order_data = order_response.json()
+        print(f"Transfer order created: {order_data}")
 
         # Update ticket ownership and status in Ticket Service
-        ticket_response = requests.put(
-            f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
-            json={
-                "owner_id": recipient_id,
-                "status": "SOLD",
-                "pending_transfer_to": None,
-                "is_transferable": True
-            }
-        ).json()
+        print("\nUpdating ticket ownership...")
+        ticket_update_data = {
+            "owner_id": recipient_id,
+            "status": "SOLD",
+            "pending_transfer_to": None,
+            "is_transferable": False
+        }
+        print(f"Ticket update data: {ticket_update_data}")
+        
+        def update_ticket():
+            return requests.put(
+                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                json=ticket_update_data
+            )
+            
+        ticket_response = retry_with_backoff(update_ticket)
+        
+        if ticket_response.status_code != 200:
+            print(f"Failed to update ticket. Status: {ticket_response.status_code}")
+            print(f"Response: {ticket_response.text}")
+        else:
+            print("Ticket updated successfully")
+            # Verify the update
+            def verify_ticket():
+                return requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
+                
+            verify_response = retry_with_backoff(verify_ticket)
+            if verify_response.status_code == 200:
+                updated_ticket = verify_response.json()
+                print(f"Verified ticket status: {updated_ticket.get('status')}")
+                print(f"Verified owner_id: {updated_ticket.get('owner_id')}")
+            else:
+                print("Warning: Could not verify ticket update")
 
         # Get event name from ticket details
         event_name = ticket_details.get("event_name", "Event")
 
         # Send success notifications with correct event name
+        print("\nSending success notifications...")
         notification_sent = send_transfer_success_notification(
             sender_email=data.get("sender_email"),
             recipient_email=data.get("recipient_email"),
             ticket_id=ticket_id,
             event_name=event_name
         )
+        print(f"Notification sent: {notification_sent}")
 
+        print("=== End Transfer Completion Debug ===\n")
         return jsonify({
             "success": True,
             "message": "Ticket transferred successfully",
@@ -202,17 +260,22 @@ def transfer_ticket(ticket_id):
         }), 200
 
     except Exception as e:
+        print(f"Error in transfer_ticket: {str(e)}")
         # In case of error, attempt to reset ticket status
         try:
-            requests.put(
-                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
-                json={
-                    "status": "SOLD",
-                    "pending_transfer_to": None
-                }
-            )
-        except:
-            pass  
+            print("Attempting to reset ticket status...")
+            def reset_ticket():
+                return requests.put(
+                    f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                    json={
+                        "status": "SOLD",
+                        "pending_transfer_to": None
+                    }
+                )
+                
+            retry_with_backoff(reset_ticket)
+        except Exception as reset_error:
+            print(f"Failed to reset ticket status: {str(reset_error)}")
             
         return jsonify({
             "error": "Transfer service error",
