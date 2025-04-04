@@ -52,8 +52,9 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
 
         # Get all seat infos
         all_seat_infos = []
-        for ticket in all_cat_tickets:
-            all_seat_infos.append(ticket['seat_info'])
+        if event_category == 'Concert':
+            for ticket in all_cat_tickets:
+                all_seat_infos.append(ticket['seat_info'])
 
         # Get all existing resale tickets (if any)
         resale_tickets = []

@@ -19,7 +19,8 @@
             <div class="col">
                 <p><i class="bi bi-calendar-week-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                     formattedDate }}</p>
-                <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{formattedTime }}</p>
+                <p><i class="bi bi-alarm-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{ formattedTime
+                    }}</p>
                 <p><i class="bi bi-geo-alt-fill" style="padding-right: 10px; color:var(--main-blue);"></i>{{
                     eventDetails.Venue }}
                 </p>
@@ -45,7 +46,7 @@
                 <p style="line-height: 30px; margin-right: 100px;">{{ eventDetails.Description }}</p>
             </div>
             <div class="col-6">
-                <img src="../assets/carousel/eventiva_carousel1.png" style="width: 100%; object-fit: cover;">
+                <img :src="eventDetails.Image || '../assets/carousel/eventiva_carousel1.png'" style="width: 100%; object-fit: cover;">
             </div>
         </div>
     </div>
@@ -145,23 +146,30 @@
                     <p>Secure your spot at the most unforgettable events and create lifelong memories by purchasing your
                         tickets now!</p>
                     <br>
-                    <button style="text-transform: uppercase;" @click="toCheckout">Buy your ticket now!</button>
+                    <button style="text-transform: uppercase;" @click="toCheckout" v-if="doneLoading">Buy your ticket now!</button>
                 </div>
             </div>
         </div>
     </div>
+
+
+    <!-- Toasts -->
+    <Toasts/>
 
 </template>
 
 <script>
 
 import NavBar from "../components/nav-bar.vue";
+import Toasts from "../components/toasts.vue";
 import axios from 'axios';
+import { auth } from '../stores/auth';
+import { Toast } from 'bootstrap';
 
 export default {
     name: 'event',
     components: {
-        NavBar
+        NavBar, Toasts
     },
     data() {
         return {
@@ -180,14 +188,22 @@ export default {
     },
     methods: {
         toCheckout() {
-            this.$router.push({ path: '/checkout', query: { eventId: [this.eventId], eventDetails: JSON.stringify(this.eventDetails), eventCategories: JSON.stringify(this.eventCategories) } });
+
+            if (auth.getUser()) {
+                this.$router.push({ path: '/checkout', query: { eventId: [this.eventId], eventDetails: JSON.stringify(this.eventDetails), eventCategories: JSON.stringify(this.eventCategories) } });
+            } else {
+                const toastElement = document.getElementById('loginFirst');
+                const toastInstance = Toast.getOrCreateInstance(toastElement);
+                toastInstance.show();
+            }
         },
         async fetchEventDetail() {
             try {
-                // Updated to use Kong API Gateway
                 const response = await axios.get(`${this.apiGatewayUrl}/events/${this.eventId}`);
                 var rawData = response.data.Event
                 this.processDetails(rawData);
+
+                this.updateBannerImage(this.eventDetails.Image);
 
             } catch (error) {
                 console.error('Error fetching events:', error);
@@ -197,10 +213,10 @@ export default {
             const eventMap = new Map();
 
             rawData.forEach(event => {
-                const key = event.Id; // Use a unique identifier for grouping
+                const key = event.Id; 
 
                 if (!eventMap.has(key)) {
-                    // If the event is not already in the map, add it with initial details
+
                     eventMap.set(key, {
                         Id: event.Id,
                         Name: event.Name,
@@ -211,9 +227,9 @@ export default {
                         StartTime: event.StartTime,
                         EndTime: event.EndTime,
                         Description: event.Description,
-                        Image: event.Image,
-                        dates: [], // Array to hold dates
-                        eventDateIds: [] // Array to hold EventDateIds
+                        Image: event.Img,
+                        dates: [], 
+                        eventDateIds: [] 
                     });
                 }
 
@@ -221,15 +237,15 @@ export default {
                 const existingEvent = eventMap.get(key);
                 existingEvent.dates.push(event.Date);
                 existingEvent.eventDateIds.push(event.EventDateId);
+
             });
 
 
             // If there's only one event, store it directly instead of as an array
-            this.eventDetails = Array.from(eventMap.values())[0]; // Extract first (and only) element
+            this.eventDetails = Array.from(eventMap.values())[0]; 
             this.formatDates(this.eventDetails.dates)
             this.formatTimeRange(this.eventDetails.StartTime, this.eventDetails.EndTime)
 
-            // Now you can directly access properties like this:
             this.fetchEventCats(this.eventDetails.eventDateIds);
         },
         async fetchEventCats(eventDateIds) {
@@ -243,18 +259,15 @@ export default {
                     // Fetch categories for the current eventDateId
                     const response = await axios.get(`${this.apiGatewayUrl}/events/dates/${eventDateId}/categories`);
 
-                    // Extract the "Cats" array from the response
                     const categories = response.data.Cats;
 
-                    // Loop through the fetched categories
                     categories.forEach(category => {
-                        // Check if the category ("Cat") already exists in eventCategories
+
                         const exists = this.eventCategories.some(
                             existingCategory => existingCategory.Cat === category.Cat
                         );
 
                         if (!exists) {
-                            // If it doesn't exist, add it as an object with Cat, Price, and AvailableTickets
                             this.eventCategories.push({
                                 Cat: category.Cat,
                                 Price: category.Price,
@@ -320,7 +333,7 @@ export default {
             return `${startDate.getDate()} ${startDate.toLocaleString("en-US", { month: "short" })} - ${endDate.getDate()} ${endDate.toLocaleString("en-US", { month: "short" })}`;
         },
         formatTimeRange(startTime, endTime) {
-            
+
             const options = { hour: "numeric", minute: "numeric", hour12: true };
 
             // Parse and format start time
@@ -334,11 +347,18 @@ export default {
             );
 
             this.formattedTime = `${start} - ${end}`;
+        },
+        updateBannerImage(newUrl) {
+            const bannerElement = document.querySelector('.bannerImg');
+            bannerElement.style.backgroundImage = `linear-gradient(to right, rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.1)), url('${newUrl}')`;
         }
+
     },
     mounted() {
+
         this.eventId = this.$route.query.eventId;
         this.fetchEventDetail();
+
     },
 }
 </script>

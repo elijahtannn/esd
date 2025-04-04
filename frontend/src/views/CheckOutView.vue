@@ -56,11 +56,9 @@
 
                 <!-- Step Content -->
                 <div class="step-content pt-5" style="margin-bottom: -70px;">
-                    <p style="color:red;">{{error}}</p>
                     <div v-if="currentStep === 0">
                         <h2>Ticket Selection</h2>
                         <p>Select your tickets and quantities here.</p>
-                        <!-- Add your ticket selection component here -->
                     </div>
                     <div v-if="currentStep === 1">
                         <h2>Confirmation</h2>
@@ -84,8 +82,6 @@
 
             <!-- selections -->
             <div class="col">
-
-
 
                 <!-- date input -->
                 <label for="date" class="input-label">Date</label>
@@ -143,9 +139,6 @@
                 </div>
 
 
-
-
-
             </div>
             <div class="col"></div>
 
@@ -186,7 +179,6 @@
                 </table>
 
                 <div class="row ps-4 pt-5">
-                    <p style="color:red; font-size: 15px;">{{ ticketError }}</p>
                     <button style="text-transform: uppercase; width: fit-content; padding: 5px 30px;" @click="nextStep">
                         Next Step
                     </button>
@@ -331,25 +323,27 @@
 
         </div>
 
-
-
     </div>
 
+    <!-- Toasts -->
+    <Toasts/>
 
 </template>
 
 <script>
 
 import NavBar from "../components/nav-bar.vue";
+import Toasts from "../components/toasts.vue";
+
 import axios, { formToJSON } from 'axios';
 import { auth } from '../stores/auth';
-
+import { Toast } from 'bootstrap';
 import { loadStripe } from '@stripe/stripe-js';
 
 export default {
     name: 'checkout',
     components: {
-        NavBar
+        NavBar, Toasts
     },
     data() {
         return {
@@ -369,8 +363,6 @@ export default {
             previousStep: "browsing event",
             steps: ["Ticket selection", "Confirmation", "Payment", "Complete"],
             currentStep: 0,
-            ticketError: "",
-            error: "",
 
             // Selection
             selectedTickets: [{ selectedType: "", quantity: 1, price: 0 }],
@@ -390,6 +382,7 @@ export default {
             cardCvcElement: null,
             isStripeLoaded: false,
             loadingPayment: false,
+            paymentStatus: false,
 
             // User
             user: null,
@@ -468,7 +461,6 @@ export default {
         },
         addTicketType() {
             // Add a new ticket row with default values
-
             if (this.selectedTickets.length < this.eventCategories.length) {
                 this.selectedTickets.push({ selectedType: "", quantity: 1, price: 0 });
             } else {
@@ -489,8 +481,6 @@ export default {
             this.selectedTickets.splice(index, 1);
         },
         nextStep() {
-            this.ticketError = "";
-            this.error = "";
             if (this.currentStep < this.steps.length - 1) {
 
                 if (this.currentStep == 1) {
@@ -501,8 +491,6 @@ export default {
             }
         },
         prevStep() {
-            this.ticketError = ""
-            // this.error = ""
             if (this.currentStep == 2) {
                 this.cancelReservation(true);
                 this.remainingSeconds = this.secondsThreshold;
@@ -615,20 +603,23 @@ export default {
                     }))
                 };
 
-                const response = await axios.post(`http://localhost:8080/process_ticket_order`, paymentData, {
+                const response = await axios.post(`${this.apiGatewayUrl}/process_ticket_order`, paymentData, {
                     headers: {
                         "Content-Type": "application/json",
                     },
                 });
 
-                console.log("Payment Response:", response.data);
                 this.currentStep = 3;
+                this.paymentStatus = true;
             } catch (error) {
                 this.currentStep = 0;
                 this.remainingSeconds = this.secondsThreshold;
                 this.cancelReservation(true);
-                this.error = "Payment declined. Please try again.";
-                console.error("Payment Error:", error.response?.data || error.message);
+
+                // show toast
+                const toastElement = document.getElementById('paymentDecline');
+                const toastInstance = Toast.getOrCreateInstance(toastElement);
+                toastInstance.show();
             }
             this.loadingPayment = false;
         },
@@ -641,10 +632,11 @@ export default {
             const { token, error } = await this.stripe.createToken(this.cardNumberElement);
 
             if (error) {
-                this.error = "Incomplete fields";
-                console.error(error.message);
+                // show toast
+                const toastElement = document.getElementById('incompleteFields');
+                const toastInstance = Toast.getOrCreateInstance(toastElement);
+                toastInstance.show();
             } else {
-                this.error = "";
                 this.paymentToken = token.id;
                 this.processPayment();
             }
@@ -700,7 +692,6 @@ export default {
 
             if (checkTicketsAvail == true) {
                 this.currentStep++;
-                this.ticketError = "";
                 this.displayPayment()
 
                 try {
@@ -716,9 +707,7 @@ export default {
                     this.abortController = new AbortController();
                     this.startPaymentTimer();
 
-                    const response = await axios.post(
-                        'http://localhost:8006/reserve_ticket',
-                        ticketsData,
+                    const response = await axios.post(`${this.apiGatewayUrl}/reserve_ticket`, ticketsData,
                         {
                             signal: this.abortController.signal,
                             headers: { 'Content-Type': 'application/json' }
@@ -729,13 +718,11 @@ export default {
 
                     if (response.data.status === false) {
                         if (this.currentStep != 3) {
-                            console.log(response.data.status)
                             this.goBack();
                         }
                     }
                 } catch (error) {
                     if (!axios.isCancel(error)) {
-                        console.log(error)
                         if (this.currentStep != 3) {
                             this.goBack();
                         }
@@ -745,7 +732,10 @@ export default {
 
 
             } else {
-                this.ticketError = "There is insufficient tickets for the selected category type";
+                // show toast
+                const toastElement = document.getElementById('insufficientTickets');
+                const toastInstance = Toast.getOrCreateInstance(toastElement);
+                toastInstance.show();
             }
 
         },
@@ -756,8 +746,12 @@ export default {
             this.paymentTimer = setInterval(() => {
                 if (this.remainingSeconds > 0) {
                     this.remainingSeconds--;
-                    if (this.remainingSeconds == 0) {
-                        this.error = "You ran out of time, please select your tickets again.";
+                    if (this.remainingSeconds == 0 && this.paymentStatus == false) {
+                        
+                        // show toast
+                        const toastElement = document.getElementById('timeOut');
+                        const toastInstance = Toast.getOrCreateInstance(toastElement);
+                        toastInstance.show();
                     }
                 } else {
                     this.cancelReservation(true);
@@ -868,9 +862,7 @@ export default {
     right: 0;
     height: 2px;
     background-color: #e0e0e0;
-    /* Default grey line */
     z-index: -1;
-    /* Send the line behind the circles */
 }
 
 .timeline-step {
@@ -884,13 +876,11 @@ export default {
     height: 12px;
     border-radius: 50%;
     background-color: #e0e0e0;
-    /* Default grey */
 }
 
 .timeline-step.active .circle,
 .timeline-step.completed .circle {
     background-color: #007bff;
-    /* Blue for active/completed steps */
 }
 
 .step-label {
@@ -901,12 +891,10 @@ export default {
 .timeline-step.active .step-label,
 .timeline-step.completed .step-label {
     color: #007bff;
-    /* Blue for active/completed text */
 }
 
 .timeline-step .step-label {
     color: #a0a0a0;
-    /* Grey for inactive text */
 }
 
 /* Navigation Buttons */
@@ -917,7 +905,6 @@ export default {
 
 .bold-line {
     border-top: 2px solid #b3b3b3;
-    /* Makes the line bold and black */
 }
 
 
@@ -935,7 +922,6 @@ export default {
     padding: 8px;
     margin-top: 5px;
     border: 1px solid #ccc;
-    /* font-size: 14px; */
 }
 
 .timer-count {

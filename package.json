@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@popperjs/core": "^2.11.8",
     "@stripe/stripe-js": "^6.1.0",
     "@vue-stripe/vue-stripe": "^4.5.0",
     "axios": "^1.8.4",

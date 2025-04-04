@@ -1,13 +1,8 @@
 <template>
     <div class="col">
-        <div 
-            class="card rounded-0 border-0 addShadow" 
-            @click="handleCardClick" 
-            style="cursor: pointer;"
-        >
+        <div class="card rounded-0 border-0 addShadow" @click="handleCardClick" style="cursor: pointer; ">
             <div class="position-relative">
-                <img :src="image || '../assets/carousel/eventiva_carousel1.png'" 
-                    class="card-img-top rounded-0"
+                <img :src="image || '../assets/carousel/eventiva_carousel1.png'" class="card-img-top rounded-0"
                     style="object-fit: cover; height: 35vh;">
                 <!-- Sold Out Overlay -->
                 <div v-if="isSoldOut" class="sold-out-overlay">
@@ -26,53 +21,44 @@
 
                 <!-- Conditional buttons for sold out events -->
                 <div v-if="isSoldOut" class="d-flex justify-content-between align-items-center">
-                    <button 
-                        v-if="!isInterestedInResale"
-                        @click.stop="openResaleNotificationModal" 
-                        class="btn btn-outline-primary w-100"
-                        style="text-transform: uppercase;"
-                    >
+                    <button v-if="!isInterestedInResale" @click.stop="openResaleNotificationModal"
+                        class="btn btn-outline-primary w-100" style="text-transform: uppercase;">
                         Notify When Resale Available
                     </button>
-                    <button 
-                        v-else
-                        class="btn btn-outline-success w-100"
-                        style="text-transform: uppercase;"
-                        disabled
-                    >
+                    <button v-else class="btn btn-outline-success w-100" style="text-transform: uppercase;" disabled>
                         <i class="bi bi-bell-fill me-2"></i>Notification Set
                     </button>
                 </div>
 
                 <div v-else>
-                    <button 
-                        @click.stop="toEvent" 
-                        class="btn btn-primary w-100"
-                        style="text-transform: uppercase;"
-                    >
+                    <button @click.stop="toEvent" class="btn btn-primary w-100" style="text-transform: uppercase;">
                         Learn More
                     </button>
 
-                    <p 
-                        v-if="availableTickets < ticketThreshold" 
-                        class="text-danger mt-2 mb-0"
-                        style="font-size: 14px;"
-                    >
+                    <p v-if="availableTickets < ticketThreshold" class="text-danger mt-2 mb-0" style="font-size: 14px;">
                         Tickets Running Low!
                     </p>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Toasts -->
+    <Toasts/>
 </template>
 
 <script>
 
 import axios from 'axios';
 import { auth } from '../stores/auth.js';
+import Toasts from "../components/toasts.vue";
+import { Toast } from 'bootstrap';
 
 export default {
     name: 'event',
+    components: {
+        Toasts
+    },
     data() {
         return {
             ticketThreshold: 30,
@@ -166,15 +152,15 @@ export default {
         async checkSoldOutStatus() {
             try {
                 const response = await axios.get(`https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/${this.id}/is-sold-out`);
-                
+
                 console.log(`Sold out status for event ${this.id}:`, response.data);
-                
+
                 if (response.data && response.data.Result) {
-                this.isSoldOut = response.data.isSoldOut || false;
+                    this.isSoldOut = response.data.isSoldOut || false;
                 } else {
-                this.isSoldOut = false;
+                    this.isSoldOut = false;
                 }
-                
+
                 console.log(`Event ${this.id} sold out status:`, this.isSoldOut);
             } catch (error) {
                 console.error(`Failed to check sold-out status for event ${this.id}`, error);
@@ -184,24 +170,24 @@ export default {
         async checkUserInterestStatus() {
             // Get user data from auth store
             const userData = auth.getUser();
-            
+
             if (!userData) {
                 // User not logged in, can't check interest status
                 this.isInterestedInResale = false;
                 return;
             }
-            
+
             const userId = userData.id || userData._id; // Handle both formats
             console.log('Checking interest status for user:', userId); // Debug log
-            
+
             try {
                 // Use the correct endpoint to check if user is interested in this event
                 const response = await axios.get(
                     `${this.apiGatewayUrl || 'http://localhost:5003'}/user/${userId}/interested-events/${this.id}`
                 );
-                
+
                 console.log('User interest check response:', response.data);
-                
+
                 // Update status based on API response
                 this.isInterestedInResale = response.data.is_interested;
             } catch (error) {
@@ -213,17 +199,19 @@ export default {
             try {
                 // Get user data from auth store
                 const userData = auth.getUser();
-                
+
                 if (!userData) {
-                    // User is not logged in, redirect to login
-                    this.$router.push('/login');
+                    const toastElement = document.getElementById('loginFirstNotify');
+                    const toastInstance = Toast.getOrCreateInstance(toastElement);
+                    toastInstance.show();
+                    
                     return;
                 }
                 const userId = userData.id || userData._id;
                 console.log('User ID from auth store:', userId); // Debug log
-                
+
                 const response = await axios.post(
-                    `${this.apiGatewayUrl || 'http://localhost:5003'}/user/${userId}/interested-events`, 
+                    `${this.apiGatewayUrl || 'http://localhost:5003'}/user/${userId}/interested-events`,
                     {
                         event_id: this.id
                     }
@@ -231,7 +219,7 @@ export default {
 
                 // Update UI to show user is now interested
                 this.isInterestedInResale = true;
-                
+
                 // Simple success message
                 alert("We'll notify you when resale tickets become available!");
             } catch (error) {
@@ -244,7 +232,7 @@ export default {
 
         this.formatDates(this.dates);
         this.checkSoldOutStatus();
-        this.checkUserInterestStatus(); 
+        this.checkUserInterestStatus();
     },
 
 }
@@ -254,6 +242,11 @@ export default {
 
 
 <style scoped>
+
+.card {
+    height: 100%;
+}
+
 .sold-out-overlay {
     position: absolute;
     top: 0;

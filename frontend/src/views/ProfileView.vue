@@ -350,17 +350,42 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal to ask user not to leave page while it loads -->
+    <div>
+        <!-- Modal -->
+        <div ref="LoadingModal" class="modal fade" tabindex="-1" aria-labelledby="LoadingModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="LoadingModalLabel">Hold on while we list your ticket for resale... Please do not exit or refresh the page.</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Buttons to control modal -->
+        <button @click="showModal" class="btn btn-primary">Launch Modal</button>
+        <button @click="closeModal" class="btn btn-danger">Close Modal Programmatically</button>
+    </div>
+
+    <!-- Toasts -->
+    <Toasts/>
 </template>
 
 <script>
 import NavBar from "../components/nav-bar.vue";
+import Toasts from "../components/toasts.vue";
+
 import { auth } from '../stores/auth';
 import axios from 'axios';
+import { Toast, Modal } from 'bootstrap';
 
 export default {
     name: 'profile',
     components: {
-        NavBar
+        NavBar, Toasts
     },
     data() {
         return {
@@ -394,6 +419,8 @@ export default {
             showErrorPopup: false,
             errorMessage: '',
             pollingInterval: null,
+
+            loadModalInstance: null,
         }
     },
     computed: {
@@ -407,6 +434,9 @@ export default {
         },
     },
     mounted() {
+        // Initialize the modal instance when the component is mounted
+        this.loadModalInstance = new Modal(this.$refs.LoadingModal);
+
         const userData = auth.getUser();
 
         if (!userData || (!userData._id && !userData.id)) {
@@ -612,6 +642,9 @@ watch: {
             }));
             
             console.log('Orders with complete details:', this.orderList);
+
+            this.showToast('orderLoadDone')
+
             this.loadingMsg = false;
         } catch (error) {
             console.error('Error fetching order details:', error);
@@ -674,6 +707,9 @@ watch: {
                 });
                 console.log("API Response:", response.data);
                 if (response.status === 200) {
+
+                    this.showToast('updateMobile')
+
                     console.log("Mobile number updated successfully:", response.data);
                     
                     // Store the latest user data
@@ -742,13 +778,16 @@ watch: {
                 
                 console.log("Confirming resale with params:", { ticketId, catId, eventId });
 
-                alert("Your ticket is being listed for resale... Please do not exit or refresh the page");
+                this.loadModalInstance.show();
 
                 // Call resell API
                 this.resellTicket(ticketId, catId, eventId);
                 
                 // Close the popup and disable the menu
                 this.closePopup();
+
+                
+                
             } else {
                 alert("Please agree with the Terms and Conditions");
                 console.log('Agreement not checked or no ticket selected');
@@ -799,13 +838,20 @@ watch: {
                 
                 if (response.data.can_transfer) {
                     this.closePopup();
+
+                    this.showToast('transferTicket')
+                    
                 } else {
+                    this.showToast('transferTicketError')
+
                     // Show error popup instead of alert
                     this.errorMessage = response.data.message;
                     this.showErrorPopup = true;
                     this.closePopup(); // Close the transfer popup
                 }
             } catch (error) {
+                
+                this.showToast('transferTicketError')
                 // Handle validation errors with popup
                 this.errorMessage = error.response?.data?.message || "An error occurred during validation";
                 this.showErrorPopup = true;
@@ -861,14 +907,19 @@ watch: {
                 console.log("Resale Response:", response.data);
 
                 // Show success alert once the API call is successful
-                alert("Resale listed successfully! Your ticket is now being resold.");
-                
+                // alert("Resale listed successfully! Your ticket is now being resold.");
+
+                this.showToast('resaleTicket')
+                this.loadModalInstance.hide();
                 return response.data;
             } catch (error) {
+                this.loadModalInstance.hide();
+                this.showToast('resaleTicketError')
                 alert("Resale failed. Please try again later.");
                 console.error("Resale Error:", error.response?.data || error.message);
                 throw error;
             }
+            
         },
         showExpandedNotification(ticket) {
             console.log('Opening notification for ticket:', ticket); // Debug log
@@ -1118,6 +1169,12 @@ watch: {
                 }
             }, 30000); // 30 seconds
         },
+        showToast(toastId){
+            // show toast 
+            const toastElement = document.getElementById(toastId);
+            const toastInstance = Toast.getOrCreateInstance(toastElement);
+            toastInstance.show();
+        }
 
     },
     created () {
