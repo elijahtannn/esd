@@ -741,7 +741,9 @@ watch: {
                 }
                 
                 console.log("Confirming resale with params:", { ticketId, catId, eventId });
-                
+
+                alert("Your ticket is being listed for resale... Please do not exit or refresh the page");
+
                 // Call resell API
                 this.resellTicket(ticketId, catId, eventId);
                 
@@ -857,9 +859,13 @@ watch: {
                 const response = await axios.post(resaleUrl, resaleData);
 
                 console.log("Resale Response:", response.data);
+
+                // Show success alert once the API call is successful
+                alert("Resale listed successfully! Your ticket is now being resold.");
                 
                 return response.data;
             } catch (error) {
+                alert("Resale failed. Please try again later.");
                 console.error("Resale Error:", error.response?.data || error.message);
                 throw error;
             }
