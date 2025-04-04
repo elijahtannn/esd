@@ -3,6 +3,14 @@
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
         <div>
             <NavBar />
+            <!-- Waiting for Resale Modal -->
+            <div v-if="isResaleModalVisible" class="modal-overlay">
+                <div class="modal-content">
+                    <p>{{ resaleMessage }}</p>
+                    <div v-if="isResaleInProgress" class="spinner"></div>
+                    <button v-else @click="isResaleModalVisible = false">Close</button>
+                </div>
+            </div>
             <div v-if="user">
                 <!-- Banner -->
                 <div class="container-fluid bannerImg banner mx-0 p-5">
@@ -419,8 +427,9 @@ export default {
             showErrorPopup: false,
             errorMessage: '',
             pollingInterval: null,
-
-            loadModalInstance: null,
+            isResaleModalVisible: false,
+            resaleMessage: "Your ticket is being listed for resale... Please do not exit or refresh the page.",
+            isResaleInProgress: true, // To track the progress
         }
     },
     computed: {
@@ -778,7 +787,9 @@ watch: {
                 
                 console.log("Confirming resale with params:", { ticketId, catId, eventId });
 
-                this.loadModalInstance.show();
+                this.resaleMessage = "Your ticket is being listed for resale... Please do not exit or refresh the page.";
+                this.isResaleModalVisible = true;
+                this.isResaleInProgress = true;
 
                 // Call resell API
                 this.resellTicket(ticketId, catId, eventId);
@@ -906,6 +917,11 @@ watch: {
 
                 console.log("Resale Response:", response.data);
 
+                this.resaleMessage = "Resale listed successfully! Your ticket is now being resold.";
+                this.isResaleInProgress = false;
+                this.isResaleModalVisible=false;
+
+                // Show success alert once the API call is successful                
                 // Show success alert once the API call is successful
                 // alert("Resale listed successfully! Your ticket is now being resold.");
 
@@ -915,7 +931,9 @@ watch: {
             } catch (error) {
                 this.loadModalInstance.hide();
                 this.showToast('resaleTicketError')
-                alert("Resale failed. Please try again later.");
+                this.resaleMessage = "Resale failed. Please try again later.";
+                this.isResaleInProgress = false;
+                this.isResaleModalVisible=false;
                 console.error("Resale Error:", error.response?.data || error.message);
                 throw error;
             }
@@ -1787,6 +1805,37 @@ button {
 
 .reject-button:hover {
     background-color: #f8f9fa;
+}
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.modal-content {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+}
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 4px solid #ccc;
+    border-top: 4px solid #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: auto;
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
 </style>
