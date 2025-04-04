@@ -142,10 +142,10 @@
                                                 <div class="qr-card" v-for="ticket in order.tickets" :key="ticket.ticketId">
                                                     <!-- Three-dot menu -->
                                                     <div class="menu-container">
-                                                        <span class="menu-icon" @click="toggleMenu(ticket)">
+                                                        <span class="menu-icon" :class="{ 'disabled': ticket.status !== 'SOLD' || !ticket.isTransferable }" @click="toggleMenu(ticket)">
                                                             &#x22EE; <!-- Vertical three dots -->
                                                         </span>
-                                                        <div v-if="openMenus.includes(ticket) && !disabledMenus[ticket.ticketId]" class="menu-dropdown">
+                                                        <div v-if="openMenus.includes(ticket)" class="menu-dropdown">
                                                             <p @click="handleOption('resale', ticket)">Resell Ticket</p>
                                                             <p @click="handleOption('transfer', ticket)">Transfer Ticket</p>
                                                         </div>
@@ -156,11 +156,19 @@
                                                         <img v-else src="../assets/images/dummy QR code.png" alt="Fallback QR Code" class="qr-image"/>
                                                     </div>
                                                     <!-- TICKET ON HOLD TEXT -->
-                                                    <div v-if="ticketStatuses[ticket.ticketId] && !ticketStatuses[ticket.ticketId].isQrVisible" class="ticket-status">
-                                                        <p
-                                                            style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
-                                                            <strong>ON HOLD:</strong> {{ ticketStatuses[ticket.ticketId].status }}
-                                                        </p>
+                                                    <div>
+                                                        <div v-if="ticket.status == 'RESALE' " class="ticket-status">
+                                                            <p
+                                                                style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
+                                                                <strong>ON HOLD:</strong> TICKET IS BEING RESOLD
+                                                            </p>
+                                                        </div>
+                                                        <div v-if="ticket.status == 'PENDING_TRANSFER' " class="ticket-status">
+                                                            <p
+                                                                style="background-color:#2A68E1; color: white; margin-top:30px; padding: 5px; text-align: center;">
+                                                                <strong>ON HOLD:</strong> TICKET IS BEING TRANSFERRED
+                                                            </p>
+                                                        </div>
                                                     </div>
                                                     <p>#{{ ticket.ticketId }}</p>
                                                     <p>Type: {{ ticket.categoryName }}</p>
@@ -362,7 +370,6 @@ export default {
             notifications: [{ id: 1, message: "You have a new message!jgahgjhjrhtuihbersuibyuithythyivuhtrbytruibghygyg" },
             { id: 2, message: "Your order has been shippedlkrjybijtryimjbinjhyifjhoijbtyuoguihugmofb!" }],
             //test notif
-            disabledMenus: {},
             selectedTicket: null,
             ticketStatuses: {},
             user: null,
@@ -374,7 +381,6 @@ export default {
             eventivaAccount: '',
             email: '',
             isEditing: false,
-            isQrVisible: true,
             ticketStatus: "",
             orderList: [],
             eventList: [],
@@ -399,15 +405,6 @@ export default {
             const now = new Date();
             return this.orderList.filter(order => new Date(order.EventDate) <= now);
         },
-        // Add this new computed property
-        ticketsInResaleProcess() {
-            const statuses = this.ticketStatuses;
-            return Object.keys(statuses).filter(ticketId => 
-                statuses[ticketId] && 
-                !statuses[ticketId].isQrVisible && 
-                statuses[ticketId].status === "TICKET IS BEING RESOLD"
-            );
-        }
     },
     mounted() {
         const userData = auth.getUser();
@@ -421,29 +418,6 @@ export default {
         this.user = { ...userData, _id: userData._id || userData.id };
 
         console.log("Fetched User from auth:", this.user);
-
-        // Load ticket statuses from localStorage
-        const storedStatuses = localStorage.getItem("ticketStatuses");
-        if (storedStatuses) {
-            try {
-                this.ticketStatuses = JSON.parse(storedStatuses);
-                console.log("Loaded ticket statuses from localStorage:", this.ticketStatuses);
-            } catch (e) {
-                console.error("Error parsing ticket statuses from localStorage:", e);
-                this.ticketStatuses = {};
-            }
-        }
-
-        const storedDisabledMenus = localStorage.getItem("disabledMenus");
-        if (storedDisabledMenus) {
-            try {
-                this.disabledMenus = JSON.parse(storedDisabledMenus);
-            } catch (e) {
-                console.error("Error parsing disabled menus:", e);
-                this.disabledMenus = {};
-            }
-        }
-
         // Fetch the latest user data
         this.fetchUserData()
             .then(() => this.fetchOrders())
@@ -768,23 +742,13 @@ watch: {
                 
                 console.log("Confirming resale with params:", { ticketId, catId, eventId });
                 
-                // Update UI status immediately
-                this.ticketStatuses[ticketId] = {
-                    isQrVisible: false,
-                    status: "TICKET IS BEING RESOLD"
-                };
-                
-                // Save the updated statuses
-                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
-                
                 // Call resell API
                 this.resellTicket(ticketId, catId, eventId);
                 
                 // Close the popup and disable the menu
                 this.closePopup();
-                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
-                localStorage.setItem("disabledMenus", JSON.stringify(this.disabledMenus));
             } else {
+                alert("Please agree with the Terms and Conditions");
                 console.log('Agreement not checked or no ticket selected');
             }
         },
@@ -832,13 +796,7 @@ watch: {
                 console.log("Validate Response:", response.data);
                 
                 if (response.data.can_transfer) {
-                    this.ticketStatuses[this.selectedTicket.ticketId] = {
-                        isQrVisible: false,
-                        status: "TICKET IS BEING TRANSFERRED"
-                    };
-                    localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
                     this.closePopup();
-                    this.disabledMenus = { ...this.disabledMenus, [this.selectedTicket.ticketId]: true };
                 } else {
                     // Show error popup instead of alert
                     this.errorMessage = response.data.message;
@@ -899,18 +857,6 @@ watch: {
                 const response = await axios.post(resaleUrl, resaleData);
 
                 console.log("Resale Response:", response.data);
-                
-                // Update the ticket status in UI
-                this.ticketStatuses[ticketId] = {
-                    isQrVisible: false,
-                    status: "TICKET IS BEING RESOLD"
-                };
-                
-                // Save the updated statuses to localStorage
-                localStorage.setItem("ticketStatuses", JSON.stringify(this.ticketStatuses));
-                
-                // Disable the menu for this ticket
-                this.disabledMenus = { ...this.disabledMenus, [ticketId]: true };
                 
                 return response.data;
             } catch (error) {
@@ -1143,14 +1089,14 @@ watch: {
                     const updatedStatuses = {};
                     this.orderList.forEach(order => {
                         order.tickets.forEach(ticket => {
-                            // Only show transfer status if the user is the sender AND ticket is still pending
-                            if (ticket.status === "PENDING_TRANSFER" && 
-                                ticket.owner_id === (this.user._id || this.user.id)) {
-                                updatedStatuses[ticket.ticketId] = {
-                                    isQrVisible: false,
-                                    status: "TICKET IS BEING TRANSFERRED"
-                                };
-                            }
+                            // // Only show transfer status if the user is the sender AND ticket is still pending
+                            // if (ticket.status === "PENDING_TRANSFER" && 
+                            //     ticket.owner_id === (this.user._id || this.user.id)) {
+                            //     updatedStatuses[ticket.ticketId] = {
+                            //         isQrVisible: false,
+                            //         status: "TICKET IS BEING TRANSFERRED"
+                            //     };
+                            // }
                         });
                     });
                     
@@ -1164,7 +1110,7 @@ watch: {
                         // localStorage.removeItem("ticketStatuses");
                     }
                 }
-            }, 60000); // Changed from 30000 (30seconds) to 60000 (60 seconds)
+            }, 30000); // 30 seconds
         },
 
     },
@@ -1183,6 +1129,12 @@ watch: {
 </script>
 
 <style scoped>
+
+.disabled {
+    pointer-events: none; 
+    opacity: 0.5; 
+    cursor: not-allowed;
+}
 
 .resold-ticket-info {
   display: inline-flex;
