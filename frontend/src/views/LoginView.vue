@@ -14,37 +14,6 @@
         <!-- White Box (Login Form) -->
         <div class="login-box p-5">
             <h3 class="text-center" style="font-size: 24px;">LOGIN</h3>
-            <!-- Input field - Email -->
-            <div class="row">
-                <label for="email" class="input-label">
-                    <i class="fa-solid fa-envelope icon"></i>
-                    Email
-                </label>
-                <div class="input-container">
-                    <input type="email" id="email" class="input-field" required placeholder="Enter your email"/>
-                </div>
-            </div>
-            <!-- Input field - Password -->
-            <div class="row">
-                <label for="password" class="input-label">
-                    <i class="bi bi-lock-fill"></i>
-                    Password
-                </label>
-                <div class="input-container">
-                    <input type="password" id="password" class="input-field" required  placeholder="Enter your password"/>
-                    <!-- Forget Password -->
-                    <div class="forget-password-container">
-                        <div class="text-end">
-                            <a href="#" class="forgetPW">Forget Password?</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!-- Submit Button -->
-            <div class='row'>
-                <button class="login-btn">LOGIN</button>
-            </div>
-
             <!-- Login with google -->
             <div class='row mt-3'>
                 <button class="btn" @click="handleGoogleLogin">
@@ -53,15 +22,6 @@
             </div>
 
             <!-- insert line here -->
-            <hr>
-
-
-            <!-- Dont Have an existing account? -->
-            <div class="row">
-                <span class="small-text">Don't have an existing account?</span>
-                <span class="small-text">Sign Up <router-link to="/register">here</router-link></span>
-            </div>
-
         </div>
     </div>
 
@@ -165,20 +125,6 @@ export default {
     border-color: #2A68E1;
 }
 
-.login-btn {
-    width: 100%;
-    padding: 8px;
-    background-color: #2A68E1;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.login-btn:hover {
-    background-color: #1e4da8;
-}
 
 .forgetPW {
     color: gray;
