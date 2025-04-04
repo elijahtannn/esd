@@ -359,25 +359,6 @@
         </div>
     </div>
 
-    <!-- Modal to ask user not to leave page while it loads -->
-    <div>
-        <!-- Modal -->
-        <div ref="LoadingModal" class="modal fade" tabindex="-1" aria-labelledby="LoadingModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h1 class="modal-title fs-5" id="LoadingModalLabel">Hold on while we list your ticket for resale... Please do not exit or refresh the page.</h1>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Buttons to control modal -->
-        <button @click="showModal" class="btn btn-primary">Launch Modal</button>
-        <button @click="closeModal" class="btn btn-danger">Close Modal Programmatically</button>
-    </div>
-
     <!-- Toasts -->
     <Toasts/>
 </template>
@@ -443,8 +424,6 @@ export default {
         },
     },
     mounted() {
-        // Initialize the modal instance when the component is mounted
-        this.loadModalInstance = new Modal(this.$refs.LoadingModal);
 
         const userData = auth.getUser();
 
@@ -921,16 +900,11 @@ watch: {
                 this.isResaleInProgress = false;
                 this.isResaleModalVisible=false;
 
-                // Show success alert once the API call is successful                
-                // Show success alert once the API call is successful
-                // alert("Resale listed successfully! Your ticket is now being resold.");
-
-                this.showToast('resaleTicket')
-                this.loadModalInstance.hide();
+                this.showToast('resaleTicket');
                 return response.data;
             } catch (error) {
-                this.loadModalInstance.hide();
-                this.showToast('resaleTicketError')
+                this.showToast('resaleTicketError');
+
                 this.resaleMessage = "Resale failed. Please try again later.";
                 this.isResaleInProgress = false;
                 this.isResaleModalVisible=false;
