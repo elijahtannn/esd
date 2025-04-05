@@ -828,7 +828,7 @@ watch: {
                 
                 if (response.data.can_transfer) {
                     this.closePopup();
-
+                    window.location.reload();
                     this.showToast('transferTicket')
                     
                 } else {
@@ -899,7 +899,7 @@ watch: {
                 this.resaleMessage = "Resale listed successfully! Your ticket is now being resold.";
                 this.isResaleInProgress = false;
                 this.isResaleModalVisible=false;
-
+                window.location.reload();
                 this.showToast('resaleTicket');
                 return response.data;
             } catch (error) {
@@ -1130,43 +1130,44 @@ watch: {
         // Modify the startTicketStatusPolling method to only show "TICKET IS BEING TRANSFERRED" 
         // for tickets that the user is sending, not receiving
         async startTicketStatusPolling() {
+            if (this.pollingInterval) {
+                // Prevent creating multiple intervals
+                return;
+            }
+
             this.pollingInterval = setInterval(async () => {
                 if (this.orderList.length > 0) {
                     await this.fetchOrders();
-                    
+
                     // Update local storage based on current ticket statuses
                     const updatedStatuses = {};
                     this.orderList.forEach(order => {
                         order.tickets.forEach(ticket => {
-                            // // Only show transfer status if the user is the sender AND ticket is still pending
-                            // if (ticket.status === "PENDING_TRANSFER" && 
-                            //     ticket.owner_id === (this.user._id || this.user.id)) {
-                            //     updatedStatuses[ticket.ticketId] = {
-                            //         isQrVisible: false,
-                            //         status: "TICKET IS BEING TRANSFERRED"
-                            //     };
-                            // }
+                            // Logic for updating statuses
                         });
                     });
-                    
+
                     // Update local storage only if there are changes
                     if (Object.keys(updatedStatuses).length > 0) {
                         this.ticketStatuses = updatedStatuses;
                         localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
-                    } else {
-                        // Clear the statuses if no pending transfers
-                        // this.ticketStatuses = {};
-                        // localStorage.removeItem("ticketStatuses");
                     }
                 }
             }, 30000); // 30 seconds
+        },
+
+        stopTicketStatusPolling() {
+            if (this.pollingInterval) {
+                clearInterval(this.pollingInterval);
+                this.pollingInterval = null;
+            }
         },
         showToast(toastId){
             // show toast 
             const toastElement = document.getElementById(toastId);
             const toastInstance = Toast.getOrCreateInstance(toastElement);
             toastInstance.show();
-        }
+        },
 
     },
     created () {
@@ -1176,9 +1177,11 @@ watch: {
         }
     },
     beforeDestroy() {
-        if (this.pollingInterval) {
-            clearInterval(this.pollingInterval);
-        }
+        this.stopTicketStatusPolling();
+    },
+    beforeRouteLeave(to, from, next) {
+        this.stopTicketStatusPolling();
+        next(); // Proceed with navigation
     }
 }
 </script>
