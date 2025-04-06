@@ -354,6 +354,15 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Transfer Processing Modal -->
+                <div v-if="isTransferModalVisible" class="modal-overlay">
+                    <div class="modal-content">
+                        <p>{{ transferMessage }}</p>
+                        <div v-if="isTransferInProgress" class="spinner"></div>
+                        <button v-else @click="isTransferModalVisible = false">Close</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -408,7 +417,10 @@ export default {
             pollingInterval: null,
             isResaleModalVisible: false,
             resaleMessage: "Your ticket is being listed for resale... Please do not exit or refresh the page.",
-            isResaleInProgress: true, 
+            isResaleInProgress: true,
+            isTransferModalVisible: false,
+            transferMessage: "Your ticket transfer is being processed... Please do not exit or refresh the page.",
+            isTransferInProgress: true,
         }
     },
     computed: {
@@ -987,7 +999,14 @@ watch: {
                     return;
                 }
 
-                // For acceptances, keep the existing logic
+                // For acceptances, show the loading modal
+                this.isTransferModalVisible = true;
+                this.isTransferInProgress = true;
+                this.transferMessage = "Your ticket transfer is being processed... Please do not exit or refresh the page.";
+
+                // Close the confirmation modal
+                this.closeModal();
+
                 console.log('Processing transfer for ticket:', notificationData);
 
                 const transferData = {
@@ -996,9 +1015,6 @@ watch: {
                     sender_id: notificationData.owner_id,
                     sender_email: notificationData.owner_email
                 };
-
-                // Close modal
-                this.closeModal();
 
                 const response = await axios.post(
                     `${this.apiGatewayUrl}/transfer/${notificationData._id}`,
@@ -1019,14 +1035,25 @@ watch: {
                         ticket => ticket._id !== notificationData._id
                     );
 
-                    // Fetch updated orders instead of full page reload
+                    // Update the transfer message
+                    this.transferMessage = "Transfer completed successfully! The ticket is now in your orders.";
+                    this.isTransferInProgress = false;
+
+                    // Fetch updated orders
                     await this.fetchOrders();
+
+                    // Hide the modal after a short delay
+                    setTimeout(() => {
+                        this.isTransferModalVisible = false;
+                    }, 2000);
                 } else {
+                    this.isTransferModalVisible = false;
                     this.errorMessage = "Failed to process transfer response. Please try again.";
                     this.showErrorPopup = true;
                 }
             } catch (error) {
                 console.error("Error processing transfer response:", error);
+                this.isTransferModalVisible = false;
                 this.errorMessage = error.response?.data?.message || "An error occurred while processing your response. Please try again.";
                 this.showErrorPopup = true;
             }
