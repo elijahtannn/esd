@@ -1,13 +1,77 @@
-from flask import Blueprint, request, jsonify
-from models import get_ticket_collection, Ticket
+from flask import Flask, Blueprint, request, jsonify
+from flask_pymongo import PyMongo
 from bson.objectid import ObjectId
 from datetime import datetime, timedelta
 import threading
+import os
+from dotenv import load_dotenv
+from flask_cors import CORS
 
+# Load environment variables
+load_dotenv()
 
+# Initialize Flask application
+app = Flask(__name__)
+CORS(app)
+
+# Configuration
+app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb://localhost:27017/esd")
+
+# Initialize MongoDB
+mongo = PyMongo(app)
+
+def get_ticket_collection():
+    """Get the ticket collection from MongoDB"""
+    return mongo.db.tickets
+
+class Ticket:
+    """Ticket Model"""
+
+    def __init__(self, event_id, event_date_id, cat_id, owner_id, seat_info, status="available", is_transferable=True, qr_code=None):
+        self.event_id = int(event_id)
+        self.event_date_id = int(event_date_id)
+        self.cat_id = int(cat_id)
+        self.owner_id = owner_id
+        self.seat_info = seat_info
+        self.status = status
+        self.is_transferable = is_transferable
+        self.qr_code = qr_code if qr_code else ""
+        self.created_at = datetime.utcnow()
+        self.updated_at = datetime.utcnow()
+
+    def to_dict(self):
+        """Convert Ticket object to a dictionary for MongoDB storage"""
+        return {
+            "event_id": self.event_id,
+            "event_date_id": self.event_date_id,
+            "cat_id": self.cat_id,
+            "owner_id": str(self.owner_id),
+            "seat_info": self.seat_info,
+            "status": self.status,
+            "is_transferable": self.is_transferable,
+            "qr_code": self.qr_code,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
+
+    @staticmethod
+    def serialize_ticket(ticket_dict):
+        """Serialize a ticket dictionary from MongoDB to ensure JSON compatibility"""
+        serialized = ticket_dict.copy()
+        
+        if "_id" in serialized:
+            serialized["_id"] = str(serialized["_id"])
+        if "owner_id" in serialized:
+            serialized["owner_id"] = str(serialized["owner_id"])
+        if "created_at" in serialized:
+            serialized["created_at"] = serialized["created_at"].isoformat() if serialized["created_at"] else None
+        if "updated_at" in serialized:
+            serialized["updated_at"] = serialized["updated_at"].isoformat() if serialized["updated_at"] else None
+        
+        return serialized
+
+# Create Blueprint
 ticket_bp = Blueprint('ticket_bp', __name__)
-
-# Helper: Release reserved ticket and delete if unconfirmed
 
 def release_ticket_after_delay(ticket_ids, delay_seconds=180):
     def release():
@@ -36,7 +100,7 @@ def release_tickets():
     try:
         result = get_ticket_collection().delete_many({
             "_id": {"$in": [ObjectId(tid) for tid in ticket_ids]},
-            "owner_id": str(owner_id),  # Store owner_id as string
+            "owner_id": str(owner_id),
             "status": "RESERVED"
         })
 
@@ -47,7 +111,6 @@ def release_tickets():
     except Exception as e:
         return jsonify({"error": f"Failed to release tickets: {str(e)}"}), 400
 
-# Trigger the timer automatically in your reserve route
 @ticket_bp.route('/tickets/reserve', methods=['POST'])
 def create_tickets():
     data = request.json
@@ -80,8 +143,8 @@ def create_tickets():
         result = get_ticket_collection().insert_many(tickets)
         inserted_ids = [str(ticket_id) for ticket_id in result.inserted_ids]
 
-        # Set timer to release if not confirmed in 3 minutes
-        # release_ticket_after_delay(inserted_ids)
+        # Set up automatic ticket release timer
+        release_ticket_after_delay(inserted_ids)
 
         return jsonify({
             "message": f"{num_tickets} ticket(s) reserved successfully",
@@ -90,8 +153,6 @@ def create_tickets():
 
     except ValueError:
         return jsonify({"error": "Invalid data format"}), 400
-
-
 
 @ticket_bp.route('/tickets/confirm', methods=['PUT'])
 def confirm_ticket_purchase():
@@ -108,26 +169,23 @@ def confirm_ticket_purchase():
             try:
                 ticket_ids.append(ObjectId(tid))
             except Exception:
-                continue  # Skip invalid ObjectIds
+                continue
 
-        # Find all matching tickets
         tickets = list(get_ticket_collection().find({"_id": {"$in": ticket_ids}}))
         
         if not tickets:
             return jsonify({"error": "No matching tickets found"}), 404
 
-        # Check if any ticket is NOT in 'RESERVED' status
         reserved_ticket_ids = [t["_id"] for t in tickets if t["status"] == "RESERVED"]
         non_reserved = [str(t["_id"]) for t in tickets if t["status"] != "RESERVED"]
 
         if not reserved_ticket_ids:
             return jsonify({"error": "No tickets in 'RESERVED' state", "non_reserved": non_reserved}), 400
 
-        # Update all tickets to 'sold'
         result = get_ticket_collection().update_many(
-        {"_id": {"$in": reserved_ticket_ids}},
-        {"$set": {"status": "SOLD", "updated_at": datetime.utcnow()}}
-    )
+            {"_id": {"$in": reserved_ticket_ids}},
+            {"$set": {"status": "SOLD", "updated_at": datetime.utcnow()}}
+        )
 
         return jsonify({
             "message": f"Successfully updated {result.modified_count} ticket(s) to 'SOLD'"
@@ -136,7 +194,6 @@ def confirm_ticket_purchase():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
    
-
 @ticket_bp.route('/tickets', methods=['GET'])
 def get_tickets():
     """ Get all tickets """
@@ -147,42 +204,6 @@ def get_tickets():
     except Exception as e:
         return jsonify({"error": f"Failed to fetch tickets: {str(e)}"}), 500
     
-# @ticket_bp.route('/tickets', methods=['GET'])
-# def get_tickets():
-#     try:
-#         query = {}
-#         owner_id = request.args.get("owner_id")
-#         cat_id = request.args.get("cat_id")
-#         event_id = request.args.get("event_id")
-#         event_date_id = request.args.get("event_date_id")
-#         status = request.args.get("status")
-        
-#         if owner_id:
-#             query["owner_id"] = owner_id
-#         if cat_id:
-#             try:
-#                 query["cat_id"] = int(cat_id)
-#             except ValueError:
-#                 query["cat_id"] = cat_id
-#         if event_id:
-#             try:
-#                 query["event_id"] = int(event_id)
-#             except ValueError:
-#                 query["event_id"] = event_id
-#         if event_date_id:
-#             try:
-#                 query["event_date_id"] = int(event_date_id)
-#             except ValueError:
-#                 query["event_date_id"] = event_date_id
-#         if status:
-#             query["status"] = status
-
-#         tickets = list(get_ticket_collection().find(query))
-#         serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
-#         return jsonify(serialized_tickets), 200
-#     except Exception as e:
-#         return jsonify({"error": f"Failed to fetch tickets: {str(e)}"}), 500
-
 @ticket_bp.route('/tickets/<ticket_id>', methods=['GET'])
 def get_ticket(ticket_id):
     """ Get a ticket by ID """
@@ -190,8 +211,7 @@ def get_ticket(ticket_id):
         ticket = get_ticket_collection().find_one({"_id": ObjectId(ticket_id)})
         if not ticket:
             return jsonify({"error": "Ticket not found"}), 404
-            
-        # Use the same serialization method as get_tickets()
+  
         serialized_ticket = Ticket.serialize_ticket(ticket)
         return jsonify(serialized_ticket), 200
     except Exception as e:
@@ -201,7 +221,7 @@ def get_ticket(ticket_id):
 def update_ticket(ticket_id):
     """ Update a ticket's status, owner, is_transferable, or pending_transfer_to """
     data = request.json
-    print(f"Updating ticket {ticket_id} with data:", data)  # Debug log
+    print(f"Updating ticket {ticket_id} with data:", data)
     update_data = {}
 
     if "status" in data:
@@ -211,12 +231,11 @@ def update_ticket(ticket_id):
         update_data["is_transferable"] = bool(data["is_transferable"])
     
     if "owner_id" in data:
-        update_data["owner_id"] = str(data["owner_id"])  # Store as string
+        update_data["owner_id"] = str(data["owner_id"])
     
     # Add support for pending_transfer_to
     if "pending_transfer_to" in data:
         if data["pending_transfer_to"] is None:
-            # If None, remove the field
             result = get_ticket_collection().update_one(
                 {"_id": ObjectId(ticket_id)},
                 {
@@ -232,12 +251,12 @@ def update_ticket(ticket_id):
 
     update_data["updated_at"] = datetime.utcnow()
     
-    if update_data:  # Only perform $set if there are fields to update
+    if update_data:
         result = get_ticket_collection().update_one(
             {"_id": ObjectId(ticket_id)}, 
             {"$set": update_data}
         )
-        print(f"Update result: matched={result.matched_count}, modified={result.modified_count}")  # Debug log
+        print(f"Update result: matched={result.matched_count}, modified={result.modified_count}")
 
     if result.matched_count == 0:
         return jsonify({"error": "Ticket not found"}), 404
@@ -266,7 +285,6 @@ def check_ticket_transfer_eligibility():
     try:
         ticket_ids = [ObjectId(ticket_id) for ticket_id in data["ticket_ids"]]
 
-        # Fetch the tickets from the database
         tickets = list(get_ticket_collection().find({"_id": {"$in": ticket_ids}}))
 
         if not tickets:
@@ -304,7 +322,6 @@ def update_ticket_qr(ticket_id):
 
     return jsonify({"message": "QR code updated successfully"}), 200
 
-# Add new endpoint to get pending transfers
 @ticket_bp.route('/tickets/pending/<recipient_email>', methods=['GET'])
 def get_pending_transfers(recipient_email):
     """Get all tickets pending transfer to a specific email"""
@@ -313,8 +330,7 @@ def get_pending_transfers(recipient_email):
             "status": "PENDING_TRANSFER",
             "pending_transfer_to": recipient_email
         }))
-        
-        # Debug log
+
         print(f"Found {len(tickets)} pending transfers for {recipient_email}")
         
         serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
@@ -322,7 +338,6 @@ def get_pending_transfers(recipient_email):
     except Exception as e:
         print(f"Error in get_pending_transfers: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 
 @ticket_bp.route('/tickets/category/<int:cat_id>', methods=['GET'])
 def get_tickets_by_category(cat_id):
@@ -357,3 +372,9 @@ def get_tickets_by_category(cat_id):
         return jsonify(serialized_tickets), 200
     except Exception as e:
         return jsonify({"error": f"Failed to fetch tickets by category: {str(e)}"}), 500
+
+# Register the blueprint
+app.register_blueprint(ticket_bp)
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5001)

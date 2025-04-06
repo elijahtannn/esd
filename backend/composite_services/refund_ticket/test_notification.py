@@ -1,12 +1,10 @@
-# test_notification.py
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))  # Add parent directory to path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from services import send_transfer_notification
 import logging
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -24,9 +22,9 @@ def test_rabbitmq_notification():
     )
     
     if result:
-        logger.info("✅ Notification sent successfully!")
+        logger.info("Notification sent successfully!")
     else:
-        logger.error("❌ Failed to send notification")
+        logger.error("Failed to send notification")
         
     return result
 

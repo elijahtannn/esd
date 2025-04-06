@@ -6,10 +6,8 @@ import json
 import requests
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
-# Configuration
 class Config:
     TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
     OUTSYSTEMS_EVENT_API_URL = os.getenv("OUTSYSTEMS_EVENT_API_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
@@ -151,7 +149,6 @@ def list_resale_ticket():
     ticket_id = data["ticket_id"]
     cat_id = data["cat_id"]
     
-    # Optional: Get event_id from request if available, otherwise we'll get it from ticket details
     event_id = data.get("event_id")
 
     # Step 1: Get the current ticket details from Ticket Service

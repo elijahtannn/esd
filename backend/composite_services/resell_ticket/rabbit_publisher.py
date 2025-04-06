@@ -45,7 +45,6 @@ class RabbitMQPublisher:
             )
             return pika.BlockingConnection(parameters)
         else:
-            # If the URL doesn't start with 'amqp://', try to use it directly
             return pika.BlockingConnection(pika.URLParameters(self.rabbitmq_url))
     
     def publish_resale_availability(self, event_id, event_name, ticket_details=None):
@@ -77,14 +76,11 @@ class RabbitMQPublisher:
                 "eventId": str(event_id),
                 "eventName": event_name
             }
-            
-            # Add any additional ticket details if provided
+
             if ticket_details and isinstance(ticket_details, dict):
-                # Include all event details
                 for key, value in ticket_details.items():
                     message[key] = value
-            
-            # Convert message to JSON and publish
+
             message_body = json.dumps(message)
             print(f"📤 Publishing message: {message_body[:100]}...")
             
@@ -93,7 +89,7 @@ class RabbitMQPublisher:
                 routing_key="ticket.resale.available",
                 body=message_body,
                 properties=pika.BasicProperties(
-                    delivery_mode=2,  # Make message persistent
+                    delivery_mode=2,
                     content_type="application/json"
                 )
             )
@@ -106,7 +102,6 @@ class RabbitMQPublisher:
                 
         except Exception as e:
             print(f"Error publishing resale availability message: {str(e)}")
-            # Print full stack trace
             import traceback
             traceback.print_exc()
             return False
