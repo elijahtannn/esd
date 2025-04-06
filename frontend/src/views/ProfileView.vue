@@ -557,22 +557,24 @@ watch: {
             // Process each order to get event details and ticket details
             await Promise.all(this.orderList.map(async (order) => {
             // Fetch event details
-            try {
-                const eventResponse = await axios.get(`/api/events/events/${order.eventId}`);
-                
-                // Process event data
-                if (eventResponse.data && eventResponse.data.Event && eventResponse.data.Event.length > 0) {
-                const eventData = eventResponse.data.Event[0];
-                order.EventName = eventData.Name;
-                order.Venue = eventData.Venue;
-                order.EventDate = eventData.Date;
+            const eventResponse = await axios.get(`/api/events/events/${order.eventId}`);
+
+            // Process event data
+            if (eventResponse.data && eventResponse.data.Event && eventResponse.data.Event.length > 0) {
+                // Match the correct eventDate object using eventDateId
+                const matchingEventDate = eventResponse.data.Event.find(eventItem => {
+                    return eventItem.EventDateId === order.eventDateId;
+                });
+
+                if (matchingEventDate) {
+                    order.EventName = matchingEventDate.Name;
+                    order.Venue = matchingEventDate.Venue;
+                    order.EventDate = matchingEventDate.Date;
+                } else {
+                    order.EventName = 'Event Information Unavailable';
+                    order.Venue = 'Venue Information Unavailable';
                 }
-            } catch (eventError) {
-                console.error(`Error fetching event details for order ${order.OrderId}:`, eventError);
-                order.EventName = 'Event Information Unavailable';
-                order.Venue = 'Venue Information Unavailable';
             }
-            
             // Fetch ticket details first
             if (order.ticketIds && order.ticketIds.length > 0) {
                 try {
