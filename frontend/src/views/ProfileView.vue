@@ -502,7 +502,6 @@ watch: {
                 
                 let allTicketIds = [];
                 if (order.tickets && Array.isArray(order.tickets)) {
-               
                 order.tickets.forEach(category => {
                     if (category.ticketIds && Array.isArray(category.ticketIds)) {
                     allTicketIds = [...allTicketIds, ...category.ticketIds];
@@ -638,12 +637,13 @@ watch: {
 
         formatDates(dates) {
             if (!dates) return '';
-            return new Date(dates).toLocaleDateString('en-US', {
-                year: 'numeric',
+            return new Date(dates).toLocaleDateString('en-GB', {
+                day: 'numeric',
                 month: 'short',
-                day: 'numeric'
+                year: 'numeric'
             });
         },
+
         formatTime(timeString) {
             if (!timeString) return '';
             
