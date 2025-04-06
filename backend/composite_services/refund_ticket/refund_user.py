@@ -250,6 +250,20 @@ def refund_user_ticket():
                 "refund_id": refund_id
             }), order_update_response.status_code
 
+        try:
+            logger.info(f"Updating ticket {ticket_id} to clear pending_refund flag")
+            ticket_update_response = requests.put(
+                f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
+                json={"pending_refund": False},
+            )
+            
+            if ticket_update_response.status_code != 200:
+                logger.warning(f"Failed to clear pending_refund flag for ticket {ticket_id}: {ticket_update_response.text}")
+            else:
+                logger.info(f"Successfully cleared pending_refund flag for ticket {ticket_id}")
+        except Exception as e:
+            logger.warning(f"Error clearing pending_refund flag: {str(e)}")
+
         logger.info(f"Starting notification process for seller {seller_id}")
         seller_email = get_user_email(seller_id)
         logger.info(f"Retrieved seller email: {seller_email}")
