@@ -820,7 +820,7 @@ watch: {
                     senderEmail: this.user.email,
                 };
                 const response = await axios.post(
-                    `http://localhost:8004/validateTransfer/${this.selectedTicket.ticketId}`, 
+                    `${this.apiGatewayUrl}/validateTransfer/${this.selectedTicket.ticketId}`, 
                     validateData
                 );
                 

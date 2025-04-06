@@ -66,7 +66,7 @@ def transfer_ticket(ticket_id):
                     f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",
                     json={
                         "status": "SOLD",
-                        "pending_transfer_to": None  # Remove pending transfer
+                        "pending_transfer_to": None  
                     }
                 )
             
@@ -175,8 +175,6 @@ def transfer_ticket(ticket_id):
             "catId": int(ticket_details["cat_id"])
         }
         
-        print("\nCreating transfer order...")
-        print(f"Order request data: {order_request_data}")
         
         def create_order():
             return requests.post(
@@ -220,7 +218,7 @@ def transfer_ticket(ticket_id):
             print(f"Response: {ticket_response.text}")
         else:
             print("Ticket updated successfully")
-            # Verify the update
+            
             def verify_ticket():
                 return requests.get(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}")
                 
@@ -235,8 +233,7 @@ def transfer_ticket(ticket_id):
         # Get event name from ticket details
         event_name = ticket_details.get("event_name", "Event")
 
-        # Send success notifications with correct event name
-        print("\nSending success notifications...")
+        # Send success notifications
         notification_sent = send_transfer_success_notification(
             sender_email=data.get("sender_email"),
             recipient_email=data.get("recipient_email"),
@@ -282,7 +279,7 @@ def transfer_ticket(ticket_id):
             "message": str(e)
         }), 500
 
-# Add this function to send notifications
+
 def send_transfer_success_notification(sender_email, recipient_email, ticket_id, event_name):
     try:
         credentials = pika.PlainCredentials('guest', 'guest')

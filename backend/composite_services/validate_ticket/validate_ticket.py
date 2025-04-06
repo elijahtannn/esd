@@ -33,7 +33,6 @@ def send_transfer_notification(sender_email, recipient_email, ticket_id, event_n
         connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
 
-        # Declare exchange
         channel.exchange_declare(
             exchange=EXCHANGE_NAME,
             exchange_type='topic',
@@ -80,9 +79,6 @@ def validate_transfer(ticket_id):
         sender_email = data.get("senderEmail")
         is_revalidation = data.get("is_revalidation", False)
 
-        print(f"Recipient email: {recipient_email}")
-        print(f"Sender email: {sender_email}")
-        print(f"Is revalidation: {is_revalidation}")
 
         if not recipient_email or not sender_email:
             return jsonify({

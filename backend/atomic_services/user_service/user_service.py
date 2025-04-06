@@ -26,7 +26,7 @@ GOOGLE_CLIENT_SECRET = "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"
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 # Add this near the top of your file with other constants
-KONG_URL = "http://localhost:8000"  # The public-facing Kong URL
+KONG_URL = "http://localhost:8000"
 
 # Fetch Google's OpenID Config
 def get_google_provider_cfg():
@@ -223,20 +223,17 @@ def add_interested_event(user_id):
             }), 200
             
         # Add the event to the interested_events list
-        # Decide whether to store as int or string based on what was passed
         try:
-            # If it can be converted to an integer, store it that way for consistency
             if event_id.isdigit():
                 event_id_to_store = int(event_id)
             else:
                 event_id_to_store = event_id
         except (AttributeError, ValueError):
-            # If conversion fails, store as is
             event_id_to_store = event_id
             
         result = mongo.db.users.update_one(
             {"_id": ObjectId(user_id)},
-            {"$addToSet": {"interested_events": event_id_to_store}}  # Use addToSet to avoid duplicates
+            {"$addToSet": {"interested_events": event_id_to_store}}
         )
         
         if result.modified_count == 1:
@@ -265,8 +262,6 @@ def remove_interested_event(user_id, event_id):
         if not user:
             return jsonify({"error": "User not found"}), 404
             
-        # We need to handle both integer and string event IDs
-        # First, find the actual event ID format in the array
         interested_events = user.get("interested_events", [])
         target_event = None
         
@@ -276,7 +271,6 @@ def remove_interested_event(user_id, event_id):
                 break
         
         if target_event is not None:
-            # Remove the event from the interested_events list
             result = mongo.db.users.update_one(
                 {"_id": ObjectId(user_id)},
                 {"$pull": {"interested_events": target_event}}
@@ -335,8 +329,7 @@ def check_interested_event(user_id, event_id):
         if not user:
             return jsonify({"error": "User not found"}), 404
             
-        # Check if event is in interested_events list
-        # Handle both string and integer event IDs
+
         interested_events = user.get("interested_events", [])
         is_interested = False
         
@@ -364,8 +357,6 @@ def get_interested_users(event_id):
         # Convert event_id to int if it's a digit string for proper matching
         event_id_value = int(event_id) if event_id.isdigit() else event_id
         
-        # Find all users who have this event in their interested_events list
-        # We need to use $or to handle both string and integer event IDs
         users = list(mongo.db.users.find({
             "$or": [
                 {"interested_events": event_id_value},
