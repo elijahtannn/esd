@@ -854,7 +854,6 @@ watch: {
             }
         },
         async resellTicket(ticketId, catId, eventId) {
-            console.log("resell ticket called with params:", { ticketId, catId, eventId });
             try {
                 // Check if we have all required parameters
                 if (!ticketId || !catId) {
@@ -895,8 +894,11 @@ watch: {
 
                 this.resaleMessage = "Resale listed successfully! Your ticket is now being resold.";
                 this.isResaleInProgress = false;
-                this.isResaleModalVisible=false;
-                window.location.reload();
+                this.isResaleModalVisible = false;
+                
+                // Refresh orders instead of full page reload
+                await this.fetchOrders();
+                
                 this.showToast('resaleTicket');
                 return response.data;
             } catch (error) {
@@ -904,11 +906,10 @@ watch: {
 
                 this.resaleMessage = "Resale failed. Please try again later.";
                 this.isResaleInProgress = false;
-                this.isResaleModalVisible=false;
+                this.isResaleModalVisible = false;
                 console.error("Resale Error:", error.response?.data || error.message);
                 throw error;
             }
-            
         },
         showExpandedNotification(ticket) {
             console.log('Opening notification for ticket:', ticket); // Debug log
@@ -1013,12 +1014,12 @@ watch: {
                     this.ticketStatuses = updatedStatuses;
                     localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
 
-                    // Immediately remove the notification from the list
+                    // Remove the notification from the list
                     this.pendingTransferTickets = this.pendingTransferTickets.filter(
                         ticket => ticket._id !== notificationData._id
                     );
 
-                    // Fetch updated orders to show the new ticket
+                    // Fetch updated orders instead of full page reload
                     await this.fetchOrders();
                 } else {
                     this.errorMessage = "Failed to process transfer response. Please try again.";
@@ -1127,30 +1128,11 @@ watch: {
         // Modify the startTicketStatusPolling method to only show "TICKET IS BEING TRANSFERRED" 
         // for tickets that the user is sending, not receiving
         async startTicketStatusPolling() {
+            // Remove the polling interval since we don't want automatic refreshes
             if (this.pollingInterval) {
-                // Prevent creating multiple intervals
-                return;
+                clearInterval(this.pollingInterval);
+                this.pollingInterval = null;
             }
-
-            this.pollingInterval = setInterval(async () => {
-                if (this.orderList.length > 0) {
-                    await this.fetchOrders();
-
-                    // Update local storage based on current ticket statuses
-                    const updatedStatuses = {};
-                    this.orderList.forEach(order => {
-                        order.tickets.forEach(ticket => {
-                            // Logic for updating statuses
-                        });
-                    });
-
-                    // Update local storage only if there are changes
-                    if (Object.keys(updatedStatuses).length > 0) {
-                        this.ticketStatuses = updatedStatuses;
-                        localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
-                    }
-                }
-            }, 60000); // 60 seconds
         },
 
         stopTicketStatusPolling() {
