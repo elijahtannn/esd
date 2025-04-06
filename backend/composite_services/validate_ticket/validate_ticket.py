@@ -72,6 +72,7 @@ def validate_transfer(ticket_id):
     1. Ticket transferability (is_transferable boolean from ticket service)
     2. Event date validation (not within 3 days of event)
     3. Recipient email validation (must exist in user service)
+    4. Prevent self-transfer (sender cannot be recipient)
     """
     try:        
         data = request.json
@@ -79,11 +80,17 @@ def validate_transfer(ticket_id):
         sender_email = data.get("senderEmail")
         is_revalidation = data.get("is_revalidation", False)
 
-
         if not recipient_email or not sender_email:
             return jsonify({
                 "error": "Missing required fields",
                 "message": "Both recipient and sender email are required"
+            }), 400
+
+        # Check if user is trying to transfer to themselves
+        if recipient_email.lower() == sender_email.lower():
+            return jsonify({
+                "can_transfer": False,
+                "message": "You cannot transfer a ticket to yourself"
             }), 400
 
         # Step 1: Check ticket transferability
