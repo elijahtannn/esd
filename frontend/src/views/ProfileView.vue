@@ -15,12 +15,11 @@
                 <!-- Banner -->
                 <div class="container-fluid bannerImg banner mx-0 p-5">
                     <div class="row">
-                        <div class="col-8">
+                        <div class="col-12">
                             <div>
                                 <p class="bannerText">Hello,<br> {{ user.name }}</p>
                             </div>
                         </div>
-                        <div class="col-4"></div>
                     </div>
                 </div>
 

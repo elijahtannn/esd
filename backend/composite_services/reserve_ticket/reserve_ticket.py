@@ -18,9 +18,7 @@ load_dotenv()
 # Service URLs
 EVENT_SERVICE_URL = os.getenv("EVENT_SERVICE_URL", "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI")
 TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001")
-# TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://localhost:5001")
 REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-ticket:5004")
-# REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://localhost:5004")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -118,16 +116,6 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
         logging.exception("Error creating tickets")
         return False
 
-
-# decrease event total available tickets
-def decrease_event_available_tickets(event_date_id, total_quantity):
-    try:
-        response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/inventory/purchase", json={"Count": total_quantity})
-        return response.status_code == 200
-    except Exception as e:
-        logging.exception("Error updating available tickets")
-        return False
-    
 # decrease event cat available tickets 
 def decrease_cat_available_tickets(cat_id, total_quantity):
     try:
@@ -221,7 +209,7 @@ def updateTicket(ticketId, owner_id, status):
         return False
 
 # If user did not complete purchase within time frame: Revert back the event available ticket and cat available ticket
-def revertTicketQuantity(event_date_id, selected_tickets):
+def revertTicketQuantity(selected_tickets):
 
     try:
         total_quantity = 0
@@ -233,10 +221,6 @@ def revertTicketQuantity(event_date_id, selected_tickets):
                 response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/categories/{ticket['catId']}/inventory/resale", json={"Count": ticket['quantity']})
             except Exception as e:
                 logging.exception("Error updating available tickets")
-        try:
-            response = requests.put(f"{EVENT_SERVICE_URL}/events/dates/{event_date_id}/inventory/resale", json={"Count": total_quantity})
-        except Exception as e:
-            logging.exception("Error updating available tickets")
         
         return True
     
@@ -294,10 +278,6 @@ def process_ticket_reserve():
             # Update event cat available tickets
             decrease_cat_available_tickets(cat_id, quantity)
 
-        # Update event total available tickets
-        decrease_event_available_tickets(event_date_id, total_quantity)
-
-
         # Wait for 3 minutes for user to complete order purchase
         time.sleep(90) #will update this to 3 minutes: 180
 
@@ -315,7 +295,7 @@ def process_ticket_reserve():
                 "tickets": selected_tickets,
             }), 200
         else:
-            revertTicketQuantity(event_date_id, selected_tickets)
+            revertTicketQuantity(selected_tickets)
             return jsonify({
                 "status": False,
                 "message": "User did not purchase the tickets within the time frame",

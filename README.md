@@ -76,7 +76,8 @@ Make sure Docker desktop is running
 ### To run backend:
 ``` Python
 1. cd backend
-2. python docker_manage.py start (To start all docker containers)
-3. python docker_manage.py stop (To stop all docker containers)
+2. python docker_build_all.py (To build all docker containers)
+3. python docker_manage.py start (To start all docker containers)
+4. python docker_manage.py stop (To stop all docker containers)
 ```
 
