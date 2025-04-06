@@ -219,7 +219,7 @@ def get_ticket(ticket_id):
 
 @ticket_bp.route('/tickets/<ticket_id>', methods=['PUT'])
 def update_ticket(ticket_id):
-    """ Update a ticket's status, owner, is_transferable, or pending_transfer_to """
+    """ Update a ticket's status, owner, is_transferable, pending_transfer_to, or pending_refund """
     data = request.json
     print(f"Updating ticket {ticket_id} with data:", data)
     update_data = {}
@@ -233,30 +233,37 @@ def update_ticket(ticket_id):
     if "owner_id" in data:
         update_data["owner_id"] = str(data["owner_id"])
     
-    # Add support for pending_transfer_to
+    
+    unset_fields = {}
+    
     if "pending_transfer_to" in data:
         if data["pending_transfer_to"] is None:
-            result = get_ticket_collection().update_one(
-                {"_id": ObjectId(ticket_id)},
-                {
-                    "$unset": {"pending_transfer_to": ""},
-                    "$set": {k: v for k, v in update_data.items() if k != "pending_transfer_to"}
-                }
-            )
+            unset_fields["pending_transfer_to"] = ""
         else:
             update_data["pending_transfer_to"] = data["pending_transfer_to"]
+            
+    if "pending_refund" in data:
+        if data["pending_refund"] is None:
+            unset_fields["pending_refund"] = ""
+        else:
+            update_data["pending_refund"] = bool(data["pending_refund"])
     
-    if not update_data and "pending_transfer_to" not in data:
+    if not update_data and not unset_fields:
         return jsonify({"error": "No valid fields to update"}), 400
 
     update_data["updated_at"] = datetime.utcnow()
     
+    update_operations = {}
     if update_data:
-        result = get_ticket_collection().update_one(
-            {"_id": ObjectId(ticket_id)}, 
-            {"$set": update_data}
-        )
-        print(f"Update result: matched={result.matched_count}, modified={result.modified_count}")
+        update_operations["$set"] = update_data
+    if unset_fields:
+        update_operations["$unset"] = unset_fields
+    
+    result = get_ticket_collection().update_one(
+        {"_id": ObjectId(ticket_id)}, 
+        update_operations
+    )
+    print(f"Update result: matched={result.matched_count}, modified={result.modified_count}")
 
     if result.matched_count == 0:
         return jsonify({"error": "Ticket not found"}), 404
