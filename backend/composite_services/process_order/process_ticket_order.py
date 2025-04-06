@@ -26,37 +26,6 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "host.docker.internal")
 EXCHANGE_NAME = "ticketing.exchange"
 ROUTING_KEY = "ticket.purchase"
 
-# def send_purchase_notification(user_email, event_name, order_id, event_date, ticket_ids):
-#     try:
-#         credentials = pika.PlainCredentials('guest', 'guest')
-#         parameters = pika.ConnectionParameters(host=RABBITMQ_HOST, port=5672, credentials=credentials)
-#         connection = pika.BlockingConnection(parameters)
-#         channel = connection.channel()
-
-#         channel.exchange_declare(exchange=EXCHANGE_NAME, exchange_type='topic', durable=True)
-
-#         message = {
-#             "email": user_email,
-#             "eventType": "ticket.purchase",
-#             "event_name": event_name,
-#             "order_id": order_id,
-#             "eventDate": event_date,
-#             "ticketNumber": ",".join(map(str, ticket_ids))
-#         }
-
-#         channel.basic_publish(
-#             exchange=EXCHANGE_NAME,
-#             routing_key=ROUTING_KEY,
-#             body=json.dumps(message),
-#             properties=pika.BasicProperties(delivery_mode=2)
-#         )
-
-#         connection.close()
-#         return True
-#     except Exception as e:
-#         print(f"Error sending RabbitMQ message: {str(e)}")
-#         return False
-
 logging.basicConfig(level=logging.INFO)
 
 @app.route("/process_ticket_order", methods=["POST"])
@@ -73,10 +42,9 @@ def process_ticket_order():
         if not all([user_id, event_id, event_date_id, ticket_arr, payment_token]):
             return jsonify({"error": "Missing required fields"}), 400
 
-        # Calculate total amount first
+        
         total_amount = sum(item.get("price", 0) * item.get("quantity", 0) for item in ticket_arr)
 
-        # Process payment for the total amount
         payment_data = {
             "user_id": user_id,
             "amount": total_amount,
@@ -89,7 +57,7 @@ def process_ticket_order():
 
         payment_id = payment_resp.json().get("payment_id") or payment_resp.json().get("transaction_id")
 
-        # Instead of a flat list, we build a dictionary to group ticket IDs by catId
+        
         tickets_by_cat = {}
 
         # Loop through each ticket category to gather reserved ticket IDs
@@ -106,25 +74,20 @@ def process_ticket_order():
             }
             response = requests.get(f"{TICKET_SERVICE_URL}/tickets/category/{cat_id}", params=query_params)
             if response.status_code != 200:
-                return jsonify({"error": "Failed to fetch reserved tickets"}), 400
+                return jsonify({"error": "Failed to fetch reserved tickets"}), 404
 
             reserved_tickets = response.json()
             matching_tickets = [t for t in reserved_tickets if t["status"] == "RESERVED"]
             if len(matching_tickets) < quantity:
-                return jsonify({"error": f"Not enough reserved tickets for category {cat_id}"}), 400
+                return jsonify({"error": f"Not enough reserved tickets for category {cat_id}"}), 404
 
             selected_ids = [t["_id"] for t in matching_tickets[:quantity]]
-            # Group the ticket IDs by category
+            
             if cat_id in tickets_by_cat:
                 tickets_by_cat[cat_id].extend(selected_ids)
             else:
                 tickets_by_cat[cat_id] = selected_ids
             print("DEBUG: selected_ids for cat", cat_id, "=", selected_ids)
-
-        # Fetch user email
-        # user_resp = requests.get(f"{USER_SERVICE_URL}/user/{user_id}")
-        # if user_resp.status_code != 200:
-        #     return jsonify({"error": "User not found"}), 404
 
         # Flatten all ticket IDs if needed for other purposes:
         all_ticket_ids = []
@@ -136,7 +99,7 @@ def process_ticket_order():
         confirm_resp = requests.put(f"{TICKET_SERVICE_URL}/tickets/confirm", json=confirm_data)
         
         if confirm_resp.status_code != 200:
-            return jsonify({"error": "Ticket confirmation failed", "details": confirm_resp.text}), 400
+            return jsonify({"error": "Ticket confirmation failed", "details": confirm_resp.text}), 404
 
         # Build the nested structure for tickets
         nested_ticket_ids = [{"catId": cat, "ticketIds": ids} for cat, ids in tickets_by_cat.items()]
@@ -144,13 +107,13 @@ def process_ticket_order():
         # Create a single order with the nested ticket IDs and the total amount
         order_data = {
             "userId": user_id,
-            "tickets": nested_ticket_ids,  # Only send the nested structure
+            "tickets": nested_ticket_ids,
             "eventId": event_id,
             "eventDateId": event_date_id,
             "orderType": "PURCHASE",
             "totalAmount": total_amount,
             "paymentId": payment_id,
-            "eventName": data.get("eventName", ""),  # Changed to match frontend
+            "eventName": data.get("eventName", ""),
             "venue": data.get("venue", "")
         }
 
@@ -162,7 +125,7 @@ def process_ticket_order():
 
         created_order = order_resp.json()
 
-        # Send notification via RabbitMQ (unchanged)
+        # Send notification via RabbitMQ
         try:
             credentials = pika.PlainCredentials('guest', 'guest')
             parameters = pika.ConnectionParameters(host=RABBITMQ_HOST, port=5672, credentials=credentials)

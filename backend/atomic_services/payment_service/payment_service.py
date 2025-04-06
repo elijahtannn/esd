@@ -11,7 +11,6 @@ import re
 # Load environment variables
 load_dotenv()
 
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
@@ -19,10 +18,8 @@ CORS(app)
 app.config["MONGO_URI"] = os.getenv("MONGO_URI", "mongodb+srv://your_mongo_user:your_password@cluster.mongodb.net/payments")
 mongo = PyMongo(app, tlsCAFile=certifi.where())
 
-# Collection Reference
-payments_collection = mongo.db.payments
 
-# Stripe API Configuration
+payments_collection = mongo.db.payments
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")  # Make sure your .env file contains this
 
 # Helper: Validate input fields
@@ -66,7 +63,7 @@ def process_payment():
             "fingerprint": card.get("fingerprint")
         }
 
-        # Store in MongoDB
+        
         payment_record = {
             "user_id": data["user_id"],
             "amount": data["amount"],
@@ -93,7 +90,7 @@ def process_payment():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
-# ✅ Helper: Validate refund request data
+# Helper: Validate refund request data
 def is_valid_refund_data(data):
     if not isinstance(data.get("payment_id"), str) or len(data["payment_id"].strip()) == 0:
         return False, "Invalid payment_id"
@@ -140,7 +137,6 @@ def process_refund():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 400
-
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8002, debug=True)

@@ -25,9 +25,9 @@ mongo = PyMongo(app, tlsCAFile=certifi.where())
 
 # Collection References
 orders_collection = mongo.db.orders
-counters_collection = mongo.db.counters  # Used for auto-incrementing `orderId`
+counters_collection = mongo.db.counters
 
-### Auto-Increment Function for `orderId`
+#Auto-Increment Function for `orderId`
 def get_next_order_id():
     counter = counters_collection.find_one_and_update(
         {"_id": "orderId"},
@@ -37,11 +37,10 @@ def get_next_order_id():
     )
     return counter["seq"]
 
-### Get Orders by User ID
+#Get Orders by User ID
 @app.route("/orders/user/<string:user_id>", methods=["GET"])
 def get_orders_by_user(user_id):
     try:
-        # Add print statements for debugging
         logger.info(f"Attempting to fetch orders for user: {user_id}")
         
         orders = list(orders_collection.find({"userId": user_id}))
@@ -55,7 +54,7 @@ def get_orders_by_user(user_id):
         logger.error(f"Error fetching orders: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-### Create a New Order (Atomic Microservice)
+#Create a New Order (Atomic Microservice)
 @app.route("/orders", methods=["POST"])
 def create_order():
     data = request.json
@@ -68,7 +67,7 @@ def create_order():
     try:
         event_id = int(data["eventId"])
         event_date_id = int(data["eventDateId"])
-        tickets = data["tickets"]  # Must be a list of nested ticket objects
+        tickets = data["tickets"]
         if not isinstance(tickets, list):
             raise ValueError("tickets must be a list")
     except (ValueError, TypeError) as e:
@@ -79,7 +78,7 @@ def create_order():
     new_order = {
         "orderId": order_id,
         "userId": data["userId"],
-        "tickets": tickets,  # Nested array, e.g. [{"catId": "14", "ticketIds": ["id1"]}, {"catId": "13", "ticketIds": ["id2"]}]
+        "tickets": tickets,
         "eventId": event_id,
         "eventDateId": event_date_id,
         "orderType": data["orderType"],
@@ -104,7 +103,7 @@ def create_order():
         "createdAt": new_order["createdAt"].isoformat()
     }), 201
 
-### Update Order (Including Refund Processing & Resale)
+#Update Order (Including Refund Processing & Resale)
 @app.route("/orders/<int:order_id>", methods=["PUT"])
 def update_order(order_id):
     data = request.json
@@ -114,14 +113,13 @@ def update_order(order_id):
     if not order:
         return jsonify({"error": "Order not found"}), 404
 
-    # Handle complete order replacement (used by refund service)
+    
     if "refunded_ticket_ids" in data or "refunds" in data:
         logger.info(f"Processing refund update for order {order_id}")
-        # Remove the MongoDB _id since it can't be modified
+
         if "_id" in data:
             del data["_id"]
         
-        # Update the entire order document with the new version
         result = orders_collection.replace_one({"orderId": order_id}, data)
         
         if result.modified_count > 0:
@@ -134,7 +132,7 @@ def update_order(order_id):
             logger.warning(f"Order update failed: {order_id}")
             return jsonify({"error": "Order update failed"}), 500
     
-    # Handle partial updates (original behavior)
+    
     update_fields = {}
     
     for field in ["status", "totalAmount"]:
@@ -163,7 +161,7 @@ def update_order(order_id):
     else:
         return jsonify({"error": "Order update failed"}), 500
 
-### Transfer Ticket Using Emails
+# Transfer Ticket Using Emails
 @app.route("/orders/transfer", methods=["POST"])
 def transfer_ticket():
     data = request.json
@@ -187,8 +185,6 @@ def transfer_ticket():
                     break
         if order:
             break
-    
-    # If not found, try old schema
     if not order:
         order = orders_collection.find_one({"userId": from_user_id, "ticketIds": {"$in": [ticket_id]}})
         
@@ -207,7 +203,6 @@ def transfer_ticket():
                 )
                 break
     else:
-        # Old schema
         orders_collection.update_one({"_id": order["_id"]}, {"$pull": {"ticketIds": ticket_id}})
 
     # Check if order has any tickets left
