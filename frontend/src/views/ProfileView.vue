@@ -382,7 +382,6 @@ export default {
             unreadCount: 1,
             notifications: [{ id: 1, message: "You have a new message!jgahgjhjrhtuihbersuibyuithythyivuhtrbytruibghygyg" },
             { id: 2, message: "Your order has been shippedlkrjybijtryimjbinjhyifjhoijbtyuoguihugmofb!" }],
-            //test notif
             selectedTicket: null,
             ticketStatuses: {},
             user: null,
@@ -409,7 +408,7 @@ export default {
             pollingInterval: null,
             isResaleModalVisible: false,
             resaleMessage: "Your ticket is being listed for resale... Please do not exit or refresh the page.",
-            isResaleInProgress: true, // To track the progress
+            isResaleInProgress: true, 
         }
     },
     computed: {
@@ -446,7 +445,6 @@ export default {
     },
 
 watch: {
-    // Add this to your existing watchers
     user(newUser) {
         if (newUser) {
             this.fetchInterestedEvents();
@@ -1152,7 +1150,7 @@ watch: {
                         localStorage.setItem("ticketStatuses", JSON.stringify(updatedStatuses));
                     }
                 }
-            }, 30000); // 30 seconds
+            }, 60000); // 60 seconds
         },
 
         stopTicketStatusPolling() {
@@ -1180,7 +1178,7 @@ watch: {
     },
     beforeRouteLeave(to, from, next) {
         this.stopTicketStatusPolling();
-        next(); // Proceed with navigation
+        next(); 
     }
 }
 </script>
@@ -1341,29 +1339,19 @@ button {
 .qr-cards {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    /* Match card width */
     gap: 16px;
-    /* Add spacing between cards */
     width: 100%;
-    /* Use full width for better responsiveness */
     margin: auto;
-    /* Center the grid */
     justify-items: start;
-    /* Align items to the left */
 }
 
 .qr-image {
     margin-top: 20px;
     display: block;
-    /* Makes the image a block element */
     margin-left: auto;
-    /* Centers image horizontally */
     margin-right: auto;
-    /* Centers image horizontally */
     max-width: 100%;
-    /* Adjust size for better fit */
     height: auto;
-    /* Maintain aspect ratio */
 }
 
 
@@ -1381,9 +1369,7 @@ button {
     flex-direction: column;
     align-items: center;
     width: 100%;
-    /* Make card width responsive */
     max-width: 300px;
-    /* Set maximum width */
 }
 
 .menu-container {
@@ -1444,7 +1430,6 @@ button {
     width: 90%;
     position: relative;
     max-width: 800px;
-    /* Keep the close button (X) positioned */
 }
 
 .modal-content>h3 {
@@ -1453,7 +1438,6 @@ button {
 
 .confirm-button {
     background: #2A68E1;
-    /* Blue for confirm button */
     color: white;
     border: none;
     padding: 10px;
@@ -1476,7 +1460,6 @@ button {
 
 .confirm-button:disabled {
     background: #d6d6d6;
-    /* Disabled button color */
     cursor: not-allowed;
 }
 
@@ -1492,7 +1475,6 @@ button {
 
 .close-button:hover {
     color: #ff0000;
-    /* Change color on hover */
 }
 
 /* RESALE TICKET POPUP */
@@ -1543,16 +1525,6 @@ button {
     margin: 10px 0;
 }
 
-.notifications-section {
-    margin-top: 10px;
-}
-
-/* Notifications List */
-.notifications-list {
-    margin-top: 10px;
-}
-
-
 /* Individual Notification Item */
 .notification-item {
     background-color: #f9f9f9;
@@ -1589,7 +1561,7 @@ button {
     justify-content: center; 
     align-items: center; 
 }
-/* Modal Content Box */
+
 /* Modal Content Box */
 .modal-content {
     background-color: white; 
@@ -1730,17 +1702,16 @@ button {
 }
 
 .error-content .confirm-button {
-    background-color: #2A68E1;  /* Changed from #ff4d4d to theme blue */
+    background-color: #2A68E1;  
     width: auto;
     min-width: 100px;
     padding: 10px 20px;
 }
 
 .error-content .confirm-button:hover {
-    background-color: #1d4ba8;  /* Changed from #ff3333 to darker theme blue */
+    background-color: #1d4ba8;  
 }
 
-/* Remove the general button style that's overriding our specific button styles */
 button {
     font-size: 16px;
 }
