@@ -591,7 +591,7 @@ watch: {
                     try {
                     // Use the specific category endpoint you've shown
                     const categoryResponse = await axios.get(
-                    `https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/dates/categories/${ticket.catId}`,
+                    `${this.apiGatewayUrl}/events/dates/categories/${ticket.catId}`,
                     { 
                         headers: { 
                         'Content-Type': 'application/json',
@@ -1047,7 +1047,7 @@ watch: {
             const eventDetailsPromises = response.data.interested_events.map(async (eventId) => {
                 try {
                     const eventResponse = await axios.get(
-                        `https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI/events/${eventId}`
+                        `${this.apiGatewayUrl}/events/${eventId}`
                     );
 
                     // Process the response data according to the actual API structure

@@ -32,8 +32,8 @@ def send_transfer_notification(user_email, message, event_type, ticket_number=No
         logger.info(f"Notification payload: {json.dumps(notification)}")
         
         parameters = pika.URLParameters(os.getenv("RABBITMQ_URL", "amqp://guest:guest@rabbitmq:5672"))
-        parameters.connection_attempts = 1  # Only try once
-        parameters.socket_timeout = 2  # Short timeout
+        parameters.connection_attempts = 1
+        parameters.socket_timeout = 2
         
         connection = pika.BlockingConnection(parameters)
         logger.info("Successfully connected to RabbitMQ")

@@ -84,10 +84,10 @@ async function sendEmail(to, subject, message) {
         };
 
         const result = await transporter.sendMail(mailOptions);
-        console.log(`✅ Email sent to ${to}`);
+        console.log(`Email sent to ${to}`);
         return result;
     } catch (error) {
-        console.error(`❌ Error sending email: ${error.message}`);
+        console.error(`Error sending email: ${error.message}`);
     }
 }
 
@@ -264,7 +264,7 @@ async function consumeMessages() {
                                 button: {
                                     color: '#2563EB',
                                     text: 'Buy Tickets Now',
-                                    link: `${FRONTEND_URL}/events/${eventId}`
+                                    link: `${FRONTEND_URL}`
                                 }
                             },
                             outro: 'If you no longer wish to receive resale notifications for this event, you can unsubscribe from your profile page.'
