@@ -183,6 +183,7 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
                             "seller_id": ticket['owner_id'],
                             "refund_amount": catPrice,
                         }
+                        update_refund_status = requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticket['_id']}", json={"pending_refund": True})
                         response = requests.post(f"{REFUND_SERVICE_URL}/refund", json=refund_data)
 
             except Exception as e:

@@ -772,12 +772,15 @@ export default {
                 if(goback){this.goBack();}
             }
         },
+        updateBannerImage(newUrl) {
+            const bannerElement = document.querySelector('.bannerImg');
+            bannerElement.style.backgroundImage = `linear-gradient(to right, rgba(0, 0, 0, 0.9), rgba(255, 255, 255, 0.1)), url('${newUrl}')`;
+        }
 
     },
     created() {
         this.eventId = Number(this.$route.query.eventId);
         this.eventDetails = JSON.parse(this.$route.query.eventDetails);
-
         this.getDates();
         this.formatDates(this.eventDetails.dates);
     },
@@ -793,6 +796,8 @@ export default {
             console.error("Stripe failed to load.");
             return;
         }
+
+        this.updateBannerImage(this.eventDetails.Image);
 
     },
     beforeDestroy() {
