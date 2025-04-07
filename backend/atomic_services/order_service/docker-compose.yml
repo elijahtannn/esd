@@ -6,12 +6,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: order-service
+    env_file:
+      - ../../.env
     environment:
       - FLASK_APP=order_service.py
       - FLASK_ENV=development
-      - MONGO_URI=mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd
     ports:
       - "8003:8003"
+    volumes:
+      - .:/app
+      - ../../.env:/app/.env
     networks:
       - esd_network
     healthcheck:

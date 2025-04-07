@@ -6,18 +6,16 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: user-service
+    env_file:
+      - ../../.env
     environment:
-      - MONGO_URI=mongodb+srv://elijahtan2023:TXFgo2T6kEvD9pPh@esd.t8r4e.mongodb.net/esd
-      - SECRET_KEY=supersecurekey
-      - GOOGLE_CLIENT_ID=603980424659-jiqs010nggvjmn6ve8c243nfral3q5a7.apps.googleusercontent.com
-      - GOOGLE_CLIENT_SECRET=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
-      - FRONTEND_URL=http://localhost:5173
       - FLASK_APP=user_service.py
       - FLASK_ENV=development
     ports:
       - "5003:5003"
     volumes:
       - .:/app
+      - ../../.env:/app/.env
     networks:
       esd_network:
         aliases:

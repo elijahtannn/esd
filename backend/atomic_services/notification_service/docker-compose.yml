@@ -21,12 +21,12 @@ services:
     build: .
     ports:
       - "3000:3000"
+    env_file:
+      - ../../.env
     environment:
       - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
-      - CLIENT_ID=${CLIENT_ID}
-      - CLIENT_SECRET=${CLIENT_SECRET}
-      - REFRESH_TOKEN=${REFRESH_TOKEN}
-      - EMAIL_USER=${EMAIL_USER}
+    volumes:
+      - ../../.env:/app/.env
     depends_on:
       rabbitmq:
         condition: service_healthy

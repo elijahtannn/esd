@@ -19,6 +19,7 @@ ORDER_SERVICE_URL = "http://order-service:8003"
 TICKET_SERVICE_URL = "http://ticket-service:5001"
 VALIDATE_SERVICE_URL = "http://validate-service:8004"
 USER_SERVICE_URL = "http://user-service:5003"
+EVENT_SERVICE_URL = "https://personal-ibno2rmi.outsystemscloud.com/Event/rest/EventAPI"
 
 # RabbitMQ configuration
 EXCHANGE_NAME = "ticketing.exchange"
@@ -104,7 +105,7 @@ def transfer_ticket(ticket_id):
                 "message": "Could not get user ID from response"
             }), 400
 
-        # Revalidate the transfer to ensure conditions are still valid
+       
         print("\nRevalidating transfer...")
         def revalidate():
             return requests.post(
@@ -232,6 +233,34 @@ def transfer_ticket(ticket_id):
 
         # Get event name from ticket details
         event_name = ticket_details.get("event_name", "Event")
+        
+        
+        if event_name == "Event":
+            event_id = ticket_details.get("event_id")
+            if event_id:
+                def get_event_details():
+                    return requests.get(f"{EVENT_SERVICE_URL}/events/{event_id}")
+                
+                try:
+                    event_response = retry_with_backoff(get_event_details)
+                    if event_response.status_code == 200:
+                        event_data = event_response.json()
+                        events_data = event_data.get("Event", [])
+                        
+                        if events_data:
+                            matched_event = next((event for event in events_data 
+                                                if str(event.get("EventId")) == str(event_id) or 
+                                                   str(event.get("Id")) == str(event_id)), 
+                                               events_data[0])
+                            
+                            event_name = matched_event.get("Name", "Event")
+                            print(f"Retrieved event name: {event_name}")
+                        else:
+                            print("No event data found in response")
+                    else:
+                        print(f"Failed to get event details. Status: {event_response.status_code}")
+                except Exception as e:
+                    print(f"Error fetching event details: {str(e)}")
 
         # Send success notifications
         notification_sent = send_transfer_success_notification(
