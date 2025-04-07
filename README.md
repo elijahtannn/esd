@@ -71,6 +71,7 @@ Make sure Docker desktop is running
 ``` Python
 1. Set up exchanges, queues and routing keys on rabbitMQ (cd backend/atomic_service/notification_service)
 2. Node amqp_setup.js
+3. Place the .env file into the backend folder 
 ```
 
 ### To run backend:
