@@ -787,11 +787,11 @@ watch: {
                 // Close the popup and disable the menu
                 this.closePopup();
 
-                
+                this.loadingMsg = true;
+
                 
             } else {
-                alert("Please agree with the Terms and Conditions");
-                console.log('Agreement not checked or no ticket selected');
+                this.showToast('agreeWithTnc');
             }
         },
         handleOption(action, ticket) {
@@ -817,13 +817,6 @@ watch: {
             // this.isMenuOpen = false;
             this.openMenus= [];
         },
-        confirmTransfer() {
-            if ( this.email && this.isAgreed && this.selectedTicket) {
-                this.validateTicket();
-            } else {
-                alert('Please fill in all the details');
-            }
-        },
         async validateTicket() {
             try {
                 const validateData = {
@@ -840,12 +833,13 @@ watch: {
                 if (response.data.can_transfer) {
                     this.closePopup();
                     window.location.reload();
+                    this.loadingMsg = true;
                     this.showToast('transferTicket')
                     
                 } else {
                     this.showToast('transferTicketError')
 
-                    // Show error popup instead of alert
+                    // Show error popup 
                     this.errorMessage = response.data.message;
                     this.showErrorPopup = true;
                     this.closePopup(); // Close the transfer popup
@@ -864,7 +858,13 @@ watch: {
             if (this.email && this.isAgreed && this.selectedTicket) {
                 this.validateTicket();
             } else {
-                alert('Please fill in all the details and agree to the terms');
+                if(!this.email && !this.isAgreed){
+                    this.showToast('incompleteFields');
+                }else if (!this.email){
+                    this.showToast('incompleteFields');
+                }else if (!this.isAgreed){
+                    this.showToast('agreeWithTnc');
+                }
             }
         },
         async resellTicket(ticketId, catId, eventId) {

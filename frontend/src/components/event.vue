@@ -195,15 +195,18 @@ export default {
                 this.isInterestedInResale = false;
             }
         },
+        showToast(toastId){
+            const toastElement = document.getElementById(toastId);
+            const toastInstance = Toast.getOrCreateInstance(toastElement);
+            toastInstance.show();
+        },
         async openResaleNotificationModal() {
             try {
                 // Get user data from auth store
                 const userData = auth.getUser();
 
                 if (!userData) {
-                    const toastElement = document.getElementById('loginFirstNotify');
-                    const toastInstance = Toast.getOrCreateInstance(toastElement);
-                    toastInstance.show();
+                    this.showToast('loginFirstNotify')
                     
                     return;
                 }
@@ -221,10 +224,9 @@ export default {
                 this.isInterestedInResale = true;
 
                 // Simple success message
-                alert("We'll notify you when resale tickets become available!");
+                this.showToast('interestSuccess');
             } catch (error) {
-                console.error('Failed to add event interest', error);
-                alert('Failed to register for resale notification. Please try again.');
+                this.showToast('interestFailed');
             }
         }
     },

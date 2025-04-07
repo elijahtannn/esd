@@ -76,6 +76,9 @@
             </div>
         </div>
 
+
+        <!-- PROFILE TOASTS -->
+
         <!-- Toast if mobile number has been updated -->
         <div id="updateMobile" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
@@ -147,6 +150,47 @@
                 Unable to transfer ticket to recepient.
             </div>
         </div>
+
+        <!-- Toast if user did not agree with terms and conditions -->
+        <div id="agreeWithTnc" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="bi bi-envelope-exclamation-fill text-danger me-2"></i>
+                <strong class="me-auto">Terms and Conditions</strong>
+                <span data-bs-dismiss="toast" aria-label="Close"><i class="bi bi-x-lg toastClose"></i></span>
+            </div>
+            <div class="toast-body">
+                You have to agree with the terms and conditions first.
+            </div>
+        </div>
+        
+
+        <!-- INTERESTED IN EVENTS -->
+
+        <!-- Toast if user successfully registered for their interest in an event -->
+        <div id="interestSuccess" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="bi bi-envelope-exclamation-fill text-success me-2"></i>
+                <strong class="me-auto">Successfully registered!</strong>
+                <span data-bs-dismiss="toast" aria-label="Close"><i class="bi bi-x-lg toastClose"></i></span>
+            </div>
+            <div class="toast-body">
+                We'll notify you when this event tickets become available!
+            </div>
+        </div>
+
+        <!-- Toast if user failed to registered for their interest in an event -->
+        <div id="interestFailed" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <i class="bi bi-envelope-exclamation-fill text-danger me-2"></i>
+                <strong class="me-auto">Failed to register.</strong>
+                <span data-bs-dismiss="toast" aria-label="Close"><i class="bi bi-x-lg toastClose"></i></span>
+            </div>
+            <div class="toast-body">
+                Failed to register for event tickets notification. Please try again.
+            </div>
+        </div>
+
+        
         
 
 

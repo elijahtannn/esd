@@ -390,8 +390,8 @@ export default {
             // Timer
             paymentTimer: null,
             abortController: null,
-            secondsThreshold: 20,
-            remainingSeconds: 20,
+            secondsThreshold: 30,
+            remainingSeconds: 30,
             isTimerActive: false,
         }
     },
@@ -463,8 +463,6 @@ export default {
             // Add a new ticket row with default values
             if (this.selectedTickets.length < this.eventCategories.length) {
                 this.selectedTickets.push({ selectedType: "", quantity: 1, price: 0 });
-            } else {
-                alert("All categories have been selected.");
             }
         },
         updateTicketPrice(index) {

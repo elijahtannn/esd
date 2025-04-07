@@ -21,7 +21,7 @@ TICKET_SERVICE_URL = os.getenv("TICKET_SERVICE_URL", "http://ticket-service:5001
 REFUND_SERVICE_URL = os.getenv("REFUND_SERVICE_URL", "http://refund-ticket:5004")
 
 logging.basicConfig(level=logging.INFO)
-
+logger = logging.getLogger(__name__)
 
 def getAllCatTickets(cat_id):
     try:
@@ -80,7 +80,6 @@ def createTicket(user_id, event_date_id, cat_id, quantity, event_id, event_categ
                 
                 # generate QR code and update db
                 qr_url = generate_qr_code_url(cat_id, seat_info)
-                # print(qr_url)
                 reserve_data = {
                     "event_date_id": event_date_id,
                     "cat_id": cat_id,
@@ -148,7 +147,7 @@ def generate_unique_seat(existing_seats):
         
 
 # After time frame, check ticket status to determine purchase status
-def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets):
+def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets, time_left):
 
     try:
         purchaseStatus = False
@@ -159,16 +158,16 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
                 responseData = json.loads(response.content.decode("utf-8-sig"))
 
                 ticketStatus = responseData['status']
-
                 if ticketStatus == 'RESERVED':
-                    # it its a resale ticket, dont delete but revert owner id and status
-                    for ticket in all_used_resale_tickets:
-                        if ticket["_id"] == ticketId:
-                            updateTicket(ticketId, ticket["owner_id"], "RESALE")
-                            break
-                    else:
-                        # Delete ticket if user did not buy the ticket within the time. Leave it untouched if user bought the ticket
-                        response = requests.delete(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
+                    if time_left == 0:
+                        # it its a resale ticket, dont delete but revert owner id and status
+                        for ticket in all_used_resale_tickets:
+                            if ticket["_id"] == ticketId:
+                                updateTicket(ticketId, ticket["owner_id"], "RESALE")
+                                break
+                        else:
+                            # Delete ticket if user did not buy the ticket within the time. Leave it untouched if user bought the ticket
+                            response = requests.delete(f"{TICKET_SERVICE_URL}/tickets/{ticketId}")
                 else:
                     # If one ticket has the sold status, all ticket will have the same status as it is in the same order
                     purchaseStatus = True
@@ -183,7 +182,8 @@ def checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected
                             "seller_id": ticket['owner_id'],
                             "refund_amount": catPrice,
                         }
-                        update_refund_status = requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticket['_id']}", json={"pending_refund": True})
+                        ticket_id = ticket['_id']
+                        ticket_update_response = requests.put(f"{TICKET_SERVICE_URL}/tickets/{ticket_id}",json={"pending_refund": True})
                         response = requests.post(f"{REFUND_SERVICE_URL}/refund", json=refund_data)
 
             except Exception as e:
@@ -280,12 +280,22 @@ def process_ticket_reserve():
             decrease_cat_available_tickets(cat_id, quantity)
 
         # Wait for 3 minutes for user to complete order purchase
-        time.sleep(90) #will update this to 3 minutes: 180
 
-        purchaseStatus = checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets)
-        # purchaseStatus = True #for testing
-        
-        if purchaseStatus:
+        # timer that runs every second to check status
+        end_time = time.monotonic() + 180
+        purchase_status_met = False
+
+        while time.monotonic() < end_time and not purchase_status_met:
+            # Check ticket status every second
+            time_left = end_time - time.monotonic()
+            purchaseStatus = checkTicketStatus(all_reserved_ticket_ids, all_used_resale_tickets, selected_tickets, time_left)
+            if purchaseStatus:
+                purchase_status_met = True
+                break  # Exit loop immediately if condition met
+            
+            time.sleep(1)  # Wait 1 second between checks
+
+        if purchase_status_met:
             return jsonify({
                 "status": True,
                 "message": "successfully reserved tickets",
