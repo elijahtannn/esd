@@ -19,7 +19,7 @@ def build_service(compose_file):
             ['docker-compose', '-f', compose_file, 'build'],
             check=True,
             capture_output=True,
-            text=True
+            encoding='utf-8'  # Explicitly use UTF-8 encoding
         )
         print(result.stdout)
         return True
