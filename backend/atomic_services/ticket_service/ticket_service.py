@@ -311,7 +311,7 @@ def check_ticket_transfer_eligibility():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
     
-@ticket_bp.route('/tickets/<string:ticket_id>/update_qr', methods=['PUT'])
+@ticket_bp.route('/tickets/<string:ticket_id>/update_qr', methods=['PUT']) ##
 def update_ticket_qr(ticket_id):
     data = request.json
     qr_code = data.get("qr_code")
@@ -333,18 +333,25 @@ def update_ticket_qr(ticket_id):
 def get_pending_transfers(recipient_email):
     """Get all tickets pending transfer to a specific email"""
     try:
+        if not recipient_email or "@" not in recipient_email:
+            return jsonify({"error": "Invalid or missing recipient email"}), 400
+
         tickets = list(get_ticket_collection().find({
             "status": "PENDING_TRANSFER",
             "pending_transfer_to": recipient_email
         }))
 
         print(f"Found {len(tickets)} pending transfers for {recipient_email}")
-        
+
+        if not tickets:
+            return jsonify({"message": f"No pending transfers found for {recipient_email}"}), 404
+
         serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
         return jsonify(serialized_tickets), 200
+
     except Exception as e:
         print(f"Error in get_pending_transfers: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
 
 @ticket_bp.route('/tickets/category/<int:cat_id>', methods=['GET'])
 def get_tickets_by_category(cat_id):
@@ -361,24 +368,26 @@ def get_tickets_by_category(cat_id):
             try:
                 query["event_id"] = int(event_id)
             except ValueError:
-                query["event_id"] = event_id
+                return jsonify({"error": "Invalid event_id. Must be an integer."}), 400
         if event_date_id:
             try:
                 query["event_date_id"] = int(event_date_id)
             except ValueError:
-                query["event_date_id"] = event_date_id
+                return jsonify({"error": "Invalid event_date_id. Must be an integer."}), 400
         if status:
             query["status"] = status
 
         tickets = list(get_ticket_collection().find(query))
         
         if not tickets:
-            return jsonify({"message": f"No tickets found for category ID {cat_id}"}), 200
+            return jsonify({"message": f"No tickets found for category ID {cat_id}"}), 404  # Changed from 200 to 404
             
         serialized_tickets = [Ticket.serialize_ticket(ticket) for ticket in tickets]
         return jsonify(serialized_tickets), 200
+
     except Exception as e:
         return jsonify({"error": f"Failed to fetch tickets by category: {str(e)}"}), 500
+
 
 # Register the blueprint
 app.register_blueprint(ticket_bp)
