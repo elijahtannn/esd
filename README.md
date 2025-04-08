@@ -7,7 +7,7 @@
 <ol>
   <li><a href="https://docs.google.com/document/d/1guzZgE9IGnuUP1E8EiU6zEAK6GQ3gVN0mYiIknzofn0/edit?usp=sharing">Project report & API documentation</a></li>
   <li><a href="https://www.canva.com/design/DAGgvwbA2D0/PEQJZt8Uccf0Y7b3NDOrGQ/edit">Project slides</a></li>
-  <li>Project Demo video </li>
+  <li><a href="https://youtu.be/x3WzHFKCUz0">Project Demo video</a></li>
 </ol>
 <br/>
 
